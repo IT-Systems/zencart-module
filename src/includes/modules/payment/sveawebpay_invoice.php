@@ -89,13 +89,13 @@ class sveawebpay_invoice {
     $fields[] = array('title' => '<img src=images/SveaWebPay-Faktura-100px.png />', 'field' => '');
     
     //Return error
-    if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == ''){
+    if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_invoice'){
         $fields[] = array('title' => '', 'field' => '<span style="color:red">'.$this->responseCodes($_REQUEST['payment_error']).'</span>');
     }
 
     //Fields to insert/show when SWP is chosen
 
-    $sveaJs =  '<script type="text/javascript" src="'.$this->web_root . 'includes/modules/payment/jquery.min.js"></script>
+    $sveaJs =  '<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
                 <script type="text/javascript" src="'.$this->web_root . 'includes/modules/payment/svea.js"></script>';
     $fields[] = array('title' => '', 'field' => $sveaJs);
     

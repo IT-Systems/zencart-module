@@ -95,7 +95,7 @@ class sveawebpay_partpay {
 
     //Fields to insert/show when SWP is chosen
 
-    $sveaJs =  '<script type="text/javascript" src="'.$this->web_root . 'includes/modules/payment/jquery.min.js"></script>
+    $sveaJs =  '<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
                 <script type="text/javascript" src="'.$this->web_root . 'includes/modules/payment/svea.js"></script>';
     $fields[] = array('title' => '', 'field' => $sveaJs);
 
