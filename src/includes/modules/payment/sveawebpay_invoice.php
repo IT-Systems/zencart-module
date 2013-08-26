@@ -146,10 +146,35 @@ class sveawebpay_invoice {
     return false;
   }
 
+  /** process_button() is called from tpl_checkout_confirmation.php in
+   *  includes/templates/template_default/templates.
+   *  Here we prepare to populate the order object by creating the 
+   *  Item::orderRow objects that make up the order.
+   */
+  
   function process_button() {
     
     global $db, $order, $order_totals, $language;
        
+    // Include Svea php integration package files    
+    require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+    
+    // v4: create Item::orderRow object and ensure we can read it in before_process()
+    $testitem = swp_\Item::orderRow()
+        ->setQuantity(2)                        //Required
+        ->setAmountExVat(100.00)                //Optional, see info above
+        ->setAmountIncVat(125.00)               //Optional, see info above
+        ->setVatPercent(25)                     //Optional, see info above
+        ->setArticleNumber(1)                   //Optional
+        ->setDescription("Specification")       //Optional
+        ->setName('Prod')                       //Optional
+        ->setUnit("st")                         //Optional
+        ->setDiscountPercent(0)                 //Optional
+    ;
+
+    // next: store orderRow objects in session, are retrieved by before_process()
+    $_SESSION["testitem"] = serialize($testitem);
+    
     
     require('includes/modules/payment/svea/svea.php');
     
@@ -176,10 +201,10 @@ class sveawebpay_invoice {
     
     
     /*** Set up The request Array ***/
-    
+   
     //Setting the NumberOfUnits field between Euro and nordic
     $nrOfUnits = (($order->customer['country']['iso_code_2'] == 'NL' || $order->customer['country']['iso_code_2'] == 'DE') && $order->info['currency'] == 'EUR') ? 'NumberOfUnits' : 'NrOfUnits';
-    
+  
     $i = 0;
     // Order rows for Nordic
     foreach($order->products as $productId => $product) {
@@ -374,7 +399,7 @@ class sveawebpay_invoice {
     
     }
     
-     
+ 
      $_SESSION['swp_fakt_request'] = $request;
      if ($this->handling_fee > 0){
         echo '
@@ -383,14 +408,61 @@ class sveawebpay_invoice {
         </script>
         ';
      }
-    return false;
+    return false;   
   }
 
 
+  /**
+   * before_process is called from modules/checkout_process
+   * instantiates and populates a WebPay::createOrder object
+   * as well as sends the actual payment request
+   */
+  
   function before_process() {
     global $order, $order_totals, $language, $billto, $sendto, $db;
     
+    // Include Svea php integration package files
+    require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+    
+    // Create order object using either test or production configuration
+    $testorder = swp_\WebPay::createOrder(); // TODO uses default testmode config for now
+    //print_r("testorder:" . serialize($testorder) ); die();
+    
+    // retrieve orderRow objects previously set in process_button()
+    //print_r(unserialize($_SESSION["testitem"])); die();
+    $testitem = unserialize($_SESSION["testitem"]);
+    
+    
+    // used by previous integration package to store data for order
+    //    print_r($_SESSION['swp_fakt_request']); die(); // stored data for order TODO keep this?
+    
 
+            
+    // Populate order with items bought
+/*
+// TODO populate order using data from process_button for now
+   //For all products and other items
+    //->addOrderRow(Item::orderRow()...)
+    //If shipping fee
+    //->addFee(Item::shippingFee()...)
+    //If invoice with invoice fee
+     ->addFee(Item::invoiceFee()
+    //If discount or coupon with fixed amount
+     ->addDiscount(Item::fixedDiscount()
+     //If discount or coupon with percent discount
+    ->addDiscount(Item::relativeDiscount()
+    //Individual customer values.
+     ->addCustomerDetails(Item::individualCustomer()...)
+    //Company customer values
+     ->addCustomerDetails(Item::companyCustomer()...)
+     //Other values
+     ->setCountryCode("SE")
+     ->setOrderDate("2012-12-12")
+     ->setCustomerReference("33")
+     ->setClientOrderNumber("nr26")
+     ->setCurrency("SEK")
+*/
+            
     //Put all the data in request tag
     $data['request'] = $_SESSION['swp_fakt_request'];
    
