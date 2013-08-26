@@ -172,8 +172,26 @@ class sveawebpay_invoice {
         ->setDiscountPercent(0)                 //Optional
     ;
 
+    $testitems = Array();
+    $testitems[] = $testitem;
+    $testitems[] = $testitem;
+    
+    $testitem3 = swp_\Item::orderRow()
+        ->setQuantity(1)                        //Required
+        ->setAmountExVat(200.00)                //Optional, see info above
+        ->setAmountIncVat(250.00)               //Optional, see info above
+        ->setVatPercent(25)                     //Optional, see info above
+        ->setArticleNumber(1)                   //Optional
+        ->setDescription("Specification")       //Optional
+        ->setName('Prod')                       //Optional
+        ->setUnit("st")                         //Optional
+        ->setDiscountPercent(0)                 //Optional
+    ;
+    $testitems[] = $testitem3;
+    
     // next: store orderRow objects in session, are retrieved by before_process()
-    $_SESSION["testitem"] = serialize($testitem);
+    $_SESSION["testitems"] = serialize($testitems);
+    
     
     
     require('includes/modules/payment/svea/svea.php');
@@ -432,6 +450,11 @@ class sveawebpay_invoice {
     //print_r(unserialize($_SESSION["testitem"])); die();
     $testitem = unserialize($_SESSION["testitem"]);
     
+    foreach( unserialize($_SESSION["testitems"]) as $my_item ) {
+        print_r($my_item);
+        print_r("\n");
+    }
+    die();
     
     // used by previous integration package to store data for order
     //    print_r($_SESSION['swp_fakt_request']); die(); // stored data for order TODO keep this?
