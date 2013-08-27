@@ -2,8 +2,9 @@
 /*
 HOSTED SVEAWEBPAY PAYMENT MODULE FOR ZEN CART
 -----------------------------------------------
-Version 3.0 - Zen Cart
-Shaho Ghobadi
+Version 4.0 - Zen Cart
+
+ Kristian Grossman-Madsen, Shaho Ghobadi
 */
 
 class sveawebpay_invoice {
@@ -12,7 +13,7 @@ class sveawebpay_invoice {
     global $order;
 
     $this->code = 'sveawebpay_invoice';
-    $this->version = 2;
+    $this->version = 2;                         // TODO version of what?
 
     $_SESSION['SWP_CODE'] = $this->code;
 
@@ -153,49 +154,116 @@ class sveawebpay_invoice {
    */
   
   function process_button() {
-    
+        
     global $db, $order, $order_totals, $language;
        
     // Include Svea php integration package files    
     require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
-    
-    // v4: create Item::orderRow object and ensure we can read it in before_process()
-    $testitem = swp_\Item::orderRow()
-        ->setQuantity(2)                        //Required
-        ->setAmountExVat(100.00)                //Optional, see info above
-        ->setAmountIncVat(125.00)               //Optional, see info above
-        ->setVatPercent(25)                     //Optional, see info above
-        ->setArticleNumber(1)                   //Optional
-        ->setDescription("Specification")       //Optional
-        ->setName('Prod')                       //Optional
-        ->setUnit("st")                         //Optional
-        ->setDiscountPercent(0)                 //Optional
-    ;
 
-    $testitems = Array();
-    $testitems[] = $testitem;
-    $testitems[] = $testitem;
+    // Create order object using either test or production configuration
+    $swp_order = swp_\WebPay::createOrder(); // TODO uses default testmode config for now
     
-    $testitem3 = swp_\Item::orderRow()
-        ->setQuantity(1)                        //Required
-        ->setAmountExVat(200.00)                //Optional, see info above
-        ->setAmountIncVat(250.00)               //Optional, see info above
-        ->setVatPercent(25)                     //Optional, see info above
-        ->setArticleNumber(1)                   //Optional
-        ->setDescription("Specification")       //Optional
-        ->setName('Prod')                       //Optional
-        ->setUnit("st")                         //Optional
-        ->setDiscountPercent(0)                 //Optional
+    // calculate the order number
+    $new_order_rs = $db->Execute("select orders_id from ".TABLE_ORDERS." order by orders_id desc limit 1");
+    $new_order_field = $new_order_rs->fields;
+    $client_order_number = ($new_order_field['orders_id'] + 1).'-'.time();
+
+    // localization parameters
+    $user_country = $order->billing['country']['iso_code_2'];
+    $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
+    $user_language = $user_language->fields['code'];
+        
+    // switch to default currency if the customers currency is not supported
+    $currency = $order->info['currency'];
+    if(!in_array($currency, $this->allowed_currencies)) { $currency = $this->default_currency; }
+
+    // set other values
+    $swp_order
+        ->setCountryCode($order->customer['country']['iso_code_2'])                      //Required   TODO kolla = user_country??
+        ->setCurrency($currency)                     //Required for card & direct payment and PayPage payment.
+        ->setClientOrderNumber($client_order_number) //Required for card & direct payment, PaymentMethod payment and PayPage payments.
+        ->setOrderDate(date('c'))                      //Required for synchronous payments -- TODO check format "2012-12-12"
+        //->setCustomerReference("33")                 //Optional
     ;
-    $testitems[] = $testitem3;
     
+    /*
+    // we'll store the generated orderid in a session variable so we can check
+    // it when returning from payment gateway for security reasons:
+    // Set up SSN and company
+    $_SESSION['swp_orderid'] = $hosted_params['OrderId'];       // TODO -- is this used? where?
+    */  
+    
+    // create Item::orderRow object and ensure we can read it in before_process()
+
+    // Order rows for Nordic -- TODO should be eu/nordic/generic?
+    foreach($order->products as $productId => $product) {
+
+        $amount_ex_vat = $this->convert_to_currency(round($product['final_price'],2),$currency);
+  
+        //$swp_items[] =
+        $swp_order->addOrderRow( 
+          swp_\Item::orderRow()
+              ->setQuantity($product['qty'])                        //Required
+              ->setAmountExVat($amount_ex_vat)    //Optional, see info above
+              //->setAmountIncVat(125.00)               //Optional, see info above
+              ->setVatPercent(intval($product['tax']))                     //Optional, see info above
+              //->setArticleNumber()                   //Optional
+              ->setDescription($product['name'])       //Optional
+              //->setName('Prod')                       //Optional
+              ->setUnit("st")                         //Optional  //TODO hardcoded?
+              ->setDiscountPercent(0)                 //Optional  //TODO hardcoded
+        );
+    }
+    //$swp_order->addOrderRow( $swp_items );    TODO funkar inte?!
+    
+    //Handling fee
+    if (isset($this->handling_fee) && $this->handling_fee > 0) {
+    
+        $hf_price = $this->convert_to_currency( ($this->handling_fee * 0.8),$currency );    // TODO magic number 0.8? Always one unit?!
+
+        $swp_order->addFee( 
+            swp_\Item::shippingFee()
+            //->setShippingId('33')                     //Optional
+            //->setName('shipping')                     //Optional
+            ->setDescription("Faktureringsavgift")      //Optional     TODO hardcoded?
+            ->setAmountExVat($hf_price)                 //Optional, see info above
+            //->setAmountIncVat(62.50)                  //Optional, see info above
+            ->setVatPercent(25)                         //Optional, see info above  TODO hardcoded
+            //->setUnit("st")                           //Optional
+            ->setDiscountPercent(0)                     //Optional      TODO hardcoded
+        );
+    }
+      
+    //Split street address and house no
+    $streetAddress = preg_split('/ /', $order->customer['street_address'],-1,PREG_SPLIT_NO_EMPTY);
+    
+    //Get initials
+    $initials = substr($order->customer['firstname'],0,1).substr($order->customer['lastname'],0,1);     // TODO replace this
+    
+    // create individual customer object
+    $swp_customer = swp_\Item::individualCustomer()
+         ->setNationalIdNumber($_POST['sveaPnr']) //Required for individual customers in SE, NO, DK, FI -- TODO get pnr from customer
+         ->setInitials($initials)   //Required for individual customers in NL    -- TODO get w/pnr from customer
+        //->setBirthDate(1923, 12, 20)   //Required for individual customers in NL and DE -- TODO calculate from pnr/get from customer
+         ->setName($order->customer['firstname'], $order->customer['lastname'])        //Required for individual customers in NL and DE
+         ->setStreetAddress($streetAddress[0], $streetAddress[1])     //Required in NL and DE
+         ->setZipCode($order->customer['postcode'])                  //Required in NL and DE
+         ->setLocality($order->customer['city'])               //Required in NL and DE
+         ->setEmail($order->customer['email_address'])         //Optional but desirable
+         ->setIpAddress($_SERVER['REMOTE_ADDR'])       //Optional but desirable
+        //->setCoAddress("c/o Eriksson")      //Optional
+         ->setPhoneNumber($order->customer['telephone'])            //Optional
+    ;
+    $swp_order->addCustomerDetails($swp_customer);    
+       
     // next: store orderRow objects in session, are retrieved by before_process()
-    $_SESSION["testitems"] = serialize($testitems);
+    $_SESSION["swp_customer"] = serialize($swp_customer);
+    $_SESSION["swp_order"] = serialize($swp_order);
     
-    
-    
+ 
+/// ------------------------------------------------------------- old code below        
     require('includes/modules/payment/svea/svea.php');
-    
+
     //Get the order
     $new_order_rs = $db->Execute("select orders_id from ".TABLE_ORDERS." order by orders_id desc limit 1");
     $new_order_field = $new_order_rs->fields;
@@ -204,8 +272,8 @@ class sveawebpay_invoice {
     $user_country = $order->billing['country']['iso_code_2'];
     $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
     $user_language = $user_language->fields['code'];
-    
-    
+
+        
     // switch to default currency if the customers currency is not supported
     $currency = $order->info['currency'];
     if(!in_array($currency, $this->allowed_currencies))
@@ -320,18 +388,15 @@ class sveawebpay_invoice {
     }
     
     
-
-    if (($order->customer['country']['iso_code_2'] == 'NL' || $order->customer['country']['iso_code_2'] == 'DE') && $order->info['currency'] == 'EUR'){
-    
     //Get svea configuration for each country based on currency
     $sveaConf = getCountryConfigInvoice($order->info['currency'],$order->customer['country']['iso_code_2']);
-    
+  
     //Split street address and house no
     $streetAddress = preg_split('/ /', $order->customer['street_address'],-1,PREG_SPLIT_NO_EMPTY);
     
     //Get initials
     $initials = substr($order->customer['firstname'],0,1).substr($order->customer['lastname'],0,1);
-    
+
     //IsCompany
     $company = ($_POST['sveaIsCompany'] == 'True') ? 'Company' : 'Individual';
     if ($company == 'Individual'){
@@ -349,7 +414,7 @@ class sveawebpay_invoice {
                         "CompanyVatNumber" => $_POST['sveaPnr']
                         );
     }
-    
+
     /************ CREATE ORDER FOR EU *******************/
     
     
@@ -388,7 +453,9 @@ class sveawebpay_invoice {
           
         );
     
-    }else{
+    
+    // TODO flow for customers outside of NL, DE
+    if( false) {    // TODO fix
     
     //Get svea configuration for each country based on currency
     $sveaConf = getCountryConfigInvoice($order->info['currency']);
@@ -419,13 +486,6 @@ class sveawebpay_invoice {
     
  
      $_SESSION['swp_fakt_request'] = $request;
-     if ($this->handling_fee > 0){
-        echo '
-        <script type="text/javascript">
-            $(".contentContainer .contentText:eq(1) table:eq(1) > tbody").append("<tr><td>'.FORM_TEXT_INVOICE_FEE.' '.$this->handling_fee.' '.$order->info['currency'].'</td></tr>");
-        </script>
-        ';
-     }
     return false;   
   }
 
@@ -438,54 +498,38 @@ class sveawebpay_invoice {
   
   function before_process() {
     global $order, $order_totals, $language, $billto, $sendto, $db;
-    
+     
     // Include Svea php integration package files
     require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
     
-    // Create order object using either test or production configuration
-    $testorder = swp_\WebPay::createOrder(); // TODO uses default testmode config for now
-    //print_r("testorder:" . serialize($testorder) ); die();
-    
+    // retrieve order object set in process_button()
+    $swp_order = unserialize($_SESSION["swp_order"]);
+    print_r("swp_order:" . serialize($swp_order) );
+     
     // retrieve orderRow objects previously set in process_button()
     //print_r(unserialize($_SESSION["testitem"])); die();
-    $testitem = unserialize($_SESSION["testitem"]);
+    //$testitem = unserialize($_SESSION["testitem"]);
+    $swp_customer = unserialize($_SESSION["swp_customer"]);
+    //print_r("swp_customer:" . serialize($swp_customer) );
+ 
+    //debugging tip: use serialization string to test in less complex (i.e. outside shop) test environment
     
-    foreach( unserialize($_SESSION["testitems"]) as $my_item ) {
-        print_r($my_item);
-        print_r("\n");
+    try {
+        $myobject = $swp_order->useInvoicePayment()->prepareRequest();
+    } catch (Exception $e) {
+        echo 'Caught exception: ',  $e->getMessage(), "\n";
     }
-    die();
     
-    // used by previous integration package to store data for order
-    //    print_r($_SESSION['swp_fakt_request']); die(); // stored data for order TODO keep this?
-    
+    print_r("past prepare");
+    print_r(serialize($myobject));
 
-            
-    // Populate order with items bought
-/*
-// TODO populate order using data from process_button for now
-   //For all products and other items
-    //->addOrderRow(Item::orderRow()...)
-    //If shipping fee
-    //->addFee(Item::shippingFee()...)
-    //If invoice with invoice fee
-     ->addFee(Item::invoiceFee()
-    //If discount or coupon with fixed amount
-     ->addDiscount(Item::fixedDiscount()
-     //If discount or coupon with percent discount
-    ->addDiscount(Item::relativeDiscount()
-    //Individual customer values.
-     ->addCustomerDetails(Item::individualCustomer()...)
-    //Company customer values
-     ->addCustomerDetails(Item::companyCustomer()...)
-     //Other values
-     ->setCountryCode("SE")
-     ->setOrderDate("2012-12-12")
-     ->setCustomerReference("33")
-     ->setClientOrderNumber("nr26")
-     ->setCurrency("SEK")
-*/
-            
+    $response = $swp_order->useInvoicePayment()->doRequest();
+    print_r(serialize($response));
+    die();
+        
+    
+    /** old request below ================================================================================== */
+    
     //Put all the data in request tag
     $data['request'] = $_SESSION['swp_fakt_request'];
    
