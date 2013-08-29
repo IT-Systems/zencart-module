@@ -158,8 +158,10 @@ class sveawebpay_invoice {
 
         // Include Svea php integration package files    
         require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+
         // Create order object using either test or production configuration
         $swp_order = swp_\WebPay::createOrder(); // TODO uses default testmode config for now
+
         // calculate the order number
         $new_order_rs = $db->Execute("select orders_id from " . TABLE_ORDERS . " order by orders_id desc limit 1");
         $new_order_field = $new_order_rs->fields;
@@ -176,16 +178,17 @@ class sveawebpay_invoice {
             $currency = $this->default_currency;
         }
 
+        //
         // set other values
         $swp_order
-                ->setCountryCode($order->customer['country']['iso_code_2'])                      //Required   TODO kolla = user_country??
-                ->setCurrency($currency)                        //Required for card & direct payment and PayPage payment.
-                ->setClientOrderNumber($client_order_number)    //Required for card & direct payment, PaymentMethod payment and PayPage payments.
+                ->setCountryCode($order->customer['country']['iso_code_2'])     //Required   TODO kolla = user_country??
+                ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
+                ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments.
                 ->setOrderDate(date('c'))                      //Required for synchronous payments -- TODO check format "2012-12-12"
-        //->setCustomerReference("33")                 //Optional
         ;
 
-        // create Item::orderRow object and ensure we can read it in before_process()
+        //
+        // for each item in cart, create Item::orderRow objects and add to order
         foreach ($order->products as $productId => $product) {
 
             $amount_ex_vat = $this->convert_to_currency(round($product['final_price'], 2), $currency);
@@ -198,30 +201,38 @@ class sveawebpay_invoice {
                             ->setVatPercent(intval($product['tax']))  //Optional, see info above
                             //->setArticleNumber()                    //Optional
                             ->setDescription($product['name'])        //Optional
-                            //->setName('Prod')                       //Optional
-                            ->setUnit("st")                           //Optional  //TODO hardcoded?
-                            ->setDiscountPercent(0)                   //Optional  //TODO hardcoded
+                            //->setName($product['model'])             //Optional
+                            //->setUnit("st")                           //Optional  //TODO hardcoded?
+                            //->setDiscountPercent(0)                   //Optional  //TODO hardcoded
             );
         }
 
-        //Handling fee
+        //
+        // if handling fee applies, create Item::handlingFee object and add to order
         if (isset($this->handling_fee) && $this->handling_fee > 0) {
+ 
 
-            $hf_price = $this->convert_to_currency(($this->handling_fee * 0.8), $currency);    // TODO magic number 0.8? Always one unit?!
+            // handlingfee expressed as percentage?
+            if( substr($this->handling_fee, -1) == '%' ) { 
+                 // sum of products + shipping * handling_fee as percentage
+                $hf_percentage = floatval( substr($this->handling_fee, 0, -1) );
+                
+                $hf_price = ($order->info['subtotal'] + $order->info['shipping_cost']) * ($hf_percentage / 100.0);
+            }
+            // handlingfee expressed as absolute amount (incl. tax)
+            else {
+                $hf_price = $this->convert_to_currency( floatval( $this->handling_fee ), $currency );    
+            }
+            $hf_taxrate = zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS,$order->delivery['country']['id'],$order->delivery['zone_id']);
 
             $swp_order->addFee(
-                    swp_\Item::shippingFee()
-                            //->setShippingId('33')                     //Optional
-                            //->setName('shipping')                     //Optional
-                            ->setDescription("Faktureringsavgift")      //Optional     TODO hardcoded?
-                            ->setAmountExVat($hf_price)                 //Optional, see info above
-                            //->setAmountIncVat(62.50)                  //Optional, see info above
-                            ->setVatPercent(25)                         //Optional, see info above  TODO hardcoded
-                            //->setUnit("st")                           //Optional
-                            ->setDiscountPercent(0)                     //Optional      TODO hardcoded
+                  swp_\Item::invoiceFee()
+                    ->setDescription(MODULE_ORDER_TOTAL_SWPHANDLING_NAME)
+                    ->setAmountExVat($hf_price)
+                    ->setVatPercent($hf_taxrate)
             );
         }
-
+     
         // TODO swap this for better regex that works with all types of addresses
         //Split street address and house no
         $streetAddress = preg_split('/ /', $order->customer['street_address'], -1, PREG_SPLIT_NO_EMPTY);
@@ -247,62 +258,8 @@ class sveawebpay_invoice {
         // next: store orderRow objects in session, are retrieved by before_process()
         $_SESSION["swp_order"] = serialize($swp_order);
 
-
-
-
 /// ------------------------------------------------------------- old code below        
-        require('includes/modules/payment/svea/svea.php');
-
-        //Get the order
-        $new_order_rs = $db->Execute("select orders_id from " . TABLE_ORDERS . " order by orders_id desc limit 1");
-        $new_order_field = $new_order_rs->fields;
-
-        // localization parameters
-        $user_country = $order->billing['country']['iso_code_2'];
-        $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
-        $user_language = $user_language->fields['code'];
-
-
-        // switch to default currency if the customers currency is not supported
-        $currency = $order->info['currency'];
-        if (!in_array($currency, $this->allowed_currencies))
-            $currency = $this->default_currency;
-
-
-        // we'll store the generated orderid in a session variable so we can check
-        // it when returning from payment gateway for security reasons:
-        // Set up SSN and company
-        $_SESSION['swp_orderid'] = $hosted_params['OrderId'];
-
-
-        /*         * * Set up The request Array ** */
-
-        //Setting the NumberOfUnits field between Euro and nordic
-        $nrOfUnits = (($order->customer['country']['iso_code_2'] == 'NL' || $order->customer['country']['iso_code_2'] == 'DE') && $order->info['currency'] == 'EUR') ? 'NumberOfUnits' : 'NrOfUnits';
-
-        $i = 0;
-        // Order rows for Nordic
-        foreach ($order->products as $productId => $product) {
-
-            $orderRows = Array(
-                "Description" => $product['name'],
-                "PricePerUnit" => $this->convert_to_currency(round($product['final_price'], 2), $currency),
-                $nrOfUnits => $product['qty'],
-                "Unit" => "st",
-                "VatPercent" => $product['tax'],
-                "DiscountPercent" => 0
-            );
-
-            if (isset($clientInvoiceRows)) {
-
-                $clientInvoiceRows[$productId] = $orderRows;
-            } else {
-                $clientInvoiceRows[] = $orderRows;
-            }
-        }
-
-
-
+       /*
         // handle order totals
         foreach ($order_totals as $ot_id => $order_total) {
             $current_row++;
@@ -314,34 +271,7 @@ class sveawebpay_invoice {
                     // do nothing for these
                     $current_row--;
                     break;
-                case 'ot_shipping':
-                    $shipping_code = explode('_', $_SESSION['shipping']['id']);
-                    $shipping = $GLOBALS[$shipping_code[0]];
-                    if (isset($shipping->description))
-                        $shipping_description = $shipping->title . ' [' . $shipping->description . ']';
-                    else
-                        $shipping_description = $shipping->title;
-
-                    $clientInvoiceRows[] = Array(
-                        "Description" => $shipping_description,
-                        "PricePerUnit" => $this->convert_to_currency($_SESSION['shipping']['cost'], $currency),
-                        $nrOfUnits => 1,
-                        "VatPercent" => (string) zen_get_tax_rate($shipping->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']),
-                        "DiscountPercent" => 0
-                    );
-                    break;
-                case 'ot_coupon':
-
-                    $clientInvoiceRows[] = Array(
-                        "Description" => strip_tags($order_total['title']),
-                        "PricePerUnit" => -$this->convert_to_currency(strip_tags($order_total['value']), $currency),
-                        $nrOfUnits => 1,
-                        "VatPercent" => 0,
-                        "DiscountPercent" => 0
-                    );
-
-                    break;
-                // default case handles order totals like handling fee, but also
+                 // default case handles order totals like handling fee, but also
                 // 'unknown' items from other plugins. Might cause problems.
                 default:
                     $order_total_obj = $GLOBALS[$order_total['code']];
@@ -361,114 +291,8 @@ class sveawebpay_invoice {
                     break;
             }
         }
-
-        //Handling fee
-        if (isset($this->handling_fee) && $this->handling_fee > 0) {
-            $paymentfee_cost = $this->handling_fee;
-            $invoiceCost = $this->handling_fee * 0.8;
-
-            $clientInvoiceRows[] = Array(
-                "Description" => 'Faktureringsavgift',
-                "PricePerUnit" => $this->convert_to_currency($invoiceCost, $currency),
-                $nrOfUnits => 1,
-                "VatPercent" => 25,
-                "DiscountPercent" => 0
-            );
-        }
-
-
-        //Get svea configuration for each country based on currency
-        $sveaConf = getCountryConfigInvoice($order->info['currency'], $order->customer['country']['iso_code_2']);
-
-        //Split street address and house no
-        $streetAddress = preg_split('/ /', $order->customer['street_address'], -1, PREG_SPLIT_NO_EMPTY);
-
-        //Get initials
-        $initials = substr($order->customer['firstname'], 0, 1) . substr($order->customer['lastname'], 0, 1);
-
-        //IsCompany
-        $company = ($_POST['sveaIsCompany'] == 'True') ? 'Company' : 'Individual';
-        if ($company == 'Individual') {
-            $identity = 'IndividualIdentity';
-            $identityArr = array(
-                "FirstName" => $order->customer['firstname'],
-                "LastName" => $order->customer['lastname'],
-                "Initials" => $initials,
-                "BirthDate" => $_POST['sveaPnr']
-            );
-        } else {
-            $identity = 'CompanyIdentity';
-            $identityArr = array(
-                "CompanyIdentification" => '',
-                "CompanyVatNumber" => $_POST['sveaPnr']
-            );
-        }
-
-        /*         * ********** CREATE ORDER FOR EU ****************** */
-
-
-
-        //The createOrder Data for Euro
-        $request = Array(
-            "Auth" => Array(
-                "Username" => $sveaConf['username'],
-                "Password" => $sveaConf['password'],
-                "ClientNumber" => $sveaConf['clientno']
-            ),
-            "CreateOrderInformation" => Array(
-                "ClientOrderNumber" => ($new_order_field['orders_id'] + 1) . '-' . time(),
-                "OrderRows" => array('OrderRow' => $clientInvoiceRows),
-                "CustomerIdentity" => array(
-                    //"NationalIdNumber" => '',//$_POST['sveaPnr'],
-                    "Email" => $order->customer['email_address'],
-                    "PhoneNumber" => $order->customer['telephone'],
-                    "IpAddress" => $_SERVER['REMOTE_ADDR'],
-                    "FullName" => $order->customer['firstname'] . ' ' . $order->customer['lastname'],
-                    "Street" => $streetAddress[0],
-                    "ZipCode" => $order->customer['postcode'],
-                    "HouseNumber" => $streetAddress[1],
-                    "Locality" => $order->customer['city'],
-                    "CountryCode" => $order->customer['country']['iso_code_2'],
-                    "CustomerType" => $company,
-                    $identity => $identityArr
-                ),
-                "OrderDate" => date(c),
-                "AddressSelector" => $_POST['adressSelector_fakt'],
-                "CustomerReference" => "",
-                "OrderType" => "Invoice"
-            )
-        );
-
-
-        // TODO flow for customers outside of NL, DE
-        if (false) {    // TODO fix
-            //Get svea configuration for each country based on currency
-            $sveaConf = getCountryConfigInvoice($order->info['currency']);
-
-            //IsCompany
-            $company = ($_POST['sveaIsCompany'] == 'True') ? True : false;
-
-            /*             * ********** CREATE ORDER FOR NORDIC COUNTRIES ****************** */
-            $request = Array(
-                "Auth" => Array(
-                    "Username" => $sveaConf['username'],
-                    "Password" => $sveaConf['password'],
-                    "ClientNumber" => $sveaConf['clientno']
-                ),
-                "Order" => Array(
-                    "ClientOrderNr" => ($new_order_field['orders_id'] + 1) . '-' . time(),
-                    "CountryCode" => $sveaConf['countryCode'],
-                    "SecurityNumber" => $_POST['sveaPnr'],
-                    "IsCompany" => $company,
-                    "OrderDate" => date(c),
-                    "AddressSelector" => $_POST['adressSelector_fakt'],
-                    "PreApprovedCustomerId" => 0
-                ),
-                "InvoiceRows" => array('ClientInvoiceRowInfo' => $clientInvoiceRows)
-            );
-        }
-
-        $_SESSION['swp_fakt_request'] = $request;
+        */
+        
         return false;
     }
 
