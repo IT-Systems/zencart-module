@@ -180,41 +180,30 @@ class sveawebpay_invoice {
     // set other values
     $swp_order
         ->setCountryCode($order->customer['country']['iso_code_2'])                      //Required   TODO kolla = user_country??
-        ->setCurrency($currency)                     //Required for card & direct payment and PayPage payment.
-        ->setClientOrderNumber($client_order_number) //Required for card & direct payment, PaymentMethod payment and PayPage payments.
+        ->setCurrency($currency)                        //Required for card & direct payment and PayPage payment.
+        ->setClientOrderNumber($client_order_number)    //Required for card & direct payment, PaymentMethod payment and PayPage payments.
         ->setOrderDate(date('c'))                      //Required for synchronous payments -- TODO check format "2012-12-12"
         //->setCustomerReference("33")                 //Optional
     ;
     
-    /*
-    // we'll store the generated orderid in a session variable so we can check
-    // it when returning from payment gateway for security reasons:
-    // Set up SSN and company
-    $_SESSION['swp_orderid'] = $hosted_params['OrderId'];       // TODO -- is this used? where?
-    */  
-    
     // create Item::orderRow object and ensure we can read it in before_process()
-
-    // Order rows for Nordic -- TODO should be eu/nordic/generic?
     foreach($order->products as $productId => $product) {
 
         $amount_ex_vat = $this->convert_to_currency(round($product['final_price'],2),$currency);
   
-        //$swp_items[] =
         $swp_order->addOrderRow( 
           swp_\Item::orderRow()
-              ->setQuantity($product['qty'])                        //Required
-              ->setAmountExVat($amount_ex_vat)    //Optional, see info above
+                ->setQuantity($product['qty'])          //Required
+              ->setAmountExVat($amount_ex_vat)          //Optional, see info above
               //->setAmountIncVat(125.00)               //Optional, see info above
-              ->setVatPercent(intval($product['tax']))                     //Optional, see info above
-              //->setArticleNumber()                   //Optional
-              ->setDescription($product['name'])       //Optional
+              ->setVatPercent(intval($product['tax']))  //Optional, see info above
+              //->setArticleNumber()                    //Optional
+              ->setDescription($product['name'])        //Optional
               //->setName('Prod')                       //Optional
-              ->setUnit("st")                         //Optional  //TODO hardcoded?
-              ->setDiscountPercent(0)                 //Optional  //TODO hardcoded
+              ->setUnit("st")                           //Optional  //TODO hardcoded?
+              ->setDiscountPercent(0)                   //Optional  //TODO hardcoded
         );
     }
-    //$swp_order->addOrderRow( $swp_items );    TODO funkar inte?!
     
     //Handling fee
     if (isset($this->handling_fee) && $this->handling_fee > 0) {
@@ -234,33 +223,35 @@ class sveawebpay_invoice {
         );
     }
       
+    // TODO swap this for better regex that works with all types of addresses
     //Split street address and house no
     $streetAddress = preg_split('/ /', $order->customer['street_address'],-1,PREG_SPLIT_NO_EMPTY);
     
     //Get initials
-    $initials = substr($order->customer['firstname'],0,1).substr($order->customer['lastname'],0,1);     // TODO replace this
+    $initials = substr($order->customer['firstname'],0,1).substr($order->customer['lastname'],0,1);     // TODO replace this with user entry iff NL/DE
     
     // create individual customer object
     $swp_customer = swp_\Item::individualCustomer()
-         ->setNationalIdNumber($_POST['sveaPnr']) //Required for individual customers in SE, NO, DK, FI -- TODO get pnr from customer
-         ->setInitials($initials)   //Required for individual customers in NL    -- TODO get w/pnr from customer
-        //->setBirthDate(1923, 12, 20)   //Required for individual customers in NL and DE -- TODO calculate from pnr/get from customer
-         ->setName($order->customer['firstname'], $order->customer['lastname'])        //Required for individual customers in NL and DE
-         ->setStreetAddress($streetAddress[0], $streetAddress[1])     //Required in NL and DE
-         ->setZipCode($order->customer['postcode'])                  //Required in NL and DE
-         ->setLocality($order->customer['city'])               //Required in NL and DE
-         ->setEmail($order->customer['email_address'])         //Optional but desirable
-         ->setIpAddress($_SERVER['REMOTE_ADDR'])       //Optional but desirable
-        //->setCoAddress("c/o Eriksson")      //Optional
-         ->setPhoneNumber($order->customer['telephone'])            //Optional
+         ->setNationalIdNumber($_POST['sveaPnr'])       //Required for individual customers in SE, NO, DK, FI -- TODO get pnr from customer
+         ->setInitials($initials)                       //Required for individual customers in NL    -- TODO get w/pnr from customer
+        //->setBirthDate(1923, 12, 20)                  //Required for individual customers in NL and DE -- TODO calculate from pnr/get from customer
+         ->setName($order->customer['firstname'], $order->customer['lastname'])     //Required for individual customers in NL and DE
+         ->setStreetAddress($streetAddress[0], $streetAddress[1])                   //Required in NL and DE
+         ->setZipCode($order->customer['postcode'])                                 //Required in NL and DE
+         ->setLocality($order->customer['city'])                                    //Required in NL and DE
+         ->setEmail($order->customer['email_address'])                              //Optional but desirable
+         ->setIpAddress($_SERVER['REMOTE_ADDR'])                                    //Optional but desirable
+        //->setCoAddress("c/o Eriksson")                                            //Optional
+         ->setPhoneNumber($order->customer['telephone'])                            //Optional
     ;
     $swp_order->addCustomerDetails($swp_customer);    
        
     // next: store orderRow objects in session, are retrieved by before_process()
-    $_SESSION["swp_customer"] = serialize($swp_customer);
     $_SESSION["swp_order"] = serialize($swp_order);
     
  
+    
+    
 /// ------------------------------------------------------------- old code below        
     require('includes/modules/payment/svea/svea.php');
 
@@ -304,12 +295,12 @@ class sveawebpay_invoice {
               "DiscountPercent" => 0
             );
             
-        if (isset($clientInvoiceRows)){
-    
-            $clientInvoiceRows[$productId] = $orderRows;
-        }else{
-            $clientInvoiceRows[] = $orderRows;
-        }
+            if (isset($clientInvoiceRows)){
+
+                $clientInvoiceRows[$productId] = $orderRows;
+            }else{
+                $clientInvoiceRows[] = $orderRows;
+            }
     }
 
 
@@ -484,7 +475,6 @@ class sveawebpay_invoice {
     
     }
     
- 
      $_SESSION['swp_fakt_request'] = $request;
     return false;   
   }
@@ -502,140 +492,98 @@ class sveawebpay_invoice {
     // Include Svea php integration package files
     require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
     
+    //
     // retrieve order object set in process_button()
     $swp_order = unserialize($_SESSION["swp_order"]);
-    print_r("swp_order:" . serialize($swp_order) );
-     
-    // retrieve orderRow objects previously set in process_button()
-    //print_r(unserialize($_SESSION["testitem"])); die();
-    //$testitem = unserialize($_SESSION["testitem"]);
-    $swp_customer = unserialize($_SESSION["swp_customer"]);
-    //print_r("swp_customer:" . serialize($swp_customer) );
- 
-    //debugging tip: use serialization string to test in less complex (i.e. outside shop) test environment
+    //print_r("swp_order:" . serialize($swp_order) );
+    //debug tip: use serialized object to test in less complex (no shop) test environment
     
+    //
+    // throws an exception if the payment request can't be done with current order content
     try {
-        $myobject = $swp_order->useInvoicePayment()->prepareRequest();
+        $debugrequestdata = $swp_order->useInvoicePayment()->prepareRequest();
     } catch (Exception $e) {
         echo 'Caught exception: ',  $e->getMessage(), "\n";
     }
-    
-    print_r("past prepare");
-    print_r(serialize($myobject));
 
-    $response = $swp_order->useInvoicePayment()->doRequest();
-    print_r(serialize($response));
-    die();
-        
-    
-    /** old request below ================================================================================== */
-    
-    //Put all the data in request tag
-    $data['request'] = $_SESSION['swp_fakt_request'];
-   
-   	$svea_server = (MODULE_PAYMENT_SWPINVOICE_MODE == 'Test') ? 'https://webservices.sveaekonomi.se/webpay_test/SveaWebPay.asmx?WSDL' : 'https://webservices.sveaekonomi.se/webpay/SveaWebPay.asmx?WSDL';
-    //Call Soap
-    $client = new SoapClient( $svea_server );
+    //
+    // send payment request to svea, receive response
+    $swp_response = $swp_order->useInvoicePayment()->doRequest();
+    //print_r(serialize($swp_response));
+    //print_r( gettype($swp_response->accepted) );
+    //print_r( $swp_response->accepted );    
 
+    //
+    // payment request failed; handle this by redirecting w/result code as error message
+    if ($swp_response->accepted === false ) {
+        $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->CreateOrderEuResult->ResultCode);    
 
-    /************ RESPONSE HANDLING EUROPE ****************/ 
-    if (($order->customer['country']['iso_code_2'] == 'NL' || $order->customer['country']['iso_code_2'] == 'DE') && $order->info['currency'] == 'EUR'){
+        // TODO no errno for certain errors gives strange error message
+        $payment_error_return = 'payment_error=sveawebpay_invoice&payment_errno=' . 
+                                $this->responseCodes($swp_response->CreateOrderEuResult->ResultCode);   
 
-    //Make soap call to below method using above data
-    $svea_req = $client->CreateOrderEU( $data );
-     
-    $response = $svea_req->CreateOrderEuResult->Accepted;
-    
-     
-    // handle failed payments
-    if ($response != '1') {
-      $_SESSION['SWP_ERROR'] = $this->responseCodes($svea_req->CreateOrderEuResult->CreateOrderResult->ResultCode);
-      
-      $payment_error_return = 'payment_error=' .$svea_req->CreateOrderEuResult->CreateOrderResult->ResultCode;
-      zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
+        zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
     }
     
-    
+    //
     // handle successful payments
-    if($response == '1'){
-        unset($_SESSION['swp_fakt_request']);
-        if (isset($svea_req->CreateOrderEuResult->CustomerIdentity->IndividualIdentity))
-            $order->info['securityNumber']     = $svea_req->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->BirthDate;
-        else
-            $order->info['securityNumber']     = $svea_req->CreateOrderEuResult->CustomerIdentity->CompanyIdentity->CompanyVatNumber;
- 
-    }
-      
-    if (isset($svea_req->CreateOrderEuResult->FullName)) {
+    if( $swp_response->accepted === true ) {
+        $order->info['SveaOrderId'] = 
+            $swp_response->CreateOrderEuResult->CreateOrderResult->SveaOrderId;
+        $order->info['type'] = 
+            $swp_response->CreateOrderEuResult->CreateOrderResult->CustomerIdentity->CustomerType;
 
-      $order->billing['firstname']       = $svea_req->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->FirstName;
-      $order->billing['lastname']        = $svea_req->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->LastName;
-      $order->billing['street_address']  = $svea_req->CreateOrderEuResult->CustomerIdentity->Street. ' ' . $svea_req->CreateOrderEuResult->HouseNumber;
-      //$order->billing['suburb']          = $svea_req->CreateOrderEuResult->AddressLine2;
-      $order->billing['city']            = $svea_req->CreateOrderEuResult->CustomerIdentity->Locality;
-      $order->billing['state']           = '';                    // "state" is not applicable in SWP countries
-      $order->billing['postcode']        = $svea_req->CreateOrderEuResult->CustomerIdentity->ZipCode;
-    
-      $order->delivery['firstname']      = $svea_req->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->FirstName;
-      $order->delivery['lastname']       = $svea_req->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->LastName;
-      $order->delivery['street_address'] = $svea_req->CreateOrderEuResult->CustomerIdentity->Street. ' ' . $svea_req->CreateOrderEuResult->HouseNumber;
-      //$order->delivery['suburb']         = $svea_req->CreateOrderEuResult->AddressLine2;
-      $order->delivery['city']           = $svea_req->CreateOrderEuResult->CustomerIdentity->Locality;
-      $order->delivery['state']          = '';                    // "state" is not applicable in SWP countries
-      $order->delivery['postcode']       = $svea_req->CreateOrderEuResult->CustomerIdentity->ZipCode;
-    }
-    
-    
-    /************ RESPONSE HANDLING NORDIC ****************/     
-    }else{
-         
-    //Make soap call to below method using above data
-    $svea_req = $client->CreateOrder( $data );
-    
-     
-    $response = $svea_req->CreateOrderResult->RejectionCode;
-
-    // handle failed payments
-    if ($response != 'Accepted') {
-      $_SESSION['SWP_ERROR'] = $this->responseCodes($response);
-      
-      $payment_error_return = 'payment_error=' . $this->code;
-      zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
-    }
-    
-    
-    // handle successful payments
-    if($response == 'Accepted'){
-        unset($_SESSION['swp_fakt_request']);
-        $order->info['securityNumber']     = $svea_req->CreateOrderResult->SecurityNumber;
- 
-    }
-      
-    if (isset($svea_req->CreateOrderResult->LegalName)) {
-      $name = explode(',',$svea_req->CreateOrderResult->LegalName); 
+        if(isset($swp_response->CreateOrderEuResult->CustomerIdentity->IndividualIdentity)) {
+            $order->info['securityNumber'] = 
+                $swp_response->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->BirthDate;
+        }
+        else {
+            $order->info['securityNumber'] = 
+                $swp_response->CreateOrderEuResult->CustomerIdentity->CompanyIdentity->CompanyVatNumber;
+        }
         
-      $order->billing['firstname']       = $name[1];
-      $order->billing['lastname']        = $name[0];
-      $order->billing['street_address']  = $svea_req->CreateOrderResult->AddressLine1;
-      $order->billing['suburb']          = $svea_req->CreateOrderResult->AddressLine2;
-      $order->billing['city']            = $svea_req->CreateOrderResult->Postarea;
-      $order->billing['state']           = '';                    // "state" is not applicable in SWP countries
-      $order->billing['postcode']        = $svea_req->CreateOrderResult->Postcode;
-    
-      $order->delivery['firstname']      = $name[1];
-      $order->delivery['lastname']       = $name[0];
-      $order->delivery['street_address'] = $svea_req->CreateOrderResult->AddressLine1;
-      $order->delivery['suburb']         = $svea_req->CreateOrderResult->AddressLine2;
-      $order->delivery['city']           = $svea_req->CreateOrderResult->Postarea;
-      $order->delivery['state']          = '';                    // "state" is not applicable in SWP countries
-      $order->delivery['postcode']       = $svea_req->CreateOrderResult->Postcode;
-    }
-    
-    }
-    $table = array (
-                'INVOICE'       => MODULE_PAYMENT_SWPINVOICE_TEXT_TITLE,
-                'INVOICESE'     => MODULE_PAYMENT_SWPINVOICE_TEXT_TITLE);
+        // TODO what does it mean when FullName is set?! Individual vs. company? Do we handle company?
+        if(isset($swp_response->CreateOrderEuResult->FullName)) {
+            $order->billing['firstname'] =
+                $swp_response->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->FirstName;
+            $order->billing['lastname'] = 
+                $swp_response->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->LastName;
+            $order->billing['street_address'] = 
+                // TODO does we handle street - house number correctly here?
+                $swp_response->CreateOrderEuResult->CustomerIdentity->Street . ' ' .
+                $swp_response->CreateOrderEuResult->HouseNumber;
+            //$order->billing['suburb']          = $svea_req->CreateOrderEuResult->AddressLine2;
+            $order->billing['city'] = 
+                $swp_response->CreateOrderEuResult->CustomerIdentity->Locality;
+            $order->billing['state'] = 
+                '';                         // "state" is not applicable in SWP countries
+            $order->billing['postcode'] = 
+                $swp_response->CreateOrderEuResult->CustomerIdentity->ZipCode;
 
+            // set delivery address to same as billing addess TODO -- for individuals only?
+            $order->delivery['firstname'] = 
+                $swp_response->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->FirstName;
+            $order->delivery['lastname'] = 
+                $swp_response->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->LastName;
+            $order->delivery['street_address'] = 
+                // TODO does we handle street - house number correctly here?
+                $swp_response->CreateOrderEuResult->CustomerIdentity->Street . ' ' . 
+                $swp_response->CreateOrderEuResult->HouseNumber;
+            //$order->delivery['suburb']         = $svea_req->CreateOrderEuResult->AddressLine2;
+            $order->delivery['city'] = 
+                $swp_response->CreateOrderEuResult->CustomerIdentity->Locality;
+            $order->delivery['state'] = 
+                '';                    // "state" is not applicable in SWP countries
+            $order->delivery['postcode'] = 
+                $swp_response->CreateOrderEuResult->CustomerIdentity->ZipCode;            
+            // TODO search for leftover $svea_req references!
+        }
+        
+        // TODO used by shop/what?
+        $table = array(
+            'INVOICE' => MODULE_PAYMENT_SWPINVOICE_TEXT_TITLE,
+            'INVOICESE' => MODULE_PAYMENT_SWPINVOICE_TEXT_TITLE);        
+    }
   }
 
   // if payment accepted, insert order into database
@@ -649,6 +597,8 @@ class sveawebpay_invoice {
                               'comments'          => 'Accepted by SveaWebPay '.date("Y-m-d G:i:s") .' Security Number #: '.$order->info['securityNumber']);
     zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
     
+/* TODO not used in 3.1, safe to remove?
+ * 
     if ($this->handling_fee > 0){
     
     switch (MODULE_PAYMENT_SWPINVOICE_DEFAULT_CURRENCY){
@@ -658,7 +608,6 @@ class sveawebpay_invoice {
             case 'EUR':
                 $currency = '€';
             break;
-
     }
 
     $invoiceFeeVAT = $this->handling_fee * 0.2;
@@ -670,9 +619,8 @@ class sveawebpay_invoice {
     $db->Execute("INSERT INTO ".TABLE_ORDERS_PRODUCTS." (orders_products_id, orders_id, products_id, products_model, products_name, products_price, final_price, products_tax, products_quantity)
           VALUES ('','".$insert_id."','','','Faktureringsavgift','".$invoicePrice."','".$invoicePrice."','25.00','1')")or die('fjärde');
     }
-
-    return false;
-    
+*/
+    return false;    
   }
 
   // sets error message to the GET error value
@@ -832,7 +780,7 @@ class sveawebpay_invoice {
                 return ERROR_CODE_30002;
                 break;
             default :
-                return ERROR_CODE_DEFAULT;
+                return ERROR_CODE_DEFAULT . $err ;
                 break;
             
         }
