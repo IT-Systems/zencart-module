@@ -228,31 +228,27 @@ class sveawebpay_invoice {
                 case 'ot_tax':
                     // do nothing
                     break;
-            
+
+                //
+                // if shipping fee, create Item::shippingFee object and add to order
                 case 'ot_shipping':
-                    //calculate price whithout tax
-                    $b_tax = $this->convert_to_currency(strip_tags($_SESSION['shipping']['cost']), $currency);
-                    $price = $b_tax / ((100 + $order->products[0]['tax']) / 100);
-                 
-                    $shipping_code = explode('_', $_SESSION['shipping']['id']);
-                    $shipping = $GLOBALS[$shipping_code[0]];
-                    if (isset($shipping->description))
-                        $shipping_description = $shipping->title . ' [' . $shipping->description . ']';
-                    else
-                        $shipping_description = $shipping->title;
-                    $clientInvoiceRows[] = Array(
-                        "Description" => $shipping_description,
-                        "PricePerUnit" => $price,
-                        "NumberOfUnits" => 1,
-                        "Unit" => "",
-                        "VatPercent" => $order->products[0]['tax'],//(string) zen_get_tax_rate($shipping->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']),
-                        "DiscountPercent" => 0
+                    
+                    //makes use of zencart $order-info[] shipping information to populate object
+    
+                    // add Item::shippingFee to swp_order object 
+                    $swp_order->addFee(
+                            swp_\Item::shippingFee()
+                                    ->setDescription($order->info['shipping_method'])
+                                    ->setAmountExVat( floatval($order->info['shipping_cost']) )
+                                    ->setAmountIncVat( floatval($order->info['shipping_cost']) + floatval($order->info['shipping_tax']) )
                     );
                     break;
 
                 //
-                // if handling fee applies, create Item::handlingFee object and add to order
+                // if handling fee applies, create Item::invoiceFee object and add to order
                 case 'sveawebpay_handling_fee' :
+
+                    // is the handling_fee module activated?
                     if (isset($this->handling_fee) && $this->handling_fee > 0) {
 
                         // handlingfee expressed as percentage?
@@ -273,13 +269,14 @@ class sveawebpay_invoice {
                         // add Item::invoiceFee to swp_order object 
                         $swp_order->addFee(
                                 swp_\Item::invoiceFee()
-                                        ->setDescription(MODULE_ORDER_TOTAL_SWPHANDLING_NAME)
+                                        ->setDescription()
                                         ->setAmountExVat($hf_price)
                                         ->setVatPercent($hf_taxrate)
                         );
                     }
                     break;
 
+                // TODO
                 case 'ot_coupon':
                    //calculate price whithout tax
                     $b_tax = $this->convert_to_currency(strip_tags($order_total['value']), $currency);
@@ -295,8 +292,9 @@ class sveawebpay_invoice {
                     );
 
                     break;
-                // default case handles order totals like handling fee, but also
-                // 'unknown' items from other plugins. Might cause problems.
+
+                // TODO
+                // default case handles 'unknown' items from other plugins. Might cause problems.
                 default:
                     $order_total_obj = $GLOBALS[$order_total['code']];
                     $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
