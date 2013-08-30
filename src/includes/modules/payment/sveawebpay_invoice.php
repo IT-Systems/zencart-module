@@ -80,7 +80,13 @@ class sveawebpay_invoice {
         return false;
     }
 
-    // sets information displayed when choosing between payment options
+    /**
+     * Called when building the index.php?main_page=checkout_payment page. Shows the 
+     * various Svea Payment Methods. 
+     *  
+     * Here we pick up ssn, name information et al required by the various payment methods.
+     * 
+     */
     function selection() {
         global $order, $currencies;
 
@@ -90,9 +96,9 @@ class sveawebpay_invoice {
         if ($this->display_images)
             $fields[] = array('title' => '<img src=images/SveaWebPay-Faktura-100px.png />', 'field' => '');
 
-        //Return error
+        // return error field, here we catch error messages raised when i.e. payment request returns not accepted in before_process() below
         if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_invoice') {
-            $fields[] = array('title' => '', 'field' => '<span style="color:red">' . $this->responseCodes($_REQUEST['payment_error']) . '</span>');
+            $fields[] = array('title' => '<span style="color:red">' . $this->responseCodes($_REQUEST['payment_errno']) . '</span>', 'field' => '');
         }
 
         //Fields to insert/show when SWP is chosen
@@ -107,10 +113,11 @@ class sveawebpay_invoice {
                         </select><br />';
         $sveaPnr = '<br />' . FORM_TEXT_SS_NO . '<br /><input type="text" name="sveaPnr" id="sveaPnr" maxlength="11" /><br />';
 
-        //For finland and Europe there is no getAdress
+        //For Finland and Europe there is no getAdress
+        // TODO is info[]'currency'] the one to use?
         if ($order->info['currency'] == 'EUR') {
             $sveaGetAdressBtn = '';
-            $sveaAdressDD = '';
+            $sveaAdressDD = '<div id="sveaInitials_div"><label for="sveaInitials">' . FORM_TEXT_INITIALS . '</label><br /><input type="text" name="sveaInitials" id="sveaInitials" maxlength="5" /></div><br />';
         } else {
             $sveaGetAdressBtn = '<button type="button" id="getSveaAdressInvoice" onclick="getAdress()">' . FORM_TEXT_GET_ADDRESS . '</button><br />';
             $sveaAdressDD = FORM_TEXT_INVOICE_ADDRESS . '<br /><select name="adressSelector_fakt" id="adressSelector_fakt" style="display:none"></select><br />';
@@ -126,7 +133,7 @@ class sveawebpay_invoice {
         if (isset($this->handling_fee) && $this->handling_fee > 0) {
             $paymentfee_cost = $this->handling_fee;
             if (substr($paymentfee_cost, -1) == '%')
-                $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $paymentfee_cost), 'field' => '');
+                $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $paymentfee_cost), 'field' => $paymentfee_cost);
             else {
                 $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
                 if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0)
@@ -207,31 +214,120 @@ class sveawebpay_invoice {
             );
         }
 
-        //
-        // if handling fee applies, create Item::handlingFee object and add to order
-        if (isset($this->handling_fee) && $this->handling_fee > 0) {
- 
-            // handlingfee expressed as percentage?
-            if( substr($this->handling_fee, -1) == '%' ) { 
-                 // sum of products + shipping * handling_fee as percentage
-                $hf_percentage = floatval( substr($this->handling_fee, 0, -1) );
-                
-                $hf_price = ($order->info['subtotal'] + $order->info['shipping_cost']) * ($hf_percentage / 100.0);
-            }
-            // handlingfee expressed as absolute amount (incl. tax)
-            else {
-                $hf_price = $this->convert_to_currency( floatval( $this->handling_fee ), $currency );    
-            }
-            $hf_taxrate = zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS,$order->delivery['country']['id'],$order->delivery['zone_id']);
+   
+        //        
+        // handle order total modules 
+        // i.e shipping fee, handling fee items
+        foreach ($order_totals as $ot_id => $order_total) {
+          
+            switch ($order_total['code']) {
+                case in_array(  $order_total['code'], 
+                                $this->ignore_list):
+                case 'ot_subtotal':
+                case 'ot_total':
+                case 'ot_tax':
+                    // do nothing
+                    break;
+            
+                case 'ot_shipping':
+                    //calculate price whithout tax
+                    $b_tax = $this->convert_to_currency(strip_tags($_SESSION['shipping']['cost']), $currency);
+                    $price = $b_tax / ((100 + $order->products[0]['tax']) / 100);
+                 
+                    $shipping_code = explode('_', $_SESSION['shipping']['id']);
+                    $shipping = $GLOBALS[$shipping_code[0]];
+                    if (isset($shipping->description))
+                        $shipping_description = $shipping->title . ' [' . $shipping->description . ']';
+                    else
+                        $shipping_description = $shipping->title;
+                    $clientInvoiceRows[] = Array(
+                        "Description" => $shipping_description,
+                        "PricePerUnit" => $price,
+                        "NumberOfUnits" => 1,
+                        "Unit" => "",
+                        "VatPercent" => $order->products[0]['tax'],//(string) zen_get_tax_rate($shipping->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']),
+                        "DiscountPercent" => 0
+                    );
+                    break;
 
-            $swp_order->addFee(
-                  swp_\Item::invoiceFee()
-                    ->setDescription(MODULE_ORDER_TOTAL_SWPHANDLING_NAME)
-                    ->setAmountExVat($hf_price)
-                    ->setVatPercent($hf_taxrate)
-            );
+                //
+                // if handling fee applies, create Item::handlingFee object and add to order
+                case 'sveawebpay_handling_fee' :
+                    if (isset($this->handling_fee) && $this->handling_fee > 0) {
+
+                        // handlingfee expressed as percentage?
+                        if (substr($this->handling_fee, -1) == '%') {
+                        
+                            // sum of products + shipping * handling_fee as percentage
+                            $hf_percentage = floatval(substr($this->handling_fee, 0, -1));
+
+                            $hf_price = ($order->info['subtotal'] + $order->info['shipping_cost']) * ($hf_percentage / 100.0);
+                        }
+                        // handlingfee expressed as absolute amount (incl. tax)
+                        else {
+                            $hf_price = $this->convert_to_currency(floatval($this->handling_fee), $currency);
+                        }
+                        $hf_taxrate =   zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS, 
+                                        $order->delivery['country']['id'], $order->delivery['zone_id']);
+
+                        // add Item::invoiceFee to swp_order object 
+                        $swp_order->addFee(
+                                swp_\Item::invoiceFee()
+                                        ->setDescription(MODULE_ORDER_TOTAL_SWPHANDLING_NAME)
+                                        ->setAmountExVat($hf_price)
+                                        ->setVatPercent($hf_taxrate)
+                        );
+                    }
+                    break;
+
+                case 'ot_coupon':
+                   //calculate price whithout tax
+                    $b_tax = $this->convert_to_currency(strip_tags($order_total['value']), $currency);
+                    $price = $b_tax / ((100 + $order->products[0]['tax']) / 100);
+                    
+                    $clientInvoiceRows[] = Array(
+                        "Description" => strip_tags($order_total['title']),
+                        "PricePerUnit" => -$price,
+                        "NumberOfUnits" => 1,
+                        "Unit" => "",
+                        "VatPercent" => $order->products[0]['tax'],
+                        "DiscountPercent" => 0
+                    );
+
+                    break;
+                // default case handles order totals like handling fee, but also
+                // 'unknown' items from other plugins. Might cause problems.
+                default:
+                    $order_total_obj = $GLOBALS[$order_total['code']];
+                    $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
+                    // if displayed WITH tax, REDUCE the value since it includes tax
+                    if (DISPLAY_PRICE_WITH_TAX == 'true')
+                        $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
+
+                    $clientInvoiceRows[] = Array(
+                        "Description" => strip_tags($order_total['title']),
+                        "PricePerUnit" => $this->convert_to_currency(strip_tags($order_total['value']), $currency),
+                        "NumberOfUnits" => 1,
+                        "Unit" => "",
+                        "VatPercent" => $tax_rate,
+                        "DiscountPercent" => 0
+                    );
+
+                    break;
+            }
         }
-     
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         //
         // individual customer from SE, NO, DK, FI; get NationalId number for individual
             /*
