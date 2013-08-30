@@ -211,7 +211,6 @@ class sveawebpay_invoice {
         // if handling fee applies, create Item::handlingFee object and add to order
         if (isset($this->handling_fee) && $this->handling_fee > 0) {
  
-
             // handlingfee expressed as percentage?
             if( substr($this->handling_fee, -1) == '%' ) { 
                  // sum of products + shipping * handling_fee as percentage
@@ -233,19 +232,67 @@ class sveawebpay_invoice {
             );
         }
      
-        // TODO swap this for better regex that works with all types of addresses
-        //Split street address and house no
-        $streetAddress = preg_split('/ /', $order->customer['street_address'], -1, PREG_SPLIT_NO_EMPTY);
-
+        //
+        // individual customer from SE, NO, DK, FI; get NationalId number for individual
+            /*
+            ->addCustomerDetails(
+                Item::individualCustomer()
+                ->setNationalIdNumber(194605092222) //Required for individual customers in SE, NO, DK, FI
+                ->setInitials("SB")                 //Required for individual customers in NL
+                ->setBirthDate(1923, 12, 20)        //Required for individual customers in NL and DE
+                ->setName("Tess", "Testson")        //Required for individual customers in NL and DE
+                ->setStreetAddress("Gatan", 23)     //Required in NL and DE
+                ->setZipCode(9999)                  //Required in NL and DE
+                ->setLocality("Stan")               //Required in NL and DE
+                ->setEmail("test@svea.com")         //Optional but desirable
+                ->setIpAddress("123.123.123")       //Optional but desirable
+                ->setCoAddress("c/o Eriksson")      //Optional
+                ->setPhoneNumber(999999)            //Optional
+            )
+            */
+            $my_NationalIdNumber = $_POST['sveaPnr'];
+        
+        // company customer from from SE, NO, DK, FI; get NationalId number for organisation
+            /*
+            ->addCustomerDetails(
+                Item::companyCustomer()
+                ->setNationalIdNumber(2345234)      //Required in SE, NO, DK, FI
+                ->setVatNumber("NL2345234")         //Required in NL and DE
+                ->setCompanyName("TestCompagniet")  //Required in NL and DE
+                ->setStreetAddress("Gatan", 23)     //Required in NL and DE
+                ->setZipCode(9999)                  //Required in NL and DE
+                ->setLocality("Stan")               //Required in NL and DE
+                ->setEmail("test@svea.com")         //Optional but desirable
+                ->setIpAddress("123.123.123")       //Optional but desirable
+                ->setCoAddress("c/o Eriksson")      //Optional
+                ->setPhoneNumber(999999)            //Optional
+                ->setAddressSelector("7fd7768")     //Optional, string recieved from WebPay::getAddress() request
+            )
+            */
+        
+        // individual customer from DE, NL 
+                 
         //Get initials
-        $initials = substr($order->customer['firstname'], 0, 1) . substr($order->customer['lastname'], 0, 1);     // TODO replace this with user entry iff NL/DE
-        // create individual customer object
+        //TODO get w/pnr from customer
+        $my_Initials = substr($order->customer['firstname'], 0, 1) . substr($order->customer['lastname'], 0, 1); 
+
+        //Split street address and house no
+        $pattern = "/^(?:\s)*([0-9]*[A-Za-z]*\s*[A-Za-z]+)(?:\s*)([0-9]*\s*[A-Za-z]*[^\s])?(?:\s)*$/"; // 2 groups, matching from start/end
+        $my_StreetAddress = Array();
+	preg_match( $pattern, $order->customer['street_address'], $my_StreetAddress  );
+        if( !array_key_exists( 2, $my_StreetAddress ) ) { $my_StreetAddress[2] = "0"; }  // TODO handle case Street w/o number in int.package
+    
+        //->setBirthDate(1923, 12, 20)                 //TODO calculate from pnr/get from customer
+        
+        
+        // company customer from DE, NL
+        
         $swp_customer = swp_\Item::individualCustomer()
-                ->setNationalIdNumber($_POST['sveaPnr'])       //Required for individual customers in SE, NO, DK, FI -- TODO get pnr from customer
-                ->setInitials($initials)                       //Required for individual customers in NL    -- TODO get w/pnr from customer
-                //->setBirthDate(1923, 12, 20)                  //Required for individual customers in NL and DE -- TODO calculate from pnr/get from customer
+                ->setNationalIdNumber($my_NationalIdNumber)
+                ->setInitials($$my_Initials)                   //TODO get w/pnr from customer
+                //->setBirthDate(1923, 12, 20)                 //TODO calculate from pnr/get from customer
                 ->setName($order->customer['firstname'], $order->customer['lastname'])     //Required for individual customers in NL and DE
-                ->setStreetAddress($streetAddress[0], $streetAddress[1])                   //Required in NL and DE
+                ->setStreetAddress($my_StreetAddress[1], $my_StreetAddress[2])                   //Required in NL and DE
                 ->setZipCode($order->customer['postcode'])                                 //Required in NL and DE
                 ->setLocality($order->customer['city'])                                    //Required in NL and DE
                 ->setEmail($order->customer['email_address'])                              //Optional but desirable
@@ -258,41 +305,8 @@ class sveawebpay_invoice {
         // next: store orderRow objects in session, are retrieved by before_process()
         $_SESSION["swp_order"] = serialize($swp_order);
 
-/// ------------------------------------------------------------- old code below        
-       /*
-        // handle order totals
-        foreach ($order_totals as $ot_id => $order_total) {
-            $current_row++;
-            switch ($order_total['code']) {
-                case 'ot_subtotal':
-                case 'ot_total':
-                case 'ot_tax':
-                case in_array($order_total['code'], $this->ignore_list):
-                    // do nothing for these
-                    $current_row--;
-                    break;
-                 // default case handles order totals like handling fee, but also
-                // 'unknown' items from other plugins. Might cause problems.
-                default:
-                    $order_total_obj = $GLOBALS[$order_total['code']];
-                    $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
-                    // if displayed WITH tax, REDUCE the value since it includes tax
-                    if (DISPLAY_PRICE_WITH_TAX == 'true')
-                        $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
-
-                    $clientInvoiceRows[] = Array(
-                        "Description" => strip_tags($order_total['title']),
-                        "PricePerUnit" => $this->convert_to_currency(strip_tags($order_total['value']), $currency),
-                        $nrOfUnits => 1,
-                        "VatPercent" => $tax_rate,
-                        "DiscountPercent" => 0
-                    );
-
-                    break;
-            }
-        }
-        */
-        
+        //
+        // we're done here
         return false;
     }
 
@@ -325,8 +339,9 @@ class sveawebpay_invoice {
         //print_r(serialize($swp_response));
         //print_r( gettype($swp_response->accepted) );
         //print_r( $swp_response->accepted );    
+        
         //
-    // payment request failed; handle this by redirecting w/result code as error message
+        // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {
             $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->CreateOrderEuResult->ResultCode);
 
@@ -338,7 +353,7 @@ class sveawebpay_invoice {
         }
 
         //
-        // handle successful payments
+        // payment request succeded, handle successful payments
         if ($swp_response->accepted === true) {
             $order->info['SveaOrderId'] =
                     $swp_response->CreateOrderEuResult->CreateOrderResult->SveaOrderId;
@@ -408,29 +423,6 @@ class sveawebpay_invoice {
             'comments' => 'Accepted by SveaWebPay ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);
         zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
-        /* TODO not used in 3.1, safe to remove?
-         * 
-          if ($this->handling_fee > 0){
-
-          switch (MODULE_PAYMENT_SWPINVOICE_DEFAULT_CURRENCY){
-          case 'SEK':
-          $currency = 'kr';
-          break;
-          case 'EUR':
-          $currency = '€';
-          break;
-          }
-
-          $invoiceFeeVAT = $this->handling_fee * 0.2;
-          $invoicePrice  = $this->handling_fee * 0.8;
-
-          $db->Execute("UPDATE ".TABLE_ORDERS_TOTAL." set value = value+".$this->handling_fee.", text = CONCAT(FORMAT(value,0), '".$currency."') WHERE orders_id = ".$insert_id." AND class = 'ot_total'")or die('första');
-          $db->Execute("UPDATE ".TABLE_ORDERS_TOTAL." set value = value+".$invoiceFeeVAT.", text = CONCAT(FORMAT(value,0), '".$currency."') WHERE orders_id = ".$insert_id." AND class = 'ot_tax'")or die('Andra');
-          $db->Execute("UPDATE ".TABLE_ORDERS_TOTAL." set value = value+".$this->handling_fee.", text = CONCAT(FORMAT(value,0), '".$currency."') WHERE orders_id = ".$insert_id." AND class = 'ot_subtotal'")or die('tredje');
-          $db->Execute("INSERT INTO ".TABLE_ORDERS_PRODUCTS." (orders_products_id, orders_id, products_id, products_model, products_name, products_price, final_price, products_tax, products_quantity)
-          VALUES ('','".$insert_id."','','','Faktureringsavgift','".$invoicePrice."','".$invoicePrice."','25.00','1')")or die('fjärde');
-          }
-         */
         return false;
     }
 
