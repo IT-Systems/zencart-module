@@ -109,7 +109,7 @@ class sveawebpay_invoice {
 
         $sveaIsCompany = FORM_TEXT_COMPANY_OR_PRIVATE . ' <br /><select name="sveaIsCompany" id="sveaIsCompany">
                         <option value="" selected="selected">' . FORM_TEXT_PRIVATE . '</option>
-                        <option value="true">' . FORM_TEXT_COMPANY . '</option>
+                        <option value="1">' . FORM_TEXT_COMPANY . '</option>
                         </select><br />';
         $sveaPnr = '<br />' . FORM_TEXT_SS_NO . '<br /><input type="text" name="sveaPnr" id="sveaPnr" maxlength="11" /><br />';
 
@@ -177,20 +177,21 @@ class sveawebpay_invoice {
         // localization parameters
         $user_country = $order->billing['country']['iso_code_2'];
         $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
-        $user_language = $user_language->fields['code'];
+        $user_language = $user_language->fields['code'];    
 
         // switch to default currency if the customers currency is not supported
         $currency = $order->info['currency'];
         if (!in_array($currency, $this->allowed_currencies)) {
             $currency = $this->default_currency;
         }
-
+   
         //
         // set other values
         $swp_order
-                ->setCountryCode($order->customer['country']['iso_code_2'])     //Required   TODO kolla = user_country??
+                // Note that we always use the billing address country code, as we charge the customer in currency based on billing address?!
+                ->setCountryCode( $user_country ) // was: $order->customer['country']['iso_code_2'])
                 ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
-                ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments.
+                ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
                 ->setOrderDate(date('c'))                      //Required for synchronous payments -- TODO check format "2012-12-12"
         ;
 
@@ -214,7 +215,6 @@ class sveawebpay_invoice {
             );
         }
 
-   
         //        
         // handle order total modules 
         // i.e shipping fee, handling fee items
@@ -315,38 +315,10 @@ class sveawebpay_invoice {
             }
         }
 
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         //
-        // individual customer from SE, NO, DK, FI; get NationalId number for individual
-            /*
-            ->addCustomerDetails(
-                Item::individualCustomer()
-                ->setNationalIdNumber(194605092222) //Required for individual customers in SE, NO, DK, FI
-                ->setInitials("SB")                 //Required for individual customers in NL
-                ->setBirthDate(1923, 12, 20)        //Required for individual customers in NL and DE
-                ->setName("Tess", "Testson")        //Required for individual customers in NL and DE
-                ->setStreetAddress("Gatan", 23)     //Required in NL and DE
-                ->setZipCode(9999)                  //Required in NL and DE
-                ->setLocality("Stan")               //Required in NL and DE
-                ->setEmail("test@svea.com")         //Optional but desirable
-                ->setIpAddress("123.123.123")       //Optional but desirable
-                ->setCoAddress("c/o Eriksson")      //Optional
-                ->setPhoneNumber(999999)            //Optional
-            )
-            */
-            $my_NationalIdNumber = $_POST['sveaPnr'];
-        
-        // company customer from from SE, NO, DK, FI; get NationalId number for organisation
+        // Check if customer is company
+        if($_POST['sveaIsCompany'] == '1'){
+            
             /*
             ->addCustomerDetails(
                 Item::companyCustomer()
@@ -363,40 +335,88 @@ class sveawebpay_invoice {
                 ->setAddressSelector("7fd7768")     //Optional, string recieved from WebPay::getAddress() request
             )
             */
-        
-        // individual customer from DE, NL 
-                 
-        //Get initials
-        //TODO get w/pnr from customer
-        $my_Initials = substr($order->customer['firstname'], 0, 1) . substr($order->customer['lastname'], 0, 1); 
+ 
+            // company customer from from SE, NO, DK, FI; get NationalId number for organisation
+            $myNationalIdNumber = $_POST['sveaPnr'];
 
-        //Split street address and house no
-        $pattern = "/^(?:\s)*([0-9]*[A-Za-z]*\s*[A-Za-z]+)(?:\s*)([0-9]*\s*[A-Za-z]*[^\s])?(?:\s)*$/"; // 2 groups, matching from start/end
-        $my_StreetAddress = Array();
-	preg_match( $pattern, $order->customer['street_address'], $my_StreetAddress  );
-        if( !array_key_exists( 2, $my_StreetAddress ) ) { $my_StreetAddress[2] = "0"; }  // TODO handle case Street w/o number in int.package
-    
-        //->setBirthDate(1923, 12, 20)                 //TODO calculate from pnr/get from customer
+            // TODO NL/DE
+            $myVatNumber = "mocked";  // TODO get/set VatNumber for NL/DE customers -- how?
+
+            // get company name from zencart
+            $myCompanyName = $order->customer['company'];
+            
+            // get company address via dropdown of results from getAddress() call
+            $myAddressSelector = $_POST['adressSelector_fakt'];
+            
+            // TODO set rest of address?
+            
+            $swp_customer = swp_\Item::companyCustomer()
+                ->setNationalIdNumber( $myNationalIdNumber ) 
+                ->setVatNumber( $myVatNumber )         
+                ->setCompanyName( $myCompanyName )
+                //->setStreetAddress("mocked", 9999)     
+                //->setZipCode(9999)                  
+                //->setLocality("mocked")               
+                //->setEmail("mocked@mocked.com")         
+                //->setIpAddress("123.123.123")       
+                //->setCoAddress("mocked")      
+                //->setPhoneNumber(999999)            
+                ->setAddressSelector( $myAddressSelector )
+            ;
+            $swp_order->addCustomerDetails($swp_customer);
+        }
         
-        
-        // company customer from DE, NL
-        
-        $swp_customer = swp_\Item::individualCustomer()
+        //
+        // customer is private individual
+        else {
+
+            // individual customer from SE, NO, DK, FI; get NationalId number for individual
+            $my_NationalIdNumber = $_POST['sveaPnr'];
+            
+            //TODO get initials from customer if NL/DE
+            $my_Initials = substr($order->customer['firstname'], 0, 1) . substr($order->customer['lastname'], 0, 1); 
+
+            //Split street address and house no
+            $pattern = "/^(?:\s)*([0-9]*[A-Za-z]*\s*[A-Za-z]+)(?:\s*)([0-9]*\s*[A-Za-z]*[^\s])?(?:\s)*$/"; // 2 groups, matching from start/end
+            $myStreetAddress = Array();
+            preg_match( $pattern, $order->customer['street_address'], $myStreetAddress  );
+            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = "0"; }  // TODO handle case Street w/o number in package?!
+ 
+            /*
+            ->addCustomerDetails(
+                Item::individualCustomer()
+                ->setNationalIdNumber(194605092222) //Required for individual customers in SE, NO, DK, FI
+                ->setInitials("SB")                 //Required for individual customers in NL
+                ->setBirthDate(1923, 12, 20)        //Required for individual customers in NL and DE
+                ->setName("Tess", "Testson")        //Required for individual customers in NL and DE
+                ->setStreetAddress("Gatan", 23)     //Required in NL and DE
+                ->setZipCode(9999)                  //Required in NL and DE
+                ->setLocality("Stan")               //Required in NL and DE
+                ->setEmail("test@svea.com")         //Optional but desirable
+                ->setIpAddress("123.123.123")       //Optional but desirable
+                ->setCoAddress("c/o Eriksson")      //Optional
+                ->setPhoneNumber(999999)            //Optional
+            )
+            */
+     
+            $swp_customer = swp_\Item::individualCustomer()
                 ->setNationalIdNumber($my_NationalIdNumber)
                 ->setInitials($$my_Initials)                   //TODO get w/pnr from customer
                 //->setBirthDate(1923, 12, 20)                 //TODO calculate from pnr/get from customer
-                ->setName($order->customer['firstname'], $order->customer['lastname'])     //Required for individual customers in NL and DE
-                ->setStreetAddress($my_StreetAddress[1], $my_StreetAddress[2])                   //Required in NL and DE
-                ->setZipCode($order->customer['postcode'])                                 //Required in NL and DE
-                ->setLocality($order->customer['city'])                                    //Required in NL and DE
-                ->setEmail($order->customer['email_address'])                              //Optional but desirable
-                ->setIpAddress($_SERVER['REMOTE_ADDR'])                                    //Optional but desirable
-                //->setCoAddress("c/o Eriksson")                                            //Optional
-                ->setPhoneNumber($order->customer['telephone'])                            //Optional
-        ;
-        $swp_order->addCustomerDetails($swp_customer);
-
-        // next: store orderRow objects in session, are retrieved by before_process()
+                ->setName( $order->customer['firstname'], $order->customer['lastname'] )     
+                ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )             
+                ->setZipCode($order->customer['postcode'])                                 
+                ->setLocality($order->customer['city'])                                    
+                ->setEmail($order->customer['email_address'])                             
+                ->setIpAddress($_SERVER['REMOTE_ADDR'])                                   
+                //->setCoAddress("mocked")                                          
+                ->setPhoneNumber($order->customer['telephone'])                         
+            ;
+            $swp_order->addCustomerDetails($swp_customer);
+        }
+        
+        //
+        // store our order object in session, to be retrieved in before_process()
         $_SESSION["swp_order"] = serialize($swp_order);
 
         //
