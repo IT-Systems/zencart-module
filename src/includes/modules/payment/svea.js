@@ -7,21 +7,21 @@ jQuery(document).ready(function (){
     
     //If Svea invoice is selected
     if (checked_payment == 'sveawebpay_invoice'){
-        jQuery('#sveaDelbetField').hide();
-        jQuery('#sveaFaktField').show();
+        jQuery('#sveaPartPaymentField').hide();
+        jQuery('#sveaInvoiceField').show();
         //jQuery('button[type=submit]').attr('disabled','true');
 
     //If Svea Part payment
     }else if (checked_payment == 'sveawebpay_partpay'){    
-        jQuery('#sveaFaktField').hide();
-        jQuery('#sveaDelbetField').show();
+        jQuery('#sveaInvoiceField').hide();
+        jQuery('#sveaPartPaymentField').show();
         //jQuery('button[type=submit]').attr('disabled','true');
 
         
     //If other payment methods are selected, hide all svea related    
     }else{
-        jQuery('#sveaFaktField').hide();
-        jQuery('#sveaDelbetField').hide();
+        jQuery('#sveaInvoiceField').hide();
+        jQuery('#sveaPartPaymentField').hide();
     }
     
     });
@@ -30,48 +30,70 @@ jQuery(document).ready(function (){
 //Get adress, invoice
 function getAdress(){
  
-    var sveaPnr = jQuery('#sveaPnr').val();
+    var sveaSSN = jQuery('#sveaSSN').val();
     var company = jQuery('#sveaIsCompany').val();
 
-    if (sveaPnr == ''){
-        jQuery('#pers_nr_error_fakt').html('Personnr/Orgnr måste fyllas i');
+    if (sveaSSN == ''){
+        jQuery('#sveaSSN_error_invoice').html('Please enter social security number.');
     }else{
         
         //Show loader
-        $('#sveaPnr').after('<img src="images/svea_indicator.gif" id="SveaInvoiceLoader" />');
+        $('#sveaSSN').after('<img src="images/svea_indicator.gif" id="SveaInvoiceLoader" />');
         
         jQuery.ajax({
     	  type: "POST",
     	  url: "sveaAjax.php",
-    	  data: {sveapnr: sveaPnr, is_company: company},
+    	  data: {sveapnr: sveaSSN, is_company: company},
     	  success: function(msg){
-    	      jQuery('#pers_nr_error_fakt').empty();
+    	      jQuery('#sveaSSN_error_invoice').empty();
               eval(msg);
               $('#SveaInvoiceLoader').remove();
     		}
     	});
     }
-    
 }
+
+//
+// new getAddress() that uses the integration package
+function v4_getAddress(){
+    var sveaSSN = jQuery('#sveaSSN').val();
+    var company = jQuery('#sveaIsCompany').val();
+
+    //do new getAddress
+    //Show loader
+    $('#sveaSSN').after('<img src="images/svea_indicator.gif" id="SveaInvoiceLoader" />');
+
+    jQuery.ajax({
+        type: "POST",
+        url: "sveaAjax.php",
+        data: {v4: true, sveapnr: sveaSSN, is_company: company },
+        success: function(msg){
+            jQuery('#sveaSSN_error_invoice').empty();
+            eval(msg);
+            $('#SveaInvoiceLoader').remove();
+        }
+    });
+}
+
 
 //Get adress, PartPay
 function getAdressPP(fin){
     
-    var sveaPnr = jQuery('#sveaPnrPP').val();
+    var sveaSSN = jQuery('#sveaSSN_partpayment').val();
     
-    if (sveaPnr == ''){
-        jQuery('#pers_nr_errorPP').html('Personnr måste fyllas i');
+    if (sveaSSN == ''){
+        jQuery('#sveaSSN_error_partpayment').html('Please enter social security number.');
     }else{
         
         //Show loader
-        $('#sveaPnrPP').after('<img src="images/svea_indicator.gif" id="SveaPPLoader" />');
+        $('#sveaSSN_partpayment').after('<img src="images/svea_indicator.gif" id="SveaPPLoader" />');
         
         jQuery.ajax({
     	  type: "POST",
     	  url: "sveaAjax.php",
-    	  data: {sveapnr: sveaPnr, paymentOptions: '1', f: fin},
+    	  data: {sveapnr: sveaSSN, paymentOptions: '1', f: fin},
     	  success: function(msg){
-    	      jQuery('#pers_nr_errorPP').empty();
+    	      jQuery('#sveaSSN_error_partpayment').empty();
               eval(msg);
               $('#SveaPPLoader').remove();
     		}

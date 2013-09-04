@@ -43,6 +43,8 @@ define('FORM_TEXT_COMPANY','Company');
 define('FORM_TEXT_PRIVATE','Private');
 define('FORM_TEXT_SS_NO','SSN:');
 define('FORM_TEXT_GET_ADDRESS','Get Address');
+define('FORM_TEXT_INITIALS','Initials');                                // TODO translate/add to other language files
+define('FORM_TEXT_BIRTHDATE','Date of Birth (YYYYMMDD)');               // TODO translate/add to other language files
 define('FORM_TEXT_INVOICE_ADDRESS','Invoice Address:');
 define('FORM_TEXT_INVOICE_FEE','Invoice Fee:');
 ?>

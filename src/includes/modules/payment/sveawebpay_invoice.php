@@ -81,69 +81,129 @@ class sveawebpay_invoice {
     }
 
     /**
-     * Called when building the index.php?main_page=checkout_payment page. Shows the 
-     * various Svea Payment Methods. 
+     * Method called when building the index.php?main_page=checkout_payment page. 
+     * Builds the input fields that pick up ssn, vatno et al used by the various Svea Payment Methods. 
      *  
-     * Here we pick up ssn, name information et al required by the various payment methods.
-     * 
+     * @return array containing module id, name & input field array
+     *  
      */
     function selection() {
         global $order, $currencies;
 
         $fields = array();
 
-        // image
+        // add svea invoice image file
         if ($this->display_images)
             $fields[] = array('title' => '<img src=images/SveaWebPay-Faktura-100px.png />', 'field' => '');
 
-        // return error field, here we catch error messages raised when i.e. payment request returns not accepted in before_process() below
+        // catch error messages raised when i.e. payment request returns not accepted in before_process() below and display them
         if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_invoice') {
-            $fields[] = array('title' => '<span style="color:red">' . $this->responseCodes($_REQUEST['payment_errno']) . '</span>', 'field' => '');
+            $fields[] = array('title' => '<span style="color:red">' . $this->responseCodes($_REQUEST['payment_errno']) . '</span>', 'field' => '');     // TODO prints error twice?
         }
 
-        //Fields to insert/show when SWP is chosen
-
-        $sveaJs = '<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
-                <script type="text/javascript" src="' . $this->web_root . 'includes/modules/payment/svea.js"></script>';
+        // insert svea js
+        $sveaJs =   '<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>' .
+                    '<script type="text/javascript" src="' . $this->web_root . 'includes/modules/payment/svea.js"></script>';
         $fields[] = array('title' => '', 'field' => $sveaJs);
 
-        $sveaIsCompany = FORM_TEXT_COMPANY_OR_PRIVATE . ' <br /><select name="sveaIsCompany" id="sveaIsCompany">
-                        <option value="" selected="selected">' . FORM_TEXT_PRIVATE . '</option>
-                        <option value="1">' . FORM_TEXT_COMPANY . '</option>
-                        </select><br />';
-        $sveaPnr = '<br />' . FORM_TEXT_SS_NO . '<br /><input type="text" name="sveaPnr" id="sveaPnr" maxlength="11" /><br />';
+        //
+        // get required fields depending on customer country and payment method
+        
+        // TODO is this the right way to do it? -- changed method of getting customer country from 3.0, was: // if ($order->info['currency'] == 'EUR') {        
+        $customer_country = $order->customer['country']['iso_code_2'];
+        
+        // fill in all fields as required by customer country and payment method
+        $sveaGetAdressBtn = '';
+        $sveaAddressDD =    '';
+        $sveaInitialsDiv =  '';
+        $sveaBirthDateDiv = '';
+        
+        // get ssn & selects private/company for SE, NO, DK, FI
+        if( ($customer_country == 'SE') ||
+            ($customer_country == 'NO') || 
+            ($customer_country == 'DK') || 
+            ($customer_country == 'FI') ) 
+        {
+            $sveaSSN =          FORM_TEXT_SS_NO . '<br /><input type="text" name="sveaSSN" id="sveaSSN" maxlength="11" /><br />';
 
-        //For Finland and Europe there is no getAdress
-        // TODO is info[]'currency'] the one to use?
-        if ($order->info['currency'] == 'EUR') {
-            $sveaGetAdressBtn = '';
-            $sveaAdressDD = '<div id="sveaInitials_div"><label for="sveaInitials">' . FORM_TEXT_INITIALS . '</label><br /><input type="text" name="sveaInitials" id="sveaInitials" maxlength="5" /></div><br />';
-        } else {
-            $sveaGetAdressBtn = '<button type="button" id="getSveaAdressInvoice" onclick="getAdress()">' . FORM_TEXT_GET_ADDRESS . '</button><br />';
-            $sveaAdressDD = FORM_TEXT_INVOICE_ADDRESS . '<br /><select name="adressSelector_fakt" id="adressSelector_fakt" style="display:none"></select><br />';
+            $sveaIsCompany =    FORM_TEXT_COMPANY_OR_PRIVATE . ' <br /><select name="sveaIsCompany" id="sveaIsCompany">
+                                <option value="" selected="selected">' . FORM_TEXT_PRIVATE . '</option>
+                                <option value="1">' . FORM_TEXT_COMPANY . '</option>
+                                </select><br />';
+        }
+        
+        //
+        // these are the countries we support getAddress in (getAddress also depends on sveaSSN being present)
+        if( ($customer_country == 'SE') ||
+            ($customer_country == 'NO') || 
+            ($customer_country == 'DK') ) 
+        {       
+            $sveaGetAdressBtn = '<button type="button" id="getSveaAdressInvoice" onclick="v4_getAddress()">' . FORM_TEXT_GET_ADDRESS . '</button><br />';
+            $sveaAddressDD =    FORM_TEXT_INVOICE_ADDRESS . '<br /><select name="addressSelector_invoice" id="addressSelector_invoice" style="display:none"></select><br />';
         }
 
+        //
+        // if customer is located in Netherlands, get initials
+        if( $customer_country == 'NL') { // TODO eg. == 'NL'
 
+            $sveaInitialsDiv =  '<div id="sveaInitials_div">' . 
+                                    '<label for="sveaInitials">' . FORM_TEXT_INITIALS . '</label><br />' .
+                                    '<input type="text" name="sveaInitials" id="sveaInitials" maxlength="5" />' . 
+                                '</div><br />';
+        }
+        
+        //
+        // if customer is located in Netherlands or DE, get birth date
+        if( ($customer_country == 'NL') ||  // TODO eg. == 'NL'
+            ($customer_country == 'DE') )   // TODO eg. == 'DE'
+        { 
 
-        $sveaField = '<div id="sveaFaktField" style="display:none">' . $sveaPnr . $sveaIsCompany . $sveaAdressDD . $sveaGetAdressBtn . '</div>';
+            $sveaBirthDateDiv = '<div id="sveaBirthDate_div">' . 
+                                    '<label for="sveaBirthDate">' . FORM_TEXT_BIRTHDATE . '</label><br />' .
+                                    '<input type="text" name="sveaBirthDate" id="sveaBirthDate" maxlength="8" />' . 
+                                '</div><br />';
+        }
+       
+        $sveaError = '<br /><span id="sveaSSN_error_invoice" style="color:red"></span>';
+   
+        // create and add the field to be shown by our js when we select SveaInvoice payment method
+        $sveaField =    '<div id="sveaInvoiceField" style="display:none">' . 
+                            $sveaSSN . 
+                            $sveaIsCompany . 
+                            $sveaGetAdressBtn . 
+                            $sveaAddressDD . 
+                            $sveaInitialsDiv . 
+                            $sveaBirthDateDiv . 
+                        '</div>';
+       
+        $fields[] = array('title' => '', 'field' => '<br />' . $sveaField . $sveaError);
 
-        $fields[] = array('title' => '', 'field' => $sveaField . '<br /><span id="pers_nr_error_fakt" style="color:red"></span>');
-
-        // handling fee
+        //
+        // add information about handling fee for invoice payment method
         if (isset($this->handling_fee) && $this->handling_fee > 0) {
             $paymentfee_cost = $this->handling_fee;
+
+            // is the handling fee a percentage?
             if (substr($paymentfee_cost, -1) == '%')
                 $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $paymentfee_cost), 'field' => $paymentfee_cost);
+
+            // no, handling fee is a fixed amount
             else {
-                $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
-                if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0)
+                if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0) {
+                    $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
+                    
+                    // calculate tax based on deliver country? TODO use zen cart tax zone??
                     $paymentfee_tax = $paymentfee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
+                }
+                
                 $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $currencies->format($paymentfee_cost + $paymentfee_tax)), 'field' => '');
             }
         }
-        return array('id' => $this->code,
-            'module' => $this->title,
-            'fields' => $fields);
+        
+        // return module fields to zencart
+        return array(   'id' => $this->code,
+                        'module' => $this->title,
+                        'fields' => $fields );
     }
 
     function pre_confirmation_check() {
@@ -164,7 +224,7 @@ class sveawebpay_invoice {
         global $db, $order, $order_totals, $language;
 
         // Include Svea php integration package files    
-        require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+        require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
         // Create order object using either test or production configuration
         $swp_order = swp_\WebPay::createOrder(); // TODO uses default testmode config for now
@@ -337,7 +397,7 @@ class sveawebpay_invoice {
             */
  
             // company customer from from SE, NO, DK, FI; get NationalId number for organisation
-            $myNationalIdNumber = $_POST['sveaPnr'];
+            $myNationalIdNumber = $_POST['sveaSSN'];
 
             // TODO NL/DE
             $myVatNumber = "mocked";  // TODO get/set VatNumber for NL/DE customers -- how?
@@ -371,7 +431,7 @@ class sveawebpay_invoice {
         else {
 
             // individual customer from SE, NO, DK, FI; get NationalId number for individual
-            $my_NationalIdNumber = $_POST['sveaPnr'];
+            $my_NationalIdNumber = $_POST['sveaSSN'];
             
             //TODO get initials from customer if NL/DE
             $my_Initials = substr($order->customer['firstname'], 0, 1) . substr($order->customer['lastname'], 0, 1); 
@@ -428,7 +488,7 @@ class sveawebpay_invoice {
      * before_process is called from modules/checkout_process
      * instantiates and populates a WebPay::createOrder object
      * as well as sends the actual payment request
-     */
+     */   
     function before_process() {
         global $order, $order_totals, $language, $billto, $sendto, $db;
 
@@ -461,7 +521,7 @@ class sveawebpay_invoice {
 
             // TODO no errno for certain errors gives strange error message
             $payment_error_return = 'payment_error=sveawebpay_invoice&payment_errno=' .
-                    $this->responseCodes($swp_response->CreateOrderEuResult->ResultCode);
+                                    $this->responseCodes($swp_response->CreateOrderEuResult->ResultCode);
 
             zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
         }

@@ -99,7 +99,7 @@ class sveawebpay_partpay {
                 <script type="text/javascript" src="'.$this->web_root . 'includes/modules/payment/svea.js"></script>';
     $fields[] = array('title' => '', 'field' => $sveaJs);
 
-    $sveaPnr          = FORM_TEXT_SS_NO.'<br /><input type="text" name="sveaPnrPP" id="sveaPnrPP" maxlength="11" /><br />';
+    $sveaSSN          = FORM_TEXT_SS_NO.'<br /><input type="text" name="sveaSSN_partpayment" id="sveaSSN_partpayment" maxlength="11" /><br />';
 
     //For finland and Europe there is no getAdress
     if ($order->info['currency'] == 'EUR'){
@@ -112,9 +112,9 @@ class sveawebpay_partpay {
            
     $sveaAdressBA     = FORM_TEXT_GET_PAYPLAN.'<br /><select name="paymentOptions" id="paymentOptions" style="display:none"></select><br />';
     
-    $sveaField        = '<div id="sveaDelbetField" style="display:none">'.$sveaPnr.$sveaAdressDD.$sveaAdressBA.$sveaGetAdressBtn.'</div>';
+    $sveaField        = '<div id="sveaPartPaymentField" style="display:none">'.$sveaSSN.$sveaAdressDD.$sveaAdressBA.$sveaGetAdressBtn.'</div>';
              
-    $fields[] = array('title' => $sveaField, 'field' => '<span id="pers_nr_errorPP" style="color:red"></span>');
+    $fields[] = array('title' => $sveaField, 'field' => '<span id="sveaSSN_error_partpayment" style="color:red"></span>');
 
     // handling fee
     if (isset($this->handling_fee) && $this->handling_fee > 0) {
@@ -287,7 +287,7 @@ class sveawebpay_partpay {
             "ClientOrderNr" => ($new_order_field['orders_id'] + 1).'-'.time(),
             "OrderRows" => array('OrderRow' => $clientInvoiceRows),
             "CustomerIdentity" => array (
-                //"NationalIdNumber" => '',//$_POST['sveaPnr'],
+                //"NationalIdNumber" => '',//$_POST['sveaSSN'],
                 "Email" => $order->customer['email_address'],
                 "PhoneNumber" => $order->customer['telephone'],
                 "FullName" => $order->customer['firstname']. ' ' .$order->customer['lastname'],
@@ -301,7 +301,7 @@ class sveawebpay_partpay {
                                     "FirstName" => $order->customer['firstname'],
                                     "LastName" => $order->customer['lastname'],
                                     "Initials" => $initials,
-                                    "BirthDate" => $_POST['sveaPnrPP']
+                                    "BirthDate" => $_POST['sveaSSN_partpayment']
                                     )
 
             ),
@@ -335,7 +335,7 @@ class sveawebpay_partpay {
                 'ClientPaymentPlanNr' => ($new_order_field['orders_id'] + 1).'-'.time(),
         		'CampainCode' => $_POST['paymentOptions'],
         		'CountryCode' => $sveaConf['countryCode'],
-        		'SecurityNumber' => $_POST['sveaPnrPP'],
+        		'SecurityNumber' => $_POST['sveaSSN_partpayment'],
         		'IsCompany' => ''
         	),
           "InvoiceRows" => array('ClientInvoiceRowInfo' => $clientInvoiceRows)
