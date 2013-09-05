@@ -82,7 +82,7 @@ class sveawebpay_invoice {
 
     /**
      * Method called when building the index.php?main_page=checkout_payment page. 
-     * Builds the input fields that pick up ssn, vatno et al used by the various Svea Payment Methods. 
+     * Builds the input fields that pick up ssn, vato et al used by the various Svea Payment Methods. 
      *  
      * @return array containing module id, name & input field array
      *  
@@ -96,7 +96,7 @@ class sveawebpay_invoice {
         if ($this->display_images)
             $fields[] = array('title' => '<img src=images/SveaWebPay-Faktura-100px.png />', 'field' => '');
 
-        // catch error messages raised when i.e. payment request returns not accepted in before_process() below and display them
+        // catch and display error messages raised when i.e. payment request from before_process() below turns out not accepted 
         if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_invoice') {
             $fields[] = array('title' => '<span style="color:red">' . $this->responseCodes($_REQUEST['payment_errno']) . '</span>', 'field' => '');     // TODO prints error twice?
         }
@@ -113,23 +113,26 @@ class sveawebpay_invoice {
         $customer_country = $order->customer['country']['iso_code_2'];
         
         // fill in all fields as required by customer country and payment method
-        $sveaGetAdressBtn = '';
+        $sveaGetAddressBtn = '';
         $sveaAddressDD =    '';
         $sveaInitialsDiv =  '';
         $sveaBirthDateDiv = '';
         
         // get ssn & selects private/company for SE, NO, DK, FI
-        if( ($customer_country == 'SE') ||
+        if( ($customer_country == 'SE') ||     // e.g. == 'SE'
             ($customer_country == 'NO') || 
             ($customer_country == 'DK') || 
             ($customer_country == 'FI') ) 
         {
+            // input text field for individual/company SSN
             $sveaSSN =          FORM_TEXT_SS_NO . '<br /><input type="text" name="sveaSSN" id="sveaSSN" maxlength="11" /><br />';
 
-            $sveaIsCompany =    FORM_TEXT_COMPANY_OR_PRIVATE . ' <br /><select name="sveaIsCompany" id="sveaIsCompany">
-                                <option value="" selected="selected">' . FORM_TEXT_PRIVATE . '</option>
-                                <option value="1">' . FORM_TEXT_COMPANY . '</option>
-                                </select><br />';
+            // input dropdown for choosing individual or organization
+            $sveaIsCompany =    FORM_TEXT_COMPANY_OR_PRIVATE . ' <br />' .
+                                '<select name="sveaIsCompany" id="sveaIsCompany">' .
+                                    '<option value="0" selected="selected">' . FORM_TEXT_PRIVATE . '</option>' .
+                                    '<option value="1">' . FORM_TEXT_COMPANY . '</option>' .
+                                '</select><br />';
         }
         
         //
@@ -138,13 +141,13 @@ class sveawebpay_invoice {
             ($customer_country == 'NO') || 
             ($customer_country == 'DK') ) 
         {       
-            $sveaGetAdressBtn = '<button type="button" id="getSveaAdressInvoice" onclick="v4_getAddress()">' . FORM_TEXT_GET_ADDRESS . '</button><br />';
+            $sveaGetAddressBtn = '<button type="button" id="getSveaAddressInvoice" onclick="getAddresses()">' . FORM_TEXT_GET_ADDRESS . '</button><br />';
             $sveaAddressDD =    FORM_TEXT_INVOICE_ADDRESS . '<br /><select name="addressSelector_invoice" id="addressSelector_invoice" style="display:none"></select><br />';
         }
 
         //
         // if customer is located in Netherlands, get initials
-        if( $customer_country == 'NL') { // TODO eg. == 'NL'
+        if( $customer_country == 'NL') {
 
             $sveaInitialsDiv =  '<div id="sveaInitials_div">' . 
                                     '<label for="sveaInitials">' . FORM_TEXT_INITIALS . '</label><br />' .
@@ -154,8 +157,8 @@ class sveawebpay_invoice {
         
         //
         // if customer is located in Netherlands or DE, get birth date
-        if( ($customer_country == 'NL') ||  // TODO eg. == 'NL'
-            ($customer_country == 'DE') )   // TODO eg. == 'DE'
+        if( ($customer_country == 'NL') ||
+            ($customer_country == 'DE') )
         { 
 
             $sveaBirthDateDiv = '<div id="sveaBirthDate_div">' . 
@@ -170,7 +173,7 @@ class sveawebpay_invoice {
         $sveaField =    '<div id="sveaInvoiceField" style="display:none">' . 
                             $sveaSSN . 
                             $sveaIsCompany . 
-                            $sveaGetAdressBtn . 
+                            $sveaGetAddressBtn . 
                             $sveaAddressDD . 
                             $sveaInitialsDiv . 
                             $sveaBirthDateDiv . 
@@ -217,17 +220,18 @@ class sveawebpay_invoice {
     /** process_button() is called from tpl_checkout_confirmation.php in
      *  includes/templates/template_default/templates.
      *  Here we prepare to populate the order object by creating the 
-     *  Item::orderRow objects that make up the order.
+     *  WebPayItem::orderRow objects that make up the order.
      */
     function process_button() {
 
         global $db, $order, $order_totals, $language;
 
-        // Include Svea php integration package files    
-        require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
-
-        // Create order object using either test or production configuration
-        $swp_order = swp_\WebPay::createOrder(); // TODO uses default testmode config for now
+        //
+        // handle postback of payment method info fields, if present
+        $post_sveaIsCompany = isset($_POST['sveaIsCompany']) ? $_POST['sveaIsCompany'] : "swp_not_set" ;        
+        $post_sveaSSN = isset($_POST['sveaSSN']) ? $_POST['sveaSSN'] : "swp_not_set" ;
+        $post_adressSelector_fakt = isset($_POST['adressSelector_fakt']) ? $_POST['adressSelector_fakt'] : "swp_not_set";      
+        
 
         // calculate the order number
         $new_order_rs = $db->Execute("select orders_id from " . TABLE_ORDERS . " order by orders_id desc limit 1");
@@ -235,34 +239,36 @@ class sveawebpay_invoice {
         $client_order_number = ($new_order_field['orders_id'] + 1) . '-' . time();
 
         // localization parameters
-        $user_country = $order->billing['country']['iso_code_2'];
-        $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
-        $user_language = $user_language->fields['code'];    
+//        $user_country = $order->billing['country']['iso_code_2'];
+//        $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
+//        $user_language = $user_language->fields['code'];    
 
         // switch to default currency if the customers currency is not supported
         $currency = $order->info['currency'];
         if (!in_array($currency, $this->allowed_currencies)) {
             $currency = $this->default_currency;
         }
-   
-        //
-        // set other values
-        $swp_order
-                // Note that we always use the billing address country code, as we charge the customer in currency based on billing address?!
-                ->setCountryCode( $user_country ) // was: $order->customer['country']['iso_code_2'])
-                ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
-                ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
-                ->setOrderDate(date('c'))                      //Required for synchronous payments -- TODO check format "2012-12-12"
+
+        // Include Svea php integration package files    
+        require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+
+        // Create and initialize order object, using either test or production configuration
+        $swp_order = WebPay::createOrder() // TODO uses default testmode config for now
+            // Note that we always use the billing address country code, as we charge the customer in currency based on billing address?!
+            ->setCountryCode( $order->billing['country']['iso_code_2'] ) // was: $order->customer['country']['iso_code_2'])
+            ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
+            ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
+            ->setOrderDate(date('c'))                      //Required for synchronous payments -- TODO check format "2012-12-12"
         ;
 
         //
-        // for each item in cart, create Item::orderRow objects and add to order
+        // for each item in cart, create WebPayItem::orderRow objects and add to order
         foreach ($order->products as $productId => $product) {
 
             $amount_ex_vat = $this->convert_to_currency(round($product['final_price'], 2), $currency);
 
             $swp_order->addOrderRow(
-                    swp_\Item::orderRow()
+                    WebPayItem::orderRow()
                             ->setQuantity($product['qty'])          //Required
                             ->setAmountExVat($amount_ex_vat)          //Optional, see info above
                             //->setAmountIncVat(125.00)               //Optional, see info above
@@ -290,14 +296,14 @@ class sveawebpay_invoice {
                     break;
 
                 //
-                // if shipping fee, create Item::shippingFee object and add to order
+                // if shipping fee, create WebPayItem::shippingFee object and add to order
                 case 'ot_shipping':
                     
                     //makes use of zencart $order-info[] shipping information to populate object
     
-                    // add Item::shippingFee to swp_order object 
+                    // add WebPayItem::shippingFee to swp_order object 
                     $swp_order->addFee(
-                            swp_\Item::shippingFee()
+                            WebPayItem::shippingFee()
                                     ->setDescription($order->info['shipping_method'])
                                     ->setAmountExVat( floatval($order->info['shipping_cost']) )
                                     ->setAmountIncVat( floatval($order->info['shipping_cost']) + floatval($order->info['shipping_tax']) )
@@ -305,7 +311,7 @@ class sveawebpay_invoice {
                     break;
 
                 //
-                // if handling fee applies, create Item::invoiceFee object and add to order
+                // if handling fee applies, create WebPayItem::invoiceFee object and add to order
                 case 'sveawebpay_handling_fee' :
 
                     // is the handling_fee module activated?
@@ -326,9 +332,9 @@ class sveawebpay_invoice {
                         $hf_taxrate =   zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS, 
                                         $order->delivery['country']['id'], $order->delivery['zone_id']);
 
-                        // add Item::invoiceFee to swp_order object 
+                        // add WebPayItem::invoiceFee to swp_order object 
                         $swp_order->addFee(
-                                swp_\Item::invoiceFee()
+                                WebPayItem::invoiceFee()
                                         ->setDescription()
                                         ->setAmountExVat($hf_price)
                                         ->setVatPercent($hf_taxrate)
@@ -377,11 +383,11 @@ class sveawebpay_invoice {
 
         //
         // Check if customer is company
-        if($_POST['sveaIsCompany'] == '1'){
+        if( $post_sveaIsCompany == '1'){
             
             /*
             ->addCustomerDetails(
-                Item::companyCustomer()
+                WebPayItem::companyCustomer()
                 ->setNationalIdNumber(2345234)      //Required in SE, NO, DK, FI
                 ->setVatNumber("NL2345234")         //Required in NL and DE
                 ->setCompanyName("TestCompagniet")  //Required in NL and DE
@@ -397,7 +403,7 @@ class sveawebpay_invoice {
             */
  
             // company customer from from SE, NO, DK, FI; get NationalId number for organisation
-            $myNationalIdNumber = $_POST['sveaSSN'];
+            $myNationalIdNumber = $post_sveaSSN;
 
             // TODO NL/DE
             $myVatNumber = "mocked";  // TODO get/set VatNumber for NL/DE customers -- how?
@@ -406,11 +412,11 @@ class sveawebpay_invoice {
             $myCompanyName = $order->customer['company'];
             
             // get company address via dropdown of results from getAddress() call
-            $myAddressSelector = $_POST['adressSelector_fakt'];
+            $myAddressSelector = $post_adressSelector_fakt;
             
             // TODO set rest of address?
             
-            $swp_customer = swp_\Item::companyCustomer()
+            $swp_customer = WebPayItem::companyCustomer()
                 ->setNationalIdNumber( $myNationalIdNumber ) 
                 ->setVatNumber( $myVatNumber )         
                 ->setCompanyName( $myCompanyName )
@@ -431,7 +437,7 @@ class sveawebpay_invoice {
         else {
 
             // individual customer from SE, NO, DK, FI; get NationalId number for individual
-            $my_NationalIdNumber = $_POST['sveaSSN'];
+            $my_NationalIdNumber = $post_sveaSSN;
             
             //TODO get initials from customer if NL/DE
             $my_Initials = substr($order->customer['firstname'], 0, 1) . substr($order->customer['lastname'], 0, 1); 
@@ -444,7 +450,7 @@ class sveawebpay_invoice {
  
             /*
             ->addCustomerDetails(
-                Item::individualCustomer()
+                WebPayItem::individualCustomer()
                 ->setNationalIdNumber(194605092222) //Required for individual customers in SE, NO, DK, FI
                 ->setInitials("SB")                 //Required for individual customers in NL
                 ->setBirthDate(1923, 12, 20)        //Required for individual customers in NL and DE
@@ -459,10 +465,10 @@ class sveawebpay_invoice {
             )
             */
      
-            $swp_customer = swp_\Item::individualCustomer()
+            $swp_customer = WebPayItem::individualCustomer()
                 ->setNationalIdNumber($my_NationalIdNumber)
-                ->setInitials($$my_Initials)                   //TODO get w/pnr from customer
-                //->setBirthDate(1923, 12, 20)                 //TODO calculate from pnr/get from customer
+                ->setInitials($my_Initials)                   //TODO get w/pnr from customer
+                ->setBirthDate(1955, 03, 07)                 //TODO calculate from pnr/get from customer
                 ->setName( $order->customer['firstname'], $order->customer['lastname'] )     
                 ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )             
                 ->setZipCode($order->customer['postcode'])                                 
@@ -473,6 +479,9 @@ class sveawebpay_invoice {
                 ->setPhoneNumber($order->customer['telephone'])                         
             ;
             $swp_order->addCustomerDetails($swp_customer);
+ 
+   
+            
         }
         
         //
@@ -485,8 +494,8 @@ class sveawebpay_invoice {
     }
 
     /**
-     * before_process is called from modules/checkout_process
-     * instantiates and populates a WebPay::createOrder object
+     * before_process is called from modules/checkout_process.
+     * It instantiates and populates a WebPay::createOrder object
      * as well as sends the actual payment request
      */   
     function before_process() {
@@ -494,6 +503,7 @@ class sveawebpay_invoice {
 
         // Include Svea php integration package files
         require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+        //
         //
     // retrieve order object set in process_button()
         $swp_order = unserialize($_SESSION["swp_order"]);

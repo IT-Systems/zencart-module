@@ -27,46 +27,18 @@ jQuery(document).ready(function (){
     });
 });
 
-//Get adress, invoice
-function getAdress(){
- 
-    var sveaSSN = jQuery('#sveaSSN').val();
-    var company = jQuery('#sveaIsCompany').val();
-
-    if (sveaSSN == ''){
-        jQuery('#sveaSSN_error_invoice').html('Please enter social security number.');
-    }else{
-        
-        //Show loader
-        $('#sveaSSN').after('<img src="images/svea_indicator.gif" id="SveaInvoiceLoader" />');
-        
-        jQuery.ajax({
-    	  type: "POST",
-    	  url: "sveaAjax.php",
-    	  data: {sveapnr: sveaSSN, is_company: company},
-    	  success: function(msg){
-    	      jQuery('#sveaSSN_error_invoice').empty();
-              eval(msg);
-              $('#SveaInvoiceLoader').remove();
-    		}
-    	});
-    }
-}
-
 //
-// new getAddress() that uses the integration package
-function v4_getAddress(){
-    var sveaSSN = jQuery('#sveaSSN').val();
-    var company = jQuery('#sveaIsCompany').val();
-
-    //do new getAddress
-    //Show loader
+// new getAddresses() that uses the integration package
+function getAddresses(){
+  
+    // Show loader
     $('#sveaSSN').after('<img src="images/svea_indicator.gif" id="SveaInvoiceLoader" />');
 
+    // Do getAddresses call 
     jQuery.ajax({
         type: "POST",
         url: "sveaAjax.php",
-        data: {v4: true, sveapnr: sveaSSN, is_company: company },
+        data: {getAddresses: true, sveapnr: jQuery('#sveaSSN').val(), is_company: jQuery('#sveaIsCompany').val(), country: "SE" },
         success: function(msg){
             jQuery('#sveaSSN_error_invoice').empty();
             eval(msg);
