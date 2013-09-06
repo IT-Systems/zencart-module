@@ -38,13 +38,13 @@ define('ERROR_CODE_30001','This customer is blocked or has shown strange/unusual
 define('ERROR_CODE_30002','The order would cause the client to exceed Sveas credit limit');
 
 //Form on checkout
-define('FORM_TEXT_COMPANY_OR_PRIVATE','Select Company/Private:');
+define('FORM_TEXT_COMPANY_OR_PRIVATE','Step 2: Are you a private individual, or do you represent a company or organisation:');
 define('FORM_TEXT_COMPANY','Company');
 define('FORM_TEXT_PRIVATE','Private');
-define('FORM_TEXT_SS_NO','SSN:');
-define('FORM_TEXT_GET_ADDRESS','Get Address');
+define('FORM_TEXT_SS_NO','Step 1: Enter your Social Security Number (SSN):');
+define('FORM_TEXT_GET_ADDRESS','Step 3: Fetch invoice (billing) address from Svea.');
 define('FORM_TEXT_INITIALS','Initials');                                // TODO translate/add to other language files
 define('FORM_TEXT_BIRTHDATE','Date of Birth (YYYYMMDD)');               // TODO translate/add to other language files
-define('FORM_TEXT_INVOICE_ADDRESS','Invoice Address:');
+define('FORM_TEXT_INVOICE_ADDRESS','Step 4: Select invoice address to use for billing and delivery.');
 define('FORM_TEXT_INVOICE_FEE','Invoice Fee:');
 ?>

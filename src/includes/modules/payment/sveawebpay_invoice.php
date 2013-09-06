@@ -82,7 +82,7 @@ class sveawebpay_invoice {
 
     /**
      * Method called when building the index.php?main_page=checkout_payment page. 
-     * Builds the input fields that pick up ssn, vato et al used by the various Svea Payment Methods. 
+     * Builds the input fields that pick up ssn, vatno et al used by the various Svea Payment Methods. 
      *  
      * @return array containing module id, name & input field array
      *  
@@ -98,7 +98,8 @@ class sveawebpay_invoice {
 
         // catch and display error messages raised when i.e. payment request from before_process() below turns out not accepted 
         if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_invoice') {
-            $fields[] = array('title' => '<span style="color:red">' . $this->responseCodes($_REQUEST['payment_errno']) . '</span>', 'field' => '');     // TODO prints error twice?
+            $fields[] = array(  'title' => '<span style="color:red">' . $this->responseCodes($_REQUEST['payment_errno']) . '</span>', 
+                                'field' => '');
         }
 
         // insert svea js
@@ -109,7 +110,7 @@ class sveawebpay_invoice {
         //
         // get required fields depending on customer country and payment method
         
-        // TODO is this the right way to do it? -- changed method of getting customer country from 3.0, was: // if ($order->info['currency'] == 'EUR') {        
+        // TODO right way to do it? -- changed method of getting customer country from 3.0, was: // if ($order->info['currency'] == 'EUR') {
         $customer_country = $order->customer['country']['iso_code_2'];
         
         // fill in all fields as required by customer country and payment method
@@ -141,8 +142,9 @@ class sveawebpay_invoice {
             ($customer_country == 'NO') || 
             ($customer_country == 'DK') ) 
         {       
-            $sveaGetAddressBtn = '<button type="button" id="getSveaAddressInvoice" onclick="getAddresses()">' . FORM_TEXT_GET_ADDRESS . '</button><br />';
-            $sveaAddressDD =    FORM_TEXT_INVOICE_ADDRESS . '<br /><select name="addressSelector_invoice" id="addressSelector_invoice" style="display:none"></select><br />';
+            $sveaGetAddressBtn = '<button type="button" id="sveaGetAddressesButton" onclick="getAddresses()">' . FORM_TEXT_GET_ADDRESS . '</button><br />';
+            $sveaAddressDD =    '<br /><label for ="sveaAddressSelector" style="display:none">' . FORM_TEXT_INVOICE_ADDRESS . '</label><br />' .
+                                '<select name="sveaAddressSelector" id="sveaAddressSelector" style="display:none"></select><br />';    
         }
 
         //
@@ -230,9 +232,10 @@ class sveawebpay_invoice {
         // handle postback of payment method info fields, if present
         $post_sveaIsCompany = isset($_POST['sveaIsCompany']) ? $_POST['sveaIsCompany'] : "swp_not_set" ;        
         $post_sveaSSN = isset($_POST['sveaSSN']) ? $_POST['sveaSSN'] : "swp_not_set" ;
-        $post_adressSelector_fakt = isset($_POST['adressSelector_fakt']) ? $_POST['adressSelector_fakt'] : "swp_not_set";      
+        $post_sveaAddressSelector = isset($_POST['sveaAddressSelector']) ? $_POST['sveaAddressSelector'] : "swp_not_set";      
         
-
+            
+        
         // calculate the order number
         $new_order_rs = $db->Execute("select orders_id from " . TABLE_ORDERS . " order by orders_id desc limit 1");
         $new_order_field = $new_order_rs->fields;
@@ -406,7 +409,7 @@ class sveawebpay_invoice {
             $myCompanyName = $order->customer['company'];
             
             // get company address via dropdown of results from getAddress() call
-            $myAddressSelector = $post_adressSelector_fakt;
+            $myAddressSelector = $post_sveaAddressSelector;
             
             // TODO set rest of address?
             

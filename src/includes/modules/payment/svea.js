@@ -3,27 +3,26 @@ jQuery(document).ready(function (){
     //Function to get which payment method selected
     jQuery("input[type=radio][name='payment']").click( function() {
     
-    var checked_payment = jQuery("input:radio[name=payment]:checked").val();
-    
-    //If Svea invoice is selected
-    if (checked_payment == 'sveawebpay_invoice'){
-        jQuery('#sveaPartPaymentField').hide();
-        jQuery('#sveaInvoiceField').show();
-        //jQuery('button[type=submit]').attr('disabled','true');
+        var checked_payment = jQuery("input:radio[name=payment]:checked").val();
 
-    //If Svea Part payment
-    }else if (checked_payment == 'sveawebpay_partpay'){    
-        jQuery('#sveaInvoiceField').hide();
-        jQuery('#sveaPartPaymentField').show();
-        //jQuery('button[type=submit]').attr('disabled','true');
+        //If Svea invoice is selected
+        if (checked_payment == 'sveawebpay_invoice'){
+            jQuery('#sveaPartPaymentField').hide();
+            jQuery('#sveaInvoiceField').show();
+            //jQuery('button[type=submit]').attr('disabled','true');
 
-        
-    //If other payment methods are selected, hide all svea related    
-    }else{
-        jQuery('#sveaInvoiceField').hide();
-        jQuery('#sveaPartPaymentField').hide();
-    }
-    
+        //If Svea Part payment
+        }else if (checked_payment == 'sveawebpay_partpay'){    
+            jQuery('#sveaInvoiceField').hide();
+            jQuery('#sveaPartPaymentField').show();
+            //jQuery('button[type=submit]').attr('disabled','true');
+
+
+        //If other payment methods are selected, hide all svea related    
+        }else{
+            jQuery('#sveaInvoiceField').hide();
+            jQuery('#sveaPartPaymentField').hide();
+        }
     });
 });
 
@@ -32,18 +31,19 @@ jQuery(document).ready(function (){
 function getAddresses(){
   
     // Show loader
-    $('#sveaSSN').after('<img src="images/svea_indicator.gif" id="SveaInvoiceLoader" />');
+    jQuery('#sveaSSN').after('<img src="images/svea_indicator.gif" id="SveaInvoiceLoader" />');
 
     // Do getAddresses call 
     jQuery.ajax({
         type: "POST",
         url: "sveaAjax.php",
-        data: {getAddresses: true, sveapnr: jQuery('#sveaSSN').val(), is_company: jQuery('#sveaIsCompany').val(), country: "SE" },
+        data: {getAddresses: true, sveaSSN: jQuery('#sveaSSN').val(), sveaIsCompany: jQuery('#sveaIsCompany').val(), sveaCountryCode: "SE" },
         success: function(msg){
-            jQuery('#sveaSSN_error_invoice').empty();
-            jQuery("#addressSelector_invoice").show();
-            jQuery("#addressSelector_invoice").append(msg);
-            $('#SveaInvoiceLoader').remove();
+            jQuery('#SveaInvoiceLoader').remove();
+              // TODO remove additional addresses on multiple submit?
+            jQuery("#sveaAddressSelector").append(msg);
+            jQuery('label[for="sveaAddressSelector"]').show();
+            jQuery("#sveaAddressSelector").show();
         }
     });
 }
@@ -68,7 +68,7 @@ function getAdressPP(fin){
     	  success: function(msg){
     	      jQuery('#sveaSSN_error_partpayment').empty();
               eval(msg);
-              $('#SveaPPLoader').remove();
+              jQuery('#SveaPPLoader').remove();
     		}
     	});
     }

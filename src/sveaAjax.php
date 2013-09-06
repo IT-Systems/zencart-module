@@ -3,33 +3,33 @@
 require('includes/application_top.php');
 
 //
-// perform getAddress() via php integration package
+// perform getAddresses() via php integration package
 if( isset($_POST['getAddresses']) ) {
     // Include Svea php integration package files    
-    require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+    require('includes/modules/payment/svea_v4/Includes.php'); 
 
-    $ssn = $_POST['sveapnr'];
-    $country = $_POST['country'];
+    $ssn = $_POST['sveaSSN'];
+    $country = $_POST['sveaCountryCode'];
 
     // private individual
-    if( isset($_POST['is_company']) && $_POST['is_company'] === '0' ) {
+    if( isset($_POST['sveaIsCompany']) && $_POST['sveaIsCompany'] === '0' ) {
         $response = WebPay::getAddresses()
             ->setOrderTypeInvoice()
-            ->setCountryCode( $country )                                             
-            ->setIndividual( $ssn )                                       
+            ->setCountryCode( $country )              
+            ->setIndividual( $ssn )
             ->doRequest();    
     }
     
     // company/organisation
-    if( isset($_POST['is_company']) && $_POST['is_company'] === '1' ) {
+    if( isset($_POST['sveaIsCompany']) && $_POST['sveaIsCompany'] === '1' ) {
         $response = WebPay::getAddresses()
             ->setOrderTypeInvoice()
-            ->setCountryCode( $country )                                             
-            ->setCompany( $ssn )                                       
+            ->setCountryCode( $country )
+            ->setCompany( $ssn )
             ->doRequest();    
     }
     
-    // $getAddressResponse has type swp_\getAddressIdentity 
+    // $getAddressResponse has type Svea\getAddressIdentity 
     foreach( $response->customerIdentity as $key => $getAddressIdentity ) {
     
         $addressSelector = $getAddressIdentity->addressSelector;
@@ -52,13 +52,15 @@ if( isset($_POST['getAddresses']) ) {
     }
 }
 
+// --------------------------------------------------------
+
 /*
  *
  * PartPayment
  *
  */
  
-if (isset($_POST['paymentOptions'])):
+if (isset($_POST['paymentOptions'])) {
     
     $language_page_directory = DIR_WS_LANGUAGES . $_SESSION['language'] . '/';
 
@@ -127,7 +129,7 @@ foreach ($svea_req->GetPaymentPlanOptionsResult->PaymentPlanOptions->PaymentPlan
 
 echo 'jQuery("#paymentOptions").show();';    
 
-endif; 
+} 
 
 function convert_to_currency($value, $currency) {
     global $currencies;
