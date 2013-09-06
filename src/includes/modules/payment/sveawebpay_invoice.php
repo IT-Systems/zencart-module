@@ -249,7 +249,6 @@ class sveawebpay_invoice {
 
         // Create and initialize order object, using either test or production configuration
         $swp_order = WebPay::createOrder() // TODO uses default testmode config for now
-            // Note that we always use the billing address country code, as we charge the customer in currency based on billing address?!
             ->setCountryCode( $order->billing['country']['iso_code_2'] ) // was: $order->customer['country']['iso_code_2'])
             ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
             ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments

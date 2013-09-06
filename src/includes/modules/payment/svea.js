@@ -41,7 +41,8 @@ function getAddresses(){
         data: {getAddresses: true, sveapnr: jQuery('#sveaSSN').val(), is_company: jQuery('#sveaIsCompany').val(), country: "SE" },
         success: function(msg){
             jQuery('#sveaSSN_error_invoice').empty();
-            eval(msg);
+            jQuery("#addressSelector_invoice").show();
+            jQuery("#addressSelector_invoice").append(msg);
             $('#SveaInvoiceLoader').remove();
         }
     });

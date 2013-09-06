@@ -40,16 +40,14 @@ if( isset($_POST['getAddresses']) ) {
         $locality = $getAddressIdentity->locality;
             
         //Send back to user
-        $as = "#addressSelector_invoice";
-        echo(   'jQuery("' .$as. '").show();'   );
-        echo(   '     jQuery("' .$as. '").append( "<option id=\"address_' . $key .
-                                            '\" value=\"' . $addressSelector . 
-                                            '\">' . $fullName . 
-                                            ', ' . $street . 
-                                            ', ' . $coAddress .
-                                            ', ' . $zipCode . 
-                                            ' ' . $locality . 
-                                            '</option>" );'
+        echo(   '<option id="address_' . $key .
+                    '" value="' . $addressSelector . 
+                    '">' . $fullName . 
+                    ', ' . $street . 
+                    ', ' . $coAddress .
+                    ', ' . $zipCode . 
+                    ' ' . $locality . 
+                '</option>'
         );    
     }
 }
