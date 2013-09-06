@@ -128,12 +128,14 @@ class sveawebpay_invoice {
             // input text field for individual/company SSN
             $sveaSSN =          FORM_TEXT_SS_NO . '<br /><input type="text" name="sveaSSN" id="sveaSSN" maxlength="11" /><br />';
 
-            // input dropdown for choosing individual or organization
-            $sveaIsCompany =    FORM_TEXT_COMPANY_OR_PRIVATE . ' <br />' .
-                                '<select name="sveaIsCompany" id="sveaIsCompany">' .
-                                    '<option value="0" selected="selected">' . FORM_TEXT_PRIVATE . '</option>' .
-                                    '<option value="1">' . FORM_TEXT_COMPANY . '</option>' .
-                                '</select><br />';
+            // radiobutton for choosing individual or organization
+            $sveaIsCompanyField = FORM_TEXT_COMPANY_OR_PRIVATE . ' <br />' .
+//                                '<select name="sveaIsCompany" id="sveaIsCompany">' .
+//                                    '<option value="0" selected="selected">' . FORM_TEXT_PRIVATE . '</option>' .
+//                                    '<option value="1">' . FORM_TEXT_COMPANY . '</option>' .
+//                                '</select><br />';
+                                '<label><input type="radio" name="sveaIsCompany" value="false" checked>' . FORM_TEXT_PRIVATE . '</label>' .
+                                '<label><input type="radio" name="sveaIsCompany" value="true">' . FORM_TEXT_COMPANY . '</label>';
         }
         
         //
@@ -173,8 +175,10 @@ class sveawebpay_invoice {
    
         // create and add the field to be shown by our js when we select SveaInvoice payment method
         $sveaField =    '<div id="sveaInvoiceField" style="display:none">' . 
+                          //  '<form>' .
                             $sveaSSN . 
-                            $sveaIsCompany . 
+                            $sveaIsCompanyField . 
+                         //   '</form>' .
                             $sveaGetAddressBtn . 
                             $sveaAddressDD . 
                             $sveaInitialsDiv . 
@@ -220,7 +224,10 @@ class sveawebpay_invoice {
     }
 
     /** process_button() is called from tpl_checkout_confirmation.php in
-     *  includes/templates/template_default/templates.
+     *  includes/templates/template_default/templates when we press the
+     *  continue checkout button after having selected payment method and 
+     *  entered required payment method input.
+     * 
      *  Here we prepare to populate the order object by creating the 
      *  WebPayItem::orderRow objects that make up the order.
      */
@@ -230,11 +237,14 @@ class sveawebpay_invoice {
 
         //
         // handle postback of payment method info fields, if present
-        $post_sveaIsCompany = isset($_POST['sveaIsCompany']) ? $_POST['sveaIsCompany'] : "swp_not_set" ;        
         $post_sveaSSN = isset($_POST['sveaSSN']) ? $_POST['sveaSSN'] : "swp_not_set" ;
+        $post_sveaIsCompany = isset($_POST['sveaIsCompany']) ? $_POST['sveaIsCompany'] : "swp_not_set" ;        
         $post_sveaAddressSelector = isset($_POST['sveaAddressSelector']) ? $_POST['sveaAddressSelector'] : "swp_not_set";      
         
-            
+        // if customer didn't press getAddresses button, we do it now and choose the first address as the one to use
+        if( !isset($_POST['sveaAddressSelector']) ) {
+
+        }
         
         // calculate the order number
         $new_order_rs = $db->Execute("select orders_id from " . TABLE_ORDERS . " order by orders_id desc limit 1");

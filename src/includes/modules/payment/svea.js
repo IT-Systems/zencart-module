@@ -37,10 +37,13 @@ function getAddresses(){
     jQuery.ajax({
         type: "POST",
         url: "sveaAjax.php",
-        data: {getAddresses: true, sveaSSN: jQuery('#sveaSSN').val(), sveaIsCompany: jQuery('#sveaIsCompany').val(), sveaCountryCode: "SE" },
+        data: { SveaAjaxGetAddresses: true, 
+                sveaSSN: jQuery('#sveaSSN').val(),
+                sveaIsCompany: jQuery('#sveaInvoiceField input[type="radio"]:checked').val(),
+                sveaCountryCode: "SE" },    // TODO pass country code correctly
         success: function(msg){
             jQuery('#SveaInvoiceLoader').remove();
-              // TODO remove additional addresses on multiple submit?
+            // TODO remove additional addresses from selector on multiple submit?
             jQuery("#sveaAddressSelector").append(msg);
             jQuery('label[for="sveaAddressSelector"]').show();
             jQuery("#sveaAddressSelector").show();
@@ -48,6 +51,7 @@ function getAddresses(){
     });
 }
 
+// ------------------------------------------------------------------------------------
 
 //Get adress, PartPay
 function getAdressPP(fin){

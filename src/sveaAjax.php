@@ -4,7 +4,7 @@ require('includes/application_top.php');
 
 //
 // perform getAddresses() via php integration package
-if( isset($_POST['getAddresses']) ) {
+if( isset($_POST['SveaAjaxGetAddresses']) ) {
     // Include Svea php integration package files    
     require('includes/modules/payment/svea_v4/Includes.php'); 
 
@@ -12,7 +12,7 @@ if( isset($_POST['getAddresses']) ) {
     $country = $_POST['sveaCountryCode'];
 
     // private individual
-    if( isset($_POST['sveaIsCompany']) && $_POST['sveaIsCompany'] === '0' ) {
+    if( isset($_POST['sveaIsCompany']) && $_POST['sveaIsCompany'] === "false" ) {
         $response = WebPay::getAddresses()
             ->setOrderTypeInvoice()
             ->setCountryCode( $country )              
@@ -21,7 +21,7 @@ if( isset($_POST['getAddresses']) ) {
     }
     
     // company/organisation
-    if( isset($_POST['sveaIsCompany']) && $_POST['sveaIsCompany'] === '1' ) {
+    if( isset($_POST['sveaIsCompany']) && $_POST['sveaIsCompany'] === 'true' ) {
         $response = WebPay::getAddresses()
             ->setOrderTypeInvoice()
             ->setCountryCode( $country )
