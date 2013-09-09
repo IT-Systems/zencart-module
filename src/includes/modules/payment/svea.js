@@ -6,13 +6,17 @@ jQuery(document).ready(function (){
         var checked_payment = jQuery("input:radio[name=payment]:checked").val();
 
         //If Svea invoice is selected
-        if (checked_payment == 'sveawebpay_invoice'){
+        if (checked_payment === 'sveawebpay_invoice'){
             jQuery('#sveaPartPaymentField').hide();
             jQuery('#sveaInvoiceField').show();
             //jQuery('button[type=submit]').attr('disabled','true');
-
+            
+            jQuery("#sveaSSN").change( function(){
+                getAddresses();
+            });
+       }
         //If Svea Part payment
-        }else if (checked_payment == 'sveawebpay_partpay'){    
+        else if (checked_payment === 'sveawebpay_partpay'){    
             jQuery('#sveaInvoiceField').hide();
             jQuery('#sveaPartPaymentField').show();
             //jQuery('button[type=submit]').attr('disabled','true');

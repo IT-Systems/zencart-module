@@ -130,12 +130,8 @@ class sveawebpay_invoice {
 
             // radiobutton for choosing individual or organization
             $sveaIsCompanyField = FORM_TEXT_COMPANY_OR_PRIVATE . ' <br />' .
-//                                '<select name="sveaIsCompany" id="sveaIsCompany">' .
-//                                    '<option value="0" selected="selected">' . FORM_TEXT_PRIVATE . '</option>' .
-//                                    '<option value="1">' . FORM_TEXT_COMPANY . '</option>' .
-//                                '</select><br />';
                                 '<label><input type="radio" name="sveaIsCompany" value="false" checked>' . FORM_TEXT_PRIVATE . '</label>' .
-                                '<label><input type="radio" name="sveaIsCompany" value="true">' . FORM_TEXT_COMPANY . '</label>';
+                                '<label><input type="radio" name="sveaIsCompany" value="true">' . FORM_TEXT_COMPANY . '</label><br />';
         }
         
         //
@@ -144,7 +140,7 @@ class sveawebpay_invoice {
             ($customer_country == 'NO') || 
             ($customer_country == 'DK') ) 
         {       
-            $sveaGetAddressBtn = '<button type="button" id="sveaGetAddressesButton" onclick="getAddresses()">' . FORM_TEXT_GET_ADDRESS . '</button><br />';
+//            $sveaGetAddressBtn = '<button type="button" id="sveaGetAddressesButton" onclick="getAddresses()">' . FORM_TEXT_GET_ADDRESS . '</button><br />';
             $sveaAddressDD =    '<br /><label for ="sveaAddressSelector" style="display:none">' . FORM_TEXT_INVOICE_ADDRESS . '</label><br />' .
                                 '<select name="sveaAddressSelector" id="sveaAddressSelector" style="display:none"></select><br />';    
         }
@@ -176,8 +172,8 @@ class sveawebpay_invoice {
         // create and add the field to be shown by our js when we select SveaInvoice payment method
         $sveaField =    '<div id="sveaInvoiceField" style="display:none">' . 
                           //  '<form>' .
-                            $sveaSSN . 
                             $sveaIsCompanyField . 
+                            $sveaSSN . 
                          //   '</form>' .
                             $sveaGetAddressBtn . 
                             $sveaAddressDD . 
@@ -205,10 +201,11 @@ class sveawebpay_invoice {
                     $paymentfee_tax = $paymentfee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
                 }
                 
-                $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $currencies->format($paymentfee_cost + $paymentfee_tax)), 'field' => '');
+                $fields[] = array( 'title' =>  '', 'field' =>  '<br />' . 
+                                sprintf( MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $currencies->format($paymentfee_cost + $paymentfee_tax)) );
             }
         }
-        
+              
         // return module fields to zencart
         return array(   'id' => $this->code,
                         'module' => $this->title,
@@ -539,7 +536,26 @@ class sveawebpay_invoice {
 
         //
         // payment request succeded, store response in session
-        if ($swp_response->accepted === true) {      
+        if ($swp_response->accepted === true) {     
+            
+            //
+            // set zencart billing/shipping address to invoice address from payment request response
+
+            // is private individual?
+            if( $swp_response->customerIdentity->customerType === "Individual") {
+                $order->billing['name'] = $order->delivery['name'] = $swp_response->customerIdentity->fullName;
+            }
+            else {
+                $order->billing['company'] = $order->delivery['company'] = $swp_response->customerIdentity->fullName;
+            }
+            $order->billing['street_address'] = $order->delivery['street_address'] = $swp_response->customerIdentity->street;
+            $order->billing['suburb'] = $order->delivery['suburb'] = $swp_response->customerIdentity->coAddress;
+            $order->billing['city'] = $order->delivery['city'] = $swp_response->customerIdentity->locality;
+            $order->billing['postcode'] = $order->delivery['postcode'] = $swp_response->customerIdentity->zipCode;
+            $order->billing['state'] = $order->delivery['state'] = '';  // "state" is not applicable in SWP countries
+            $order->billing['country'] = $order->delivery['country'] = '';   // TODO, where to get country full name?
+
+            // save the response object 
             $_SESSION["swp_response"] = serialize($swp_response);
         }
     }
@@ -554,63 +570,17 @@ class sveawebpay_invoice {
         require('includes/modules/payment/svea_v4/Includes.php');
         $swp_response = unserialize($_SESSION["swp_response"]);
 
-        //
         // set zencart order info using data from response object
-        $order->info['SveaOrderId'] =
-                    $swp_response->CreateOrderEuResult->CreateOrderResult->SveaOrderId;
-        $order->info['type'] =
-                $swp_response->CreateOrderEuResult->CreateOrderResult->CustomerIdentity->CustomerType;
+        $order->info['SveaOrderId'] = $swp_response->sveaOrderId;
+        $order->info['type'] = $swp_response->customerIdentity->customerType;
 
-        if (isset($swp_response->CreateOrderEuResult->CustomerIdentity->IndividualIdentity)) {
-            $order->info['securityNumber'] =
-                    $swp_response->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->BirthDate;
+        if($swp_response->customerIdentity->customerType === "Individual") {
+            $order->info['securityNumber'] = $swp_response->customerIdentity->nationalIdNumber;
         } else {
-            $order->info['securityNumber'] =
-                    $swp_response->CreateOrderEuResult->CustomerIdentity->CompanyIdentity->CompanyVatNumber;
+            $order->info['securityNumber'] = "swp_not_set";    // TODO where to get vatno for companies in response object?
         }
-
-
-        // TODO what does it mean below when FullName is set?! Individual vs. company? Do we handle company?
-        //if (isset($swp_response->CreateOrderEuResult->FullName)) {
-
-        //
-        // set billing address of order
-        $order->billing['firstname'] =
-                $swp_response->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->FirstName;
-        $order->billing['lastname'] =
-                $swp_response->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->LastName;
-        $order->billing['street_address'] =
-                // TODO does we handle street - house number correctly here?
-                $swp_response->CreateOrderEuResult->CustomerIdentity->Street . ' ' .
-                $swp_response->CreateOrderEuResult->HouseNumber;
-        //$order->billing['suburb']          = $swp_response->CreateOrderEuResult->AddressLine2;
-        $order->billing['city'] =
-                $swp_response->CreateOrderEuResult->CustomerIdentity->Locality;
-        $order->billing['state'] =
-                '';                         // "state" is not applicable in SWP countries
-        $order->billing['postcode'] =
-                $swp_response->CreateOrderEuResult->CustomerIdentity->ZipCode;
-
-        //
-        // set delivery address to same as billing addess
-        $order->delivery['firstname'] =
-                $swp_response->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->FirstName;
-        $order->delivery['lastname'] =
-                $swp_response->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->LastName;
-        $order->delivery['street_address'] =
-                // TODO does we handle street - house number correctly here?
-                $swp_response->CreateOrderEuResult->CustomerIdentity->Street . ' ' .
-                $swp_response->CreateOrderEuResult->HouseNumber;
-        //$order->delivery['suburb']         = $swp_response->CreateOrderEuResult->AddressLine2;
-        $order->delivery['city'] =
-                $swp_response->CreateOrderEuResult->CustomerIdentity->Locality;
-        $order->delivery['state'] =
-                '';                    // "state" is not applicable in SWP countries
-        $order->delivery['postcode'] =
-                $swp_response->CreateOrderEuResult->CustomerIdentity->ZipCode;
-        //}         
-        
-        // insert order into shop database
+           
+        // insert zencart order into database
         $sql_data_array = array('orders_id' => $insert_id,
             'orders_status_id' => $order->info['order_status'],
             'date_added' => 'now()',

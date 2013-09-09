@@ -50,6 +50,8 @@ if( isset($_POST['SveaAjaxGetAddresses']) ) {
                 '</option>'
         );    
     }
+    
+    $_SESSION['sveaGetAddressesResponse'] = serialize( $response );
 }
 
 // --------------------------------------------------------
