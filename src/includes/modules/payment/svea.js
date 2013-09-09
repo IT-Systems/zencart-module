@@ -7,10 +7,16 @@ jQuery(document).ready(function (){
 
         //If Svea invoice is selected
         if (checked_payment === 'sveawebpay_invoice'){
+            // hide billing address from default view
+            jQuery('#checkoutPaymentHeadingAddress').hide();
+            jQuery('#checkoutBillto').hide();
+            jQuery('#checkoutPayment .floatingBox').hide();
+            
+            // show input fields
             jQuery('#sveaPartPaymentField').hide();
             jQuery('#sveaInvoiceField').show();
-            //jQuery('button[type=submit]').attr('disabled','true');
-            
+ 
+            // force getAddresses on ssn input
             jQuery("#sveaSSN").change( function(){
                 getAddresses();
             });
@@ -24,6 +30,11 @@ jQuery(document).ready(function (){
 
         //If other payment methods are selected, hide all svea related    
         }else{
+            jQuery('#checkoutPaymentHeadingAddress').show();
+            jQuery('#checkoutBillto').show();
+            jQuery('#checkoutPayment .floatingBox').show();
+            
+            
             jQuery('#sveaInvoiceField').hide();
             jQuery('#sveaPartPaymentField').hide();
         }
@@ -61,31 +72,4 @@ function getAddresses(){
            });
         }
     });
-}
-
-// ------------------------------------------------------------------------------------
-
-//Get adress, PartPay
-function getAdressPP(fin){
-    
-    var sveaSSN = jQuery('#sveaSSN_partpayment').val();
-    
-    if (sveaSSN == ''){
-        jQuery('#sveaSSN_error_partpayment').html('Please enter social security number.');
-    }else{
-        
-        //Show loader
-        $('#sveaSSN_partpayment').after('<img src="images/svea_indicator.gif" id="SveaPPLoader" />');
-        
-        jQuery.ajax({
-    	  type: "POST",
-    	  url: "sveaAjax.php",
-    	  data: {sveapnr: sveaSSN, paymentOptions: '1', f: fin},
-    	  success: function(msg){
-    	      jQuery('#sveaSSN_error_partpayment').empty();
-              eval(msg);
-              jQuery('#SveaPPLoader').remove();
-    		}
-    	});
-    }
 }
