@@ -114,11 +114,8 @@ class sveawebpay_invoice {
         $customer_country = $order->customer['country']['iso_code_2'];
         
         // fill in all fields as required by customer country and payment method
-        $sveaGetAddressBtn = '';
-        $sveaAddressDD =    '';
-        $sveaInitialsDiv =  '';
-        $sveaBirthDateDiv = '';
-        
+        $sveaAddressDD = $sveaInitialsDiv = $sveaBirthDateDiv  = '';
+         
         // get ssn & selects private/company for SE, NO, DK, FI
         if( ($customer_country == 'SE') ||     // e.g. == 'SE'
             ($customer_country == 'NO') || 
@@ -169,11 +166,13 @@ class sveawebpay_invoice {
    
         // create and add the field to be shown by our js when we select SveaInvoice payment method
         $sveaField =    '<div id="sveaInvoiceField" style="display:none">' . 
-                            $sveaIsCompanyField . 
-                            $sveaSSN . 
-                            $sveaAddressDD . 
-                            $sveaInitialsDiv . 
-                            $sveaBirthDateDiv . 
+                            $sveaIsCompanyField .   //  SE, DK, NO
+                            $sveaSSN .              //  SE, DK, NO        
+                            $sveaAddressDD .        //  SE, Dk, NO
+                            //$sveaSSNFI .            //  FI, no getAddresses        
+                            $sveaInitialsDiv .      //  NL
+                            $sveaBirthDateDiv .     //  NL, DE
+                            // FI, NL, DE also uses customer address data from zencart
                         '</div>';
        
         $fields[] = array('title' => '', 'field' => '<br />' . $sveaField . $sveaError);
@@ -438,13 +437,13 @@ class sveawebpay_invoice {
             // individual customer from SE, NO, DK, FI; get NationalId number for individual
             $my_NationalIdNumber = $post_sveaSSN;
             
-            //TODO get initials from customer if NL/DE
-            $my_Initials = substr($order->customer['firstname'], 0, 1) . substr($order->customer['lastname'], 0, 1); 
+            //TODO get initials from customer if NL/DE, use address field for this
+            $my_Initials = substr($order->billing['firstname'], 0, 1) . substr($order->billing['lastname'], 0, 1); 
 
             //Split street address and house no
             $pattern = "/^(?:\s)*([0-9]*[A-Za-z]*\s*[A-Za-z]+)(?:\s*)([0-9]*\s*[A-Za-z]*[^\s])?(?:\s)*$/"; // 2 groups, matching from start/end
             $myStreetAddress = Array();
-            preg_match( $pattern, $order->customer['street_address'], $myStreetAddress  );
+            preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
             if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = "0"; }  // TODO handle case Street w/o number in package?!
  
             /*
@@ -466,15 +465,15 @@ class sveawebpay_invoice {
      
             $swp_customer = WebPayItem::individualCustomer()
                 ->setNationalIdNumber($my_NationalIdNumber)
-                ->setInitials($my_Initials)                   //TODO get w/pnr from customer
-                ->setBirthDate(1955, 03, 07)                 //TODO calculate from pnr/get from customer
-                ->setName( $order->customer['firstname'], $order->customer['lastname'] )     
-                ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )             
-                ->setZipCode($order->customer['postcode'])                                 
-                ->setLocality($order->customer['city'])                                    
+                ->setInitials($my_Initials)                 //TODO get w/pnr from customer
+                ->setBirthDate(1955, 03, 07)                //TODO calculate from pnr/get from customer
+                ->setName( $order->billing['firstname'], $order->billing['lastname'] )     
+                ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )  // street, housenumber             
+                ->setCoAddress($order->billing['suburb'])                       // c/o address
+                ->setZipCode($order->billing['postcode'])                                 
+                ->setLocality($order->billing['city'])                                    
                 ->setEmail($order->customer['email_address'])                             
-                ->setIpAddress($_SERVER['REMOTE_ADDR'])                                   
-                //->setCoAddress("mocked")                                          
+                ->setIpAddress($_SERVER['REMOTE_ADDR'])                                                                      
                 ->setPhoneNumber($order->customer['telephone'])                         
             ;
             $swp_order->addCustomerDetails($swp_customer);
