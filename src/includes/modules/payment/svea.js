@@ -51,6 +51,14 @@ function getAddresses(){
             jQuery("#sveaAddressSelector").append(msg);
             jQuery('label[for="sveaAddressSelector"]').show();
             jQuery("#sveaAddressSelector").show();
+            
+            // update addresses in db
+            jQuery.ajax({
+                type: "POST",
+                url: "sveaAjax.php",
+                data: { SveaAjaxSetCustomerInvoiceAddress: true }, 
+                success: function(msg) { alert(msg); }
+           });
         }
     });
 }

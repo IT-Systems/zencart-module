@@ -159,8 +159,7 @@ class sveawebpay_invoice {
         // if customer is located in Netherlands or DE, get birth date
         if( ($customer_country == 'NL') ||
             ($customer_country == 'DE') )
-        { 
-
+        {
             $sveaBirthDateDiv = '<div id="sveaBirthDate_div">' . 
                                     '<label for="sveaBirthDate">' . FORM_TEXT_BIRTHDATE . '</label><br />' .
                                     '<input type="text" name="sveaBirthDate" id="sveaBirthDate" maxlength="8" />' . 
