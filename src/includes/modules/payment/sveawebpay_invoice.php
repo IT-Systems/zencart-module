@@ -110,7 +110,7 @@ class sveawebpay_invoice {
         //
         // get required fields depending on customer country and payment method
         
-        // TODO right way to do it? -- changed method of getting customer country from 3.0, was: // if ($order->info['currency'] == 'EUR') {
+        // customer country is taken from customer settings
         $customer_country = $order->customer['country']['iso_code_2'];
         
         // fill in all fields as required by customer country and payment method
@@ -140,7 +140,6 @@ class sveawebpay_invoice {
             ($customer_country == 'NO') || 
             ($customer_country == 'DK') ) 
         {       
-//            $sveaGetAddressBtn = '<button type="button" id="sveaGetAddressesButton" onclick="getAddresses()">' . FORM_TEXT_GET_ADDRESS . '</button><br />';
             $sveaAddressDD =    '<br /><label for ="sveaAddressSelector" style="display:none">' . FORM_TEXT_INVOICE_ADDRESS . '</label><br />' .
                                 '<select name="sveaAddressSelector" id="sveaAddressSelector" style="display:none"></select><br />';    
         }
@@ -170,11 +169,8 @@ class sveawebpay_invoice {
    
         // create and add the field to be shown by our js when we select SveaInvoice payment method
         $sveaField =    '<div id="sveaInvoiceField" style="display:none">' . 
-                          //  '<form>' .
                             $sveaIsCompanyField . 
                             $sveaSSN . 
-                         //   '</form>' .
-                            $sveaGetAddressBtn . 
                             $sveaAddressDD . 
                             $sveaInitialsDiv . 
                             $sveaBirthDateDiv . 

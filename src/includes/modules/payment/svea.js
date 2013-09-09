@@ -1,8 +1,10 @@
 jQuery(document).ready(function (){
     
+    jQuery("input[type=radio][name='payment']").prop('checked', false);
+    
     //Function to get which payment method selected
     jQuery("input[type=radio][name='payment']").click( function() {
-    
+        
         var checked_payment = jQuery("input:radio[name=payment]:checked").val();
 
         //If Svea invoice is selected
@@ -25,8 +27,6 @@ jQuery(document).ready(function (){
         else if (checked_payment === 'sveawebpay_partpay'){    
             jQuery('#sveaInvoiceField').hide();
             jQuery('#sveaPartPaymentField').show();
-            //jQuery('button[type=submit]').attr('disabled','true');
-
 
         //If other payment methods are selected, hide all svea related    
         }else{
@@ -68,7 +68,7 @@ function getAddresses(){
                 type: "POST",
                 url: "sveaAjax.php",
                 data: { SveaAjaxSetCustomerInvoiceAddress: true }, 
-                success: function(msg) { alert(msg); }
+                success: function(msg) { msg; }
            });
         }
     });

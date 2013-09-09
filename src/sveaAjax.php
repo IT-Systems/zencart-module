@@ -100,7 +100,7 @@ if( isset($_POST['SveaAjaxSetCustomerInvoiceAddress']) ) {
         if( $sqlInsertInvoiceAddressResult ) {
             $queryFactoryResult = $db->execute($sqlGetInvoiceAddressBookId);
         }   
-    } 
+    }
     
     // get latest address book entry for this customer, use as shipping/delivery address
     $invoiceAddressBookId = $queryFactoryResult->fields['address_book_id'];
