@@ -234,7 +234,7 @@ class sveawebpay_invoice {
         
         // if customer didn't press getAddresses button, we do it now and choose the first address as the one to use
         if( !isset($_POST['sveaAddressSelector']) ) {
-
+            //TODO do lookup and use below!
         }
         
         // calculate the order number
@@ -381,7 +381,7 @@ class sveawebpay_invoice {
 
         //
         // Check if customer is company
-        if( $post_sveaIsCompany == '1'){
+        if( $post_sveaIsCompany === 'true'){
             
             /*
             ->addCustomerDetails(
@@ -407,29 +407,33 @@ class sveawebpay_invoice {
             $myVatNumber = "mocked";  // TODO get/set VatNumber for NL/DE customers -- how?
 
             // get company name from zencart
-            $myCompanyName = $order->customer['company'];
+            $myCompanyName = $order->billing['company'];
             
             // get company address via dropdown of results from getAddress() call
             $myAddressSelector = $post_sveaAddressSelector;
             
-            // TODO set rest of address?
-            
+            //Split street address and house no
+            $pattern = "/^(?:\s)*([0-9]*[A-Za-z]*\s*[A-Za-z]+)(?:\s*)([0-9]*\s*[A-Za-z]*[^\s])?(?:\s)*$/"; // 2 groups, matching from start/end
+            $myStreetAddress = Array();
+            preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
+            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = "0"; }  // TODO handle case Street w/o number in package?!
+     
             $swp_customer = WebPayItem::companyCustomer()
                 ->setNationalIdNumber( $myNationalIdNumber ) 
-                ->setVatNumber( $myVatNumber )         
+                //->setVatNumber( $myVatNumber )         
                 ->setCompanyName( $myCompanyName )
-                //->setStreetAddress("mocked", 9999)     
-                //->setZipCode(9999)                  
-                //->setLocality("mocked")               
-                //->setEmail("mocked@mocked.com")         
-                //->setIpAddress("123.123.123")       
-                //->setCoAddress("mocked")      
-                //->setPhoneNumber(999999)            
+                ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )  // street, housenumber  
+                ->setZipCode($order->billing['postcode'])                                 
+                ->setLocality($order->billing['city'])                                    
+                ->setEmail($order->customer['email_address'])                             
+                ->setIpAddress($_SERVER['REMOTE_ADDR'])                                                                      
+                ->setCoAddress($order->billing['suburb'])                       // c/o address
+                ->setPhoneNumber($order->customer['telephone'])     
                 ->setAddressSelector( $myAddressSelector )
             ;
             $swp_order->addCustomerDetails($swp_customer);
         }
-        
+  
         //
         // customer is private individual
         else {
@@ -568,10 +572,11 @@ class sveawebpay_invoice {
         $order->info['SveaOrderId'] = $swp_response->sveaOrderId;
         $order->info['type'] = $swp_response->customerIdentity->customerType;
 
+        // For SE customers, TODO handle other countries
         if($swp_response->customerIdentity->customerType === "Individual") {
             $order->info['securityNumber'] = $swp_response->customerIdentity->nationalIdNumber;
         } else {
-            $order->info['securityNumber'] = "swp_not_set";    // TODO where to get vatno for companies in response object?
+            $order->info['securityNumber'] = $swp_response->customerIdentity->nationalIdNumber; 
         }
            
         // insert zencart order into database
