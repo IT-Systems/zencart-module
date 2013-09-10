@@ -132,16 +132,11 @@ class sveawebpay_invoice {
             $sveaSSNFI =        FORM_TEXT_SS_NO . '<br /><input type="text" name="sveaSSNFI" id="sveaSSNFI" maxlength="11" /><br />';             
         }
         
-        if( ($customer_country == 'SE') ||     // e.g. == 'SE'
-            ($customer_country == 'NO') || 
-            ($customer_country == 'DK') || 
-            ($customer_country == 'FI') ) 
-        {
-            // radiobutton for choosing individual or organization
-            $sveaIsCompanyField = FORM_TEXT_COMPANY_OR_PRIVATE . ' <br />' .
-                                '<label><input type="radio" name="sveaIsCompany" value="false" checked>' . FORM_TEXT_PRIVATE . '</label>' .
-                                '<label><input type="radio" name="sveaIsCompany" value="true">' . FORM_TEXT_COMPANY . '</label><br />';
-        }
+        // radiobutton for choosing individual or organization
+        $sveaIsCompanyField = FORM_TEXT_COMPANY_OR_PRIVATE . ' <br />' .
+                            '<label><input type="radio" name="sveaIsCompany" value="false" checked>' . FORM_TEXT_PRIVATE . '</label>' .
+                            '<label><input type="radio" name="sveaIsCompany" value="true">' . FORM_TEXT_COMPANY . '</label><br />';
+
         
         //
         // these are the countries we support getAddress in (getAddress also depends on sveaSSN being present)
@@ -157,7 +152,7 @@ class sveawebpay_invoice {
         // if customer is located in Netherlands, get initials
         if( $customer_country == 'NL') {
 
-            $sveaInitialsDiv =  '<div id="sveaInitials_div">' . 
+            $sveaInitialsDiv =  '<div id="sveaInitials_div" >' . 
                                     '<label for="sveaInitials">' . FORM_TEXT_INITIALS . '</label><br />' .
                                     '<input type="text" name="sveaInitials" id="sveaInitials" maxlength="5" />' . 
                                 '</div><br />';
@@ -168,14 +163,14 @@ class sveawebpay_invoice {
         if( ($customer_country == 'NL') ||
             ($customer_country == 'DE') )
         {
-            $sveaBirthDateDiv = '<div id="sveaBirthDate_div">' . 
+            $sveaBirthDateDiv = '<div id="sveaBirthDate_div" >' . 
                                     '<label for="sveaBirthDate">' . FORM_TEXT_BIRTHDATE . '</label><br />' .
                                     '<input type="text" name="sveaBirthDate" id="sveaBirthDate" maxlength="8" />' . 
                                 '</div><br />';
             
-            $sveaVatNoDiv = '<div id="sveaVatNo_div">' . 
-                                    '<label for="sveaVatNo">' . FORM_TEXT_VATNO . '</label><br />' .
-                                    '<input type="text" name="sveaVatNo" id="sveaVatNo" maxlength="9" />' . 
+            $sveaVatNoDiv = '<div id="sveaVatNo_div" hidden="true">' . 
+                                    '<label for="sveaVatNo" >' . FORM_TEXT_VATNO . '</label><br />' .
+                                    '<input type="text" name="sveaVatNo" id="sveaVatNo" maxlength="14" />' . 
                                 '</div><br />';
         }
        
@@ -442,44 +437,48 @@ class sveawebpay_invoice {
         // Check if customer is company
         if( $post_sveaIsCompany === 'true'){
        
+            // create company customer object
+            $swp_customer = WebPayItem::companyCustomer();
+            
             if( ($user_country == 'SE') ||
                 ($user_country == 'NO') || 
                 ($user_country == 'DK') || 
                 ($user_country == 'FI') ) 
             {
                 // company customer from from SE, NO, DK, FI; get NationalId number for organisation
-                $myNationalIdNumber = $post_sveaSSN;
+                $swp_customer = $swp_customer->setNationalIdNumber( $post_sveaSSN );
             }
+            
+            if( ($user_country == 'SE') ||
+                ($user_country == 'NO') || 
+                ($user_country == 'DK') )
+            {
+                $swp_customer = $swp_customer->setAddressSelector( $post_sveaAddressSelector );
+            }
+            
             if( ($user_country == 'NL') ||
                 ($user_country == 'DE') ) 
             {        
-                $myVatNumber = $post_SveaVatNo;
+                $swp_customer = $swp_customer->setVatNumber( $post_sveaVatNo );
             }
-            // get company name from zencart
-            $myCompanyName = $order->billing['company'];
-            
-            // get company address via dropdown of results from getAddress() call
-            $myAddressSelector = $post_sveaAddressSelector;
-            
+  
             //Split street address and house no
             $pattern = "/^(?:\s)*([0-9]*[A-Za-z]*\s*[A-Za-z]+)(?:\s*)([0-9]*\s*[A-Za-z]*[^\s])?(?:\s)*$/"; // 2 groups, matching from start/end
             $myStreetAddress = Array();
             preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
             if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = "0"; }  // TODO handle case Street w/o number in package?!
-     
-            $swp_customer = WebPayItem::companyCustomer()
-                ->setNationalIdNumber( $myNationalIdNumber ) 
-                ->setVatNumber( $myVatNumber )         
-                ->setCompanyName( $myCompanyName )
-                ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )  // street, housenumber  
-                ->setZipCode($order->billing['postcode'])                                 
-                ->setLocality($order->billing['city'])                                    
-                ->setEmail($order->customer['email_address'])                             
-                ->setIpAddress($_SERVER['REMOTE_ADDR'])                                                                      
-                ->setCoAddress($order->billing['suburb'])                       // c/o address
-                ->setPhoneNumber($order->customer['telephone'])     
-                ->setAddressSelector( $myAddressSelector )
-            ;
+  
+            $swp_customer = $swp_customer
+                                ->setCompanyName( $order->billing['company'] )
+                                ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )
+                                ->setZipCode($order->billing['postcode'])
+                                ->setLocality($order->billing['city'])                                    
+                                ->setEmail($order->customer['email_address'])                             
+                                ->setIpAddress($_SERVER['REMOTE_ADDR'])                                                                      
+                                ->setCoAddress($order->billing['suburb'])                       // c/o address
+                                ->setPhoneNumber($order->customer['telephone']);
+
+            // add customer to order
             $swp_order->addCustomerDetails($swp_customer);
         }
   

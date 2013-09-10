@@ -22,7 +22,7 @@ jQuery(document).ready(function (){
             jQuery("#sveaSSN").change( function(){
                 getAddresses();
             });
-       }
+        }
         //If Svea Part payment
         else if (checked_payment === 'sveawebpay_partpay'){    
             jQuery('#sveaInvoiceField').hide();
@@ -39,6 +39,21 @@ jQuery(document).ready(function (){
             jQuery('#sveaPartPaymentField').hide();
         }
     });
+
+    // show/hide private/company input fields depending on country
+    jQuery("input[type=radio][name='sveaIsCompany'][value='false']").click( function() {    // show private
+        jQuery('#sveaInitials_div').show();
+        jQuery('#sveaBirthDate_div').show();
+        jQuery('#sveaVatNo_div').hide();
+    });
+    jQuery("input[type=radio][name='sveaIsCompany'][value='true']").click( function() {     // company
+        jQuery('#sveaInitials_div').hide();
+        jQuery('#sveaBirthDate_div').hide();
+        jQuery('#sveaVatNo_div').show();
+    });
+    
+
+
 });
 
 //
@@ -68,7 +83,7 @@ function getAddresses(){
                 type: "POST",
                 url: "sveaAjax.php",
                 data: { SveaAjaxSetCustomerInvoiceAddress: true }, 
-                success: function(msg) { msg; }
+                success: function(msg) { msg; }     // TODO success function can be omitted?
            });
         }
     });
