@@ -418,6 +418,64 @@ class sveawebpay_invoice {
 //            ->setAddressSelector("7fd7768")     //Optional, string recieved from WebPay::getAddress() request
 //        )
 //
+ 
+        //
+        // Check if customer is company
+        if( $post_sveaIsCompany === 'true'){
+       
+            // create company customer object
+            $swp_customer = WebPayItem::companyCustomer();
+            
+            // set company name
+            $swp_customer->setCompanyName( $order->billing['company'] );
+            
+            // set company SSN
+            if( ($user_country == 'SE') ||
+                ($user_country == 'NO') || 
+                ($user_country == 'DK') ) 
+            {
+                $swp_customer->setNationalIdNumber( $post_sveaSSN );
+            }
+            if( ($user_country == 'FI') ) 
+            {
+                $swp_customer->setNationalIdNumber( $post_sveaSSNFI );
+            }
+            
+            // set addressSelector from getAddresses
+            if( ($user_country == 'SE') ||
+                ($user_country == 'NO') || 
+                ($user_country == 'DK') )
+            {
+                $swp_customer->setAddressSelector( $post_sveaAddressSelector );
+            }
+            
+            // set vatNo
+            if( ($user_country == 'NL') ||
+                ($user_country == 'DE') ) 
+            {        
+                $swp_customer->setVatNumber( $post_sveaVatNo );
+            }
+  
+            //Split street address and house no
+            $pattern = "/^(?:\s)*([0-9]*[A-Za-z]*\s*[A-Za-z]+)(?:\s*)([0-9]*\s*[A-Za-z]*[^\s])?(?:\s)*$/"; // 2 groups, matching from start/end
+            $myStreetAddress = Array();
+            preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
+            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = "0"; }  // TODO handle case Street w/o number in package?!
+  
+            // set common fields
+            $swp_customer
+                ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )
+                ->setZipCode($order->billing['postcode'])
+                ->setLocality($order->billing['city'])                                    
+                ->setEmail($order->customer['email_address'])                             
+                ->setIpAddress($_SERVER['REMOTE_ADDR'])                                                                      
+                ->setCoAddress($order->billing['suburb'])                       // c/o address
+                ->setPhoneNumber($order->customer['telephone']);
+
+            // add customer to order
+            $swp_order->addCustomerDetails($swp_customer);
+        }
+        
 //        ->addCustomerDetails(
 //            WebPayItem::individualCustomer()
 //            ->setNationalIdNumber(194605092222) //Required for individual customers in SE, NO, DK, FI
@@ -431,78 +489,59 @@ class sveawebpay_invoice {
 //            ->setIpAddress("123.123.123")       //Optional but desirable
 //            ->setCoAddress("c/o Eriksson")      //Optional
 //            ->setPhoneNumber(999999)            //Optional
-//        )
- 
-        //
-        // Check if customer is company
-        if( $post_sveaIsCompany === 'true'){
-       
-            // create company customer object
-            $swp_customer = WebPayItem::companyCustomer();
-            
-            if( ($user_country == 'SE') ||
-                ($user_country == 'NO') || 
-                ($user_country == 'DK') || 
-                ($user_country == 'FI') ) 
-            {
-                // company customer from from SE, NO, DK, FI; get NationalId number for organisation
-                $swp_customer = $swp_customer->setNationalIdNumber( $post_sveaSSN );
-            }
-            
-            if( ($user_country == 'SE') ||
-                ($user_country == 'NO') || 
-                ($user_country == 'DK') )
-            {
-                $swp_customer = $swp_customer->setAddressSelector( $post_sveaAddressSelector );
-            }
-            
-            if( ($user_country == 'NL') ||
-                ($user_country == 'DE') ) 
-            {        
-                $swp_customer = $swp_customer->setVatNumber( $post_sveaVatNo );
-            }
-  
-            //Split street address and house no
-            $pattern = "/^(?:\s)*([0-9]*[A-Za-z]*\s*[A-Za-z]+)(?:\s*)([0-9]*\s*[A-Za-z]*[^\s])?(?:\s)*$/"; // 2 groups, matching from start/end
-            $myStreetAddress = Array();
-            preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
-            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = "0"; }  // TODO handle case Street w/o number in package?!
-  
-            $swp_customer = $swp_customer
-                                ->setCompanyName( $order->billing['company'] )
-                                ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )
-                                ->setZipCode($order->billing['postcode'])
-                                ->setLocality($order->billing['city'])                                    
-                                ->setEmail($order->customer['email_address'])                             
-                                ->setIpAddress($_SERVER['REMOTE_ADDR'])                                                                      
-                                ->setCoAddress($order->billing['suburb'])                       // c/o address
-                                ->setPhoneNumber($order->customer['telephone']);
-
-            // add customer to order
-            $swp_order->addCustomerDetails($swp_customer);
-        }
-  
+//        )  
+        
         //
         // customer is private individual
         else {
 
-            // individual customer from SE, NO, DK, FI; get NationalId number for individual
-            $my_NationalIdNumber = $post_sveaSSN;
+            // create individual customer object
+            $swp_customer = WebPayItem::individualCustomer();
+
+            // set individual customer name
+            $swp_customer->setName( $order->billing['firstname'], $order->billing['lastname'] );
+
+            // set individual customer SSN
+            if( ($user_country == 'SE') ||
+                ($user_country == 'NO') || 
+                ($user_country == 'DK') ) 
+            {
+                $swp_customer->setNationalIdNumber( $post_sveaSSN );
+            }
+            if( ($user_country == 'FI') ) 
+            {
+                $swp_customer->setNationalIdNumber( $post_sveaSSNFI );
+            }
             
-            //TODO get initials from customer if NL/DE, use address field for this
-            $my_Initials = substr($order->billing['firstname'], 0, 1) . substr($order->billing['lastname'], 0, 1); 
+            // set addressSelector from getAddresses
+            if( ($user_country == 'SE') ||
+                ($user_country == 'NO') || 
+                ($user_country == 'DK') )
+            {
+                $swp_customer->setAddressSelector( $post_sveaAddressSelector );
+            }
+            
+            // set BirthDate if required
+            if( ($user_country == 'NL') ||
+                ($user_country == 'DE') ) 
+            {        
+                $swp_customer->setBirthDate(1955, 03, 07);  //TODO calculate from string
+            }
+            
+            // set initials if required
+            if( ($user_country == 'NL') ) 
+            {        
+                $swp_customer->setInitials($post_sveaInitials);  //TODO calculate from string
+            }
 
             //Split street address and house no
             $pattern = "/^(?:\s)*([0-9]*[A-Za-z]*\s*[A-Za-z]+)(?:\s*)([0-9]*\s*[A-Za-z]*[^\s])?(?:\s)*$/"; // 2 groups, matching from start/end
             $myStreetAddress = Array();
             preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
             if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = "0"; }  // TODO handle case Street w/o number in package?!
-     
-            $swp_customer = WebPayItem::individualCustomer()
-                ->setNationalIdNumber($my_NationalIdNumber)
-                ->setInitials($my_Initials)                 //TODO get w/pnr from customer
-                ->setBirthDate(1955, 03, 07)                //TODO calculate from pnr/get from customer
-                ->setName( $order->billing['firstname'], $order->billing['lastname'] )     
+
+            // set common fields
+            $swp_customer          
                 ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )  // street, housenumber             
                 ->setZipCode($order->billing['postcode'])                                 
                 ->setLocality($order->billing['city'])                                    
@@ -511,8 +550,9 @@ class sveawebpay_invoice {
                 ->setCoAddress($order->billing['suburb'])                       // c/o address
                 ->setPhoneNumber($order->customer['telephone'])                         
             ;
-            $swp_order->addCustomerDetails($swp_customer);
-             
+            
+            // add customer to order
+            $swp_order->addCustomerDetails($swp_customer);             
         }
         
         //
