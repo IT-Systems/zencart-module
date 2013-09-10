@@ -37,6 +37,8 @@ define('ERROR_CODE_20000','Order is already closed ');
 define('ERROR_CODE_30000','The credit report was rejected');
 define('ERROR_CODE_30001','This customer is blocked or has shown strange/unusual behavior');
 define('ERROR_CODE_30002','The order would cause the client to exceed Sveas credit limit');
+define('ERROR_CODE_30002','The order would cause the client to exceed Sveas credit limit');
+define('ERROR_CODE_30003','(TEST) No such test-entity exists -- check type Company/individual');     // TODO translate/add to other language files
 
 //Form on checkout
 define('FORM_TEXT_COMPANY_OR_PRIVATE','Are you a private individual, or do you represent a company or organisation:');
@@ -46,6 +48,7 @@ define('FORM_TEXT_SS_NO','Enter your Social Security Number (SSN):');
 define('FORM_TEXT_GET_ADDRESS','Show and select invoice address.');
 define('FORM_TEXT_INITIALS','Initials');                                // TODO translate/add to other language files
 define('FORM_TEXT_BIRTHDATE','Date of Birth (YYYYMMDD)');               // TODO translate/add to other language files
+define('FORM_TEXT_VATNO','Vat Number (NL2345234)');                     // TODO translate/add to other language files
 define('FORM_TEXT_INVOICE_ADDRESS','Select invoice address to be used for billing and delivery.');
 define('FORM_TEXT_INVOICE_FEE','Invoice Fee:');
 ?>

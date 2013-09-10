@@ -124,7 +124,19 @@ class sveawebpay_invoice {
         {
             // input text field for individual/company SSN
             $sveaSSN =          FORM_TEXT_SS_NO . '<br /><input type="text" name="sveaSSN" id="sveaSSN" maxlength="11" /><br />';
-
+        }
+        
+        if( ($customer_country == 'FI') )  
+        {
+           // input text field for individual/company SSN, without getAddresses hook
+            $sveaSSNFI =        FORM_TEXT_SS_NO . '<br /><input type="text" name="sveaSSNFI" id="sveaSSNFI" maxlength="11" /><br />';             
+        }
+        
+        if( ($customer_country == 'SE') ||     // e.g. == 'SE'
+            ($customer_country == 'NO') || 
+            ($customer_country == 'DK') || 
+            ($customer_country == 'FI') ) 
+        {
             // radiobutton for choosing individual or organization
             $sveaIsCompanyField = FORM_TEXT_COMPANY_OR_PRIVATE . ' <br />' .
                                 '<label><input type="radio" name="sveaIsCompany" value="false" checked>' . FORM_TEXT_PRIVATE . '</label>' .
@@ -160,6 +172,11 @@ class sveawebpay_invoice {
                                     '<label for="sveaBirthDate">' . FORM_TEXT_BIRTHDATE . '</label><br />' .
                                     '<input type="text" name="sveaBirthDate" id="sveaBirthDate" maxlength="8" />' . 
                                 '</div><br />';
+            
+            $sveaVatNoDiv = '<div id="sveaVatNo_div">' . 
+                                    '<label for="sveaVatNo">' . FORM_TEXT_VATNO . '</label><br />' .
+                                    '<input type="text" name="sveaVatNo" id="sveaVatNo" maxlength="9" />' . 
+                                '</div><br />';
         }
        
         $sveaError = '<br /><span id="sveaSSN_error_invoice" style="color:red"></span>';
@@ -168,10 +185,11 @@ class sveawebpay_invoice {
         $sveaField =    '<div id="sveaInvoiceField" style="display:none">' . 
                             $sveaIsCompanyField .   //  SE, DK, NO
                             $sveaSSN .              //  SE, DK, NO        
-                            $sveaAddressDD .        //  SE, Dk, NO
-                            //$sveaSSNFI .            //  FI, no getAddresses        
+                            $sveaSSNFI .            //  FI, no getAddresses     
+                            $sveaAddressDD .        //  SE, Dk, NO   
                             $sveaInitialsDiv .      //  NL
                             $sveaBirthDateDiv .     //  NL, DE
+                            $sveaVatNoDiv .         // NL, DE
                             // FI, NL, DE also uses customer address data from zencart
                         '</div>';
        
@@ -229,12 +247,15 @@ class sveawebpay_invoice {
         //
         // handle postback of payment method info fields, if present
         $post_sveaSSN = isset($_POST['sveaSSN']) ? $_POST['sveaSSN'] : "swp_not_set" ;
+        $post_sveaSSNFI = isset($_POST['sveaSSNFI']) ? $_POST['sveaSSNFI'] : "swp_not_set" ;
         $post_sveaIsCompany = isset($_POST['sveaIsCompany']) ? $_POST['sveaIsCompany'] : "swp_not_set" ;        
         $post_sveaAddressSelector = isset($_POST['sveaAddressSelector']) ? $_POST['sveaAddressSelector'] : "swp_not_set";      
+        $post_sveaVatNo = isset($_POST['sveaVatNo']) ? $_POST['sveaVatNo'] : "swp_not_set";
+        $post_sveaInitials = isset($_POST['sveaInitials']) ? $_POST['sveaInitials'] : "swp_not_set" ;
         
         // if customer didn't press getAddresses button, we do it now and choose the first address as the one to use
         if( !isset($_POST['sveaAddressSelector']) ) {
-            //TODO do lookup and use below!
+            //TODO do lookup here!
         }
         
         // calculate the order number
@@ -242,18 +263,25 @@ class sveawebpay_invoice {
         $new_order_field = $new_order_rs->fields;
         $client_order_number = ($new_order_field['orders_id'] + 1) . '-' . time();
 
+        // localization parameters
+        $user_country = $order->billing['country']['iso_code_2'];
+        
+        $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
+        $user_language = $user_language->fields['code'];
+
+        
         // switch to default currency if the customers currency is not supported
         $currency = $order->info['currency'];
         if (!in_array($currency, $this->allowed_currencies)) {
             $currency = $this->default_currency;
         }
-
+        
         // Include Svea php integration package files    
         require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
         // Create and initialize order object, using either test or production configuration
         $swp_order = WebPay::createOrder() // TODO uses default testmode config for now
-            ->setCountryCode( $order->billing['country']['iso_code_2'] ) // was: $order->customer['country']['iso_code_2'])
+            ->setCountryCode( $user_country )
             ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
             ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
             ->setOrderDate(date('c'))                      //Required for synchronous payments -- TODO check format "2012-12-12"
@@ -379,33 +407,54 @@ class sveawebpay_invoice {
             }
         }
 
+
+//        ->addCustomerDetails(
+//            WebPayItem::companyCustomer()
+//            ->setNationalIdNumber(2345234)      //Required in SE, NO, DK, FI
+//            ->setVatNumber("NL2345234")         //Required in NL and DE
+//            ->setCompanyName("TestCompagniet")  //Required in NL and DE
+//            ->setStreetAddress("Gatan", 23)     //Required in NL and DE
+//            ->setZipCode(9999)                  //Required in NL and DE
+//            ->setLocality("Stan")               //Required in NL and DE
+//            ->setEmail("test@svea.com")         //Optional but desirable
+//            ->setIpAddress("123.123.123")       //Optional but desirable
+//            ->setCoAddress("c/o Eriksson")      //Optional
+//            ->setPhoneNumber(999999)            //Optional
+//            ->setAddressSelector("7fd7768")     //Optional, string recieved from WebPay::getAddress() request
+//        )
+//
+//        ->addCustomerDetails(
+//            WebPayItem::individualCustomer()
+//            ->setNationalIdNumber(194605092222) //Required for individual customers in SE, NO, DK, FI
+//            ->setInitials("SB")                 //Required for individual customers in NL
+//            ->setBirthDate(1923, 12, 20)        //Required for individual customers in NL and DE
+//            ->setName("Tess", "Testson")        //Required for individual customers in NL and DE
+//            ->setStreetAddress("Gatan", 23)     //Required in NL and DE
+//            ->setZipCode(9999)                  //Required in NL and DE
+//            ->setLocality("Stan")               //Required in NL and DE
+//            ->setEmail("test@svea.com")         //Optional but desirable
+//            ->setIpAddress("123.123.123")       //Optional but desirable
+//            ->setCoAddress("c/o Eriksson")      //Optional
+//            ->setPhoneNumber(999999)            //Optional
+//        )
+ 
         //
         // Check if customer is company
         if( $post_sveaIsCompany === 'true'){
-            
-            /*
-            ->addCustomerDetails(
-                WebPayItem::companyCustomer()
-                ->setNationalIdNumber(2345234)      //Required in SE, NO, DK, FI
-                ->setVatNumber("NL2345234")         //Required in NL and DE
-                ->setCompanyName("TestCompagniet")  //Required in NL and DE
-                ->setStreetAddress("Gatan", 23)     //Required in NL and DE
-                ->setZipCode(9999)                  //Required in NL and DE
-                ->setLocality("Stan")               //Required in NL and DE
-                ->setEmail("test@svea.com")         //Optional but desirable
-                ->setIpAddress("123.123.123")       //Optional but desirable
-                ->setCoAddress("c/o Eriksson")      //Optional
-                ->setPhoneNumber(999999)            //Optional
-                ->setAddressSelector("7fd7768")     //Optional, string recieved from WebPay::getAddress() request
-            )
-            */
- 
-            // company customer from from SE, NO, DK, FI; get NationalId number for organisation
-            $myNationalIdNumber = $post_sveaSSN;
-
-            // TODO NL/DE
-            $myVatNumber = "mocked";  // TODO get/set VatNumber for NL/DE customers -- how?
-
+       
+            if( ($user_country == 'SE') ||
+                ($user_country == 'NO') || 
+                ($user_country == 'DK') || 
+                ($user_country == 'FI') ) 
+            {
+                // company customer from from SE, NO, DK, FI; get NationalId number for organisation
+                $myNationalIdNumber = $post_sveaSSN;
+            }
+            if( ($user_country == 'NL') ||
+                ($user_country == 'DE') ) 
+            {        
+                $myVatNumber = $post_SveaVatNo;
+            }
             // get company name from zencart
             $myCompanyName = $order->billing['company'];
             
@@ -420,7 +469,7 @@ class sveawebpay_invoice {
      
             $swp_customer = WebPayItem::companyCustomer()
                 ->setNationalIdNumber( $myNationalIdNumber ) 
-                //->setVatNumber( $myVatNumber )         
+                ->setVatNumber( $myVatNumber )         
                 ->setCompanyName( $myCompanyName )
                 ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )  // street, housenumber  
                 ->setZipCode($order->billing['postcode'])                                 
@@ -449,23 +498,6 @@ class sveawebpay_invoice {
             $myStreetAddress = Array();
             preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
             if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = "0"; }  // TODO handle case Street w/o number in package?!
- 
-            /*
-            ->addCustomerDetails(
-                WebPayItem::individualCustomer()
-                ->setNationalIdNumber(194605092222) //Required for individual customers in SE, NO, DK, FI
-                ->setInitials("SB")                 //Required for individual customers in NL
-                ->setBirthDate(1923, 12, 20)        //Required for individual customers in NL and DE
-                ->setName("Tess", "Testson")        //Required for individual customers in NL and DE
-                ->setStreetAddress("Gatan", 23)     //Required in NL and DE
-                ->setZipCode(9999)                  //Required in NL and DE
-                ->setLocality("Stan")               //Required in NL and DE
-                ->setEmail("test@svea.com")         //Optional but desirable
-                ->setIpAddress("123.123.123")       //Optional but desirable
-                ->setCoAddress("c/o Eriksson")      //Optional
-                ->setPhoneNumber(999999)            //Optional
-            )
-            */
      
             $swp_customer = WebPayItem::individualCustomer()
                 ->setNationalIdNumber($my_NationalIdNumber)
@@ -473,11 +505,11 @@ class sveawebpay_invoice {
                 ->setBirthDate(1955, 03, 07)                //TODO calculate from pnr/get from customer
                 ->setName( $order->billing['firstname'], $order->billing['lastname'] )     
                 ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )  // street, housenumber             
-                ->setCoAddress($order->billing['suburb'])                       // c/o address
                 ->setZipCode($order->billing['postcode'])                                 
                 ->setLocality($order->billing['city'])                                    
                 ->setEmail($order->customer['email_address'])                             
                 ->setIpAddress($_SERVER['REMOTE_ADDR'])                                                                      
+                ->setCoAddress($order->billing['suburb'])                       // c/o address
                 ->setPhoneNumber($order->customer['telephone'])                         
             ;
             $swp_order->addCustomerDetails($swp_customer);
@@ -751,6 +783,9 @@ class sveawebpay_invoice {
                 break;
             case "30002" :
                 return ERROR_CODE_30002;
+                break;
+            case "30003" :
+                return ERROR_CODE_30003;
                 break;
             default :
                 return ERROR_CODE_DEFAULT . $err;
