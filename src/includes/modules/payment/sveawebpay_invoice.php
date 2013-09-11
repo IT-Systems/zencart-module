@@ -630,7 +630,7 @@ class sveawebpay_invoice {
 
         //
         // payment request succeded, store response in session
-        if ($swp_response->accepted === true) {     
+        if ($swp_response->accepted === true) {
             
             //
             // set zencart billing/shipping address to invoice address from payment request response
@@ -642,6 +642,9 @@ class sveawebpay_invoice {
             else {
                 $order->billing['company'] = $order->delivery['company'] = $swp_response->customerIdentity->fullName;
             }
+            // TODO check default zencart CHARSET define (should equal used database collation, i.e. utf-8). 
+            // if not utf-8, must handle that when parsing swp_response (in utf-8) -- use utf8_decode(response-> ?)
+            // also, check that php 5.3 and 5.4+ behaves the same in zen_output_string ( htmlspecialchars() defaults to utf-8 from 5.4)
             $order->billing['street_address'] = $order->delivery['street_address'] = $swp_response->customerIdentity->street;
             $order->billing['suburb'] = $order->delivery['suburb'] = $swp_response->customerIdentity->coAddress;
             $order->billing['city'] = $order->delivery['city'] = $swp_response->customerIdentity->locality;
