@@ -119,8 +119,7 @@ class sveawebpay_invoice {
         // get ssn & selects private/company for SE, NO, DK, FI
         if( ($customer_country == 'SE') ||     // e.g. == 'SE'
             ($customer_country == 'NO') || 
-            ($customer_country == 'DK') || 
-            ($customer_country == 'FI') ) 
+            ($customer_country == 'DK') ) 
         {
             // input text field for individual/company SSN
             $sveaSSN =          FORM_TEXT_SS_NO . '<br /><input type="text" name="sveaSSN" id="sveaSSN" maxlength="11" /><br />';
@@ -159,15 +158,47 @@ class sveawebpay_invoice {
         }
         
         //
-        // if customer is located in Netherlands or DE, get birth date
+        // if customer is located in Netherlands or DE, get birth date 
         if( ($customer_country == 'NL') ||
             ($customer_country == 'DE') )
         {
+            //Days, to 31
+            $days = "";
+            for($d = 1; $d <= 31; $d++){
+
+                $val = $d;
+                if($d < 10)
+                    $val = "$d";
+
+                $days .= "<option value='$val'>$d</option>";
+            }
+            $birthDay = "<select name='sveaBirthDay' id='sveaBirthDay'>$days</select>";
+
+            //Months to 12
+            $months = "";
+            for($m = 1; $m <= 12; $m++){
+                $val = $m;
+                if($m < 10)
+                    $val = "$m";
+
+                $months .= "<option value='$val'>$m</option>";
+            }
+            $birthMonth = "<select name='sveaBirthMonth' id='sveaBirthMonth'>$months</select>";
+
+            //Years from 1913 to 1996
+            $years = '';
+            for($y = 1913; $y <= 1996; $y++){
+                $years .= "<option value='$y'>$y</option>";
+            }
+            $birthYear = "<select name='sveaBirthYear' id='sveaBirthYear'>$years</select>";
+
             $sveaBirthDateDiv = '<div id="sveaBirthDate_div" >' . 
-                                    '<label for="sveaBirthDate">' . FORM_TEXT_BIRTHDATE . '</label><br />' .
-                                    '<input type="text" name="sveaBirthDate" id="sveaBirthDate" maxlength="8" />' . 
+                                    //'<label for="sveaBirthDate">' . FORM_TEXT_BIRTHDATE . '</label><br />' .
+                                    //'<input type="text" name="sveaBirthDate" id="sveaBirthDate" maxlength="8" />' . 
+                                    '<label for="sveaBirthYear">' . FORM_TEXT_BIRTHDATE . '</label><br />' .
+                                    $birthYear . $birthMonth . $birthDay .  // TODO better default selected, date order conforms w/DE,NL standard? 
                                 '</div><br />';
-            
+
             $sveaVatNoDiv = '<div id="sveaVatNo_div" hidden="true">' . 
                                     '<label for="sveaVatNo" >' . FORM_TEXT_VATNO . '</label><br />' .
                                     '<input type="text" name="sveaVatNo" id="sveaVatNo" maxlength="14" />' . 
@@ -246,8 +277,11 @@ class sveawebpay_invoice {
         $post_sveaIsCompany = isset($_POST['sveaIsCompany']) ? $_POST['sveaIsCompany'] : "swp_not_set" ;        
         $post_sveaAddressSelector = isset($_POST['sveaAddressSelector']) ? $_POST['sveaAddressSelector'] : "swp_not_set";      
         $post_sveaVatNo = isset($_POST['sveaVatNo']) ? $_POST['sveaVatNo'] : "swp_not_set";
+        $post_sveaBirthDay = isset($_POST['sveaBirthDay']) ? $_POST['sveaBirthDay'] : "swp_not_set";
+        $post_sveaBirthMonth = isset($_POST['sveaBirthMonth']) ? $_POST['sveaBirthMonth'] : "swp_not_set";
+        $post_sveaBirthYear = isset($_POST['sveaBirthYear']) ? $_POST['sveaBirthYear'] : "swp_not_set";
         $post_sveaInitials = isset($_POST['sveaInitials']) ? $_POST['sveaInitials'] : "swp_not_set" ;
-        
+
         // if customer didn't press getAddresses button, we do it now and choose the first address as the one to use
         if( !isset($_POST['sveaAddressSelector']) ) {
             //TODO do lookup here!
@@ -402,7 +436,6 @@ class sveawebpay_invoice {
             }
         }
 
-
 //        ->addCustomerDetails(
 //            WebPayItem::companyCustomer()
 //            ->setNationalIdNumber(2345234)      //Required in SE, NO, DK, FI
@@ -512,20 +545,12 @@ class sveawebpay_invoice {
             {
                 $swp_customer->setNationalIdNumber( $post_sveaSSNFI );
             }
-            
-            // set addressSelector from getAddresses
-            if( ($user_country == 'SE') ||
-                ($user_country == 'NO') || 
-                ($user_country == 'DK') )
-            {
-                $swp_customer->setAddressSelector( $post_sveaAddressSelector );
-            }
-            
+                       
             // set BirthDate if required
             if( ($user_country == 'NL') ||
                 ($user_country == 'DE') ) 
             {        
-                $swp_customer->setBirthDate(1955, 03, 07);  //TODO calculate from string
+                $swp_customer->setBirthDate(intval($post_sveaBirthYear), intval($post_sveaBirthMonth), intval($post_sveaBirthDay));
             }
             
             // set initials if required
@@ -643,12 +668,8 @@ class sveawebpay_invoice {
         $order->info['SveaOrderId'] = $swp_response->sveaOrderId;
         $order->info['type'] = $swp_response->customerIdentity->customerType;
 
-        // For SE customers, TODO handle other countries
-        if($swp_response->customerIdentity->customerType === "Individual") {
-            $order->info['securityNumber'] = $swp_response->customerIdentity->nationalIdNumber;
-        } else {
-            $order->info['securityNumber'] = $swp_response->customerIdentity->nationalIdNumber; 
-        }
+        // set zencart order securityNumber -- if request to webservice, use sveaOrderId, if hosted use transactionId
+        $order->info['securityNumber'] = isset( $swp_response->sveaOrderId ) ? $swp_response->sveaOrderId : $swp_response->transactionId; 
            
         // insert zencart order into database
         $sql_data_array = array('orders_id' => $insert_id,

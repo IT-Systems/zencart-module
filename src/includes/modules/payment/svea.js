@@ -22,6 +22,20 @@ jQuery(document).ready(function (){
             jQuery("#sveaSSN").change( function(){
                 getAddresses();
             });
+            
+            // set zencart billing/shipping to match getAddresses selection
+            jQuery('#sveaAddressSelector').change( function() {
+                    ;
+                jQuery.ajax({
+                    type: "POST",
+                    url: "sveaAjax.php",
+                    data: { 
+                        SveaAjaxSetCustomerInvoiceAddress: true, 
+                        SveaAjaxAddressSelectorValue: jQuery('#sveaAddressSelector').val() 
+                    }, 
+                    success: function(msg) { msg; }     // TODO success function can be omitted?
+                });
+            });
         }
         //If Svea Part payment
         else if (checked_payment === 'sveawebpay_partpay'){    
@@ -52,8 +66,11 @@ jQuery(document).ready(function (){
         jQuery('#sveaVatNo_div').show();
     });
     
-
-
+    // block pressing continue checkout unless getAddresses has been performed and addressSelector set
+    jQuery(".buttonRow .forward").click( function(e) {
+        alert( "clicked");
+        e.preventDefault();
+    });
 });
 
 //
@@ -78,11 +95,14 @@ function getAddresses(){
             jQuery('label[for="sveaAddressSelector"]').show();
             jQuery("#sveaAddressSelector").show();
             
-            // update addresses in db
+            // update billing/shipping addresses in db for display on checkout_confirmation page
             jQuery.ajax({
                 type: "POST",
                 url: "sveaAjax.php",
-                data: { SveaAjaxSetCustomerInvoiceAddress: true }, 
+                data: { 
+                    SveaAjaxSetCustomerInvoiceAddress: true, 
+                    SveaAjaxAddressSelectorValue: jQuery('#sveaAddressSelector').val()
+                }, 
                 success: function(msg) { msg; }     // TODO success function can be omitted?
            });
         }
