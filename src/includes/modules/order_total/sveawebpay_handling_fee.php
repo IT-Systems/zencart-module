@@ -23,7 +23,7 @@ class sveawebpay_handling_fee {
         $paymentfee_cost = $GLOBALS[$payment_module]->handling_fee;
         // if percentage, calculate from order total
         if (substr($paymentfee_cost, -1) == '%')
-          $paymentfee_cost = (float)((substr($paymentfee_cost, 0, -1)/100) * $order->info['subtotal']);    // TODO kgm -- should be on subtotal (w/o tax), as we will tax this sum later on!
+          $paymentfee_cost = (float)((substr($paymentfee_cost, 0, -1)/100) * $order->info['subtotal']);
       }
     }    
     

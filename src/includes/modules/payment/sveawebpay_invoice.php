@@ -282,11 +282,6 @@ class sveawebpay_invoice {
         $post_sveaBirthYear = isset($_POST['sveaBirthYear']) ? $_POST['sveaBirthYear'] : "swp_not_set";
         $post_sveaInitials = isset($_POST['sveaInitials']) ? $_POST['sveaInitials'] : "swp_not_set" ;
 
-        // if customer didn't press getAddresses button, we do it now and choose the first address as the one to use
-        if( !isset($_POST['sveaAddressSelector']) ) {
-            //TODO do lookup here!
-        }
-        
         // calculate the order number
         $new_order_rs = $db->Execute("select orders_id from " . TABLE_ORDERS . " order by orders_id desc limit 1");
         $new_order_field = $new_order_rs->fields;
@@ -637,22 +632,22 @@ class sveawebpay_invoice {
 
             // is private individual?
             if( $swp_response->customerIdentity->customerType === "Individual") {
-                $order->billing['name'] = $order->delivery['name'] = $swp_response->customerIdentity->fullName;
+                $order->billing['name'] = $swp_response->customerIdentity->fullName;
             }
             else {
-                $order->billing['company'] = $order->delivery['company'] = $swp_response->customerIdentity->fullName;
+                $order->billing['company'] = $swp_response->customerIdentity->fullName;
             }
             // TODO check default zencart CHARSET define (should equal used database collation, i.e. utf-8). 
             // if not utf-8, must handle that when parsing swp_response (in utf-8) -- use utf8_decode(response-> ?)
             // also, check that php 5.3 and 5.4+ behaves the same in zen_output_string ( htmlspecialchars() defaults to utf-8 from 5.4)
-            $order->billing['street_address'] = $order->delivery['street_address'] = 
+            $order->billing['street_address'] =  
                     $swp_response->customerIdentity->street . " " . $swp_response->customerIdentity->houseNumber;
-            $order->billing['suburb'] = $order->delivery['suburb'] = $swp_response->customerIdentity->coAddress;
-            $order->billing['city'] = $order->delivery['city'] = $swp_response->customerIdentity->locality;
-            $order->billing['postcode'] = $order->delivery['postcode'] = $swp_response->customerIdentity->zipCode;
-            $order->billing['state'] = $order->delivery['state'] = '';  // "state" is not applicable in SWP countries
+            $order->billing['suburb'] =  $swp_response->customerIdentity->coAddress;
+            $order->billing['city'] = $swp_response->customerIdentity->locality;
+            $order->billing['postcode'] = $swp_response->customerIdentity->zipCode;
+            $order->billing['state'] = '';  // "state" is not applicable in SWP countries
             
-            $order->billing['country']['title'] = $order->delivery['country']['title'] = // country name only needed for address
+            $order->billing['country']['title'] =                                           // country name only needed for address
                     $this->getCountryName( $swp_response->customerIdentity->countryCode );
             
             // save the response object 

@@ -1,19 +1,38 @@
 jQuery(document).ready(function (){
     
-    jQuery("input[type=radio][name='payment']").prop('checked', false);
     
-    //Function to get which payment method selected
+    //get country
+    var customerCountry = "";
+    jQuery.ajax({
+        type: "POST",
+        url: "sveaAjax.php",
+        data: { 
+            SveaAjaxGetCustomerCountry: true, 
+        }, 
+        success: function(msg) { 
+            customerCountry = msg;
+        }
+    });
+    
+    // show fields depending on payment method selected
+    jQuery("input[type=radio][name='payment']").prop('checked', false);
     jQuery("input[type=radio][name='payment']").click( function() {
         
         var checked_payment = jQuery("input:radio[name=payment]:checked").val();
 
         //If Svea invoice is selected
         if (checked_payment === 'sveawebpay_invoice'){
-            // hide billing address from default view
-            jQuery('#checkoutPaymentHeadingAddress').hide();
-            jQuery('#checkoutBillto').hide();
-            jQuery('#checkoutPayment .floatingBox').hide();
             
+            // hide billing address in getAddresses countries
+            if( (customerCountry === 'SE') ||
+                (customerCountry === 'NO') || 
+                (customerCountry === 'DK') )
+            {
+                jQuery('#checkoutPaymentHeadingAddress').hide();
+                jQuery('#checkoutBillto').hide();
+                jQuery('#checkoutPayment .floatingBox').hide();
+            }
+
             // show input fields
             jQuery('#sveaPartPaymentField').hide();
             jQuery('#sveaInvoiceField').show();
@@ -33,22 +52,27 @@ jQuery(document).ready(function (){
                         SveaAjaxSetCustomerInvoiceAddress: true, 
                         SveaAjaxAddressSelectorValue: jQuery('#sveaAddressSelector').val() 
                     }, 
-                    success: function(msg) { msg; }     // TODO success function can be omitted?
+                    success: function(msg) { msg; }
                 });
             });
         }
-        //If Svea Part payment
-        else if (checked_payment === 'sveawebpay_partpay'){    
-            jQuery('#sveaInvoiceField').hide();
-            jQuery('#sveaPartPaymentField').show();
 
+        else if (checked_payment === 'sveawebpay_partpay') {    
+            // TODO
+        }
         //If other payment methods are selected, hide all svea related    
-        }else{
-            jQuery('#checkoutPaymentHeadingAddress').show();
-            jQuery('#checkoutBillto').show();
-            jQuery('#checkoutPayment .floatingBox').show();
-            
-            
+        else{
+            // show billing address if getAddresses countries
+            if( (customerCountry  === 'SE') ||
+                (customerCountry === 'NO') || 
+                (customerCountry === 'DK') ) 
+            {
+                jQuery('#checkoutPaymentHeadingAddress').show();
+                jQuery('#checkoutBillto').show();
+                jQuery('#checkoutPayment .floatingBox').show();
+            }
+
+            // hide svea payment methods
             jQuery('#sveaInvoiceField').hide();
             jQuery('#sveaPartPaymentField').hide();
         }
@@ -66,11 +90,6 @@ jQuery(document).ready(function (){
         jQuery('#sveaVatNo_div').show();
     });
     
-    // block pressing continue checkout unless getAddresses has been performed and addressSelector set
-    jQuery(".buttonRow .forward").click( function(e) {
-        alert( "clicked");
-        e.preventDefault();
-    });
 });
 
 //
@@ -87,7 +106,7 @@ function getAddresses(){
         data: { SveaAjaxGetAddresses: true, 
                 sveaSSN: jQuery('#sveaSSN').val(),
                 sveaIsCompany: jQuery('#sveaInvoiceField input[type="radio"]:checked').val(),
-                sveaCountryCode: "SE" },    // TODO pass country code correctly
+                sveaCountryCode: customerCountry },
         success: function(msg){
             jQuery('#SveaInvoiceLoader').remove();
             // TODO remove additional addresses from selector on multiple submit?
@@ -103,7 +122,7 @@ function getAddresses(){
                     SveaAjaxSetCustomerInvoiceAddress: true, 
                     SveaAjaxAddressSelectorValue: jQuery('#sveaAddressSelector').val()
                 }, 
-                success: function(msg) { msg; }     // TODO success function can be omitted?
+                success: function(msg) { msg; }
            });
         }
     });

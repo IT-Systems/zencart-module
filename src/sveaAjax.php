@@ -2,8 +2,20 @@
 //
 require('includes/application_top.php');
 
-//
-// perform getAddresses() via php integration package
+/**
+ *  get iso 3166 customerCountry from zencart customer settings
+ */
+if( isset($_POST['SveaAjaxGetCustomerCountry']) ) {
+    global $order;
+    
+    $country = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );    
+    echo $country['countries_iso_code_2'];
+
+}
+
+/**
+ *  perform getAddresses() via php integration package, return dropdown html widget
+ */
 if( isset($_POST['SveaAjaxGetAddresses']) ) {
     
     // Include Svea php integration package files    
@@ -55,65 +67,73 @@ if( isset($_POST['SveaAjaxGetAddresses']) ) {
     $_SESSION['sveaGetAddressesResponse'] = serialize( $response );
 }
 
-//
-// store invoice address in customer address book
+/**
+ * store invoice address in customer address book, return zen address book id used for billing
+ */
 if( isset($_POST['SveaAjaxSetCustomerInvoiceAddress']) ) {
     global $db;
 
-    $addressSelector = $_POST['SveaAjaxAddressSelectorValue'];
+    // have we got an address selector (i.e. a getAddresses country)?
+    if( isset($_POST['SveaAjaxAddressSelectorValue']) ) {
     
-    // Include Svea php integration package files
-    require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
-    $response = unserialize( $_SESSION['sveaGetAddressesResponse'] );
+        $addressSelector = $_POST['SveaAjaxAddressSelectorValue'];
 
-    // find the address corresponding to chosen addressSelector
-    foreach( $response->customerIdentity as $getAddressIdentity ) {
-        if( $getAddressIdentity->addressSelector === $addressSelector ) {
+        // Include Svea php integration package files
+        require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+        $response = unserialize( $_SESSION['sveaGetAddressesResponse'] );
 
-            // does the customer already have the invoice address in her address book?
-            $sqlGetInvoiceAddressBookId =
-                 "SELECT address_book_id FROM " . TABLE_ADDRESS_BOOK . " " .
-                 "WHERE customers_id = '" . intval($_SESSION['customer_id']) . "' " . 
-                 "AND entry_firstname = '" . $getAddressIdentity->firstName . "' " .
-                 "AND entry_lastname = '" . $getAddressIdentity->lastName . "' " .
-                 "AND entry_company = '" . $getAddressIdentity->fullName . "' " .
-                 "AND entry_street_address = '" . $getAddressIdentity->street . "' " .
-                 "AND entry_postcode = '" . strval($getAddressIdentity->zipCode) . "' " .
-                 "AND entry_city = '" . $getAddressIdentity->locality . "' " .
-                 "AND entry_country_id ='" . intval($_SESSION['customer_country_id']) . "'"
-            ;
-            $queryFactoryResult = $db->execute($sqlGetInvoiceAddressBookId);
+        // find the address corresponding to chosen addressSelector
+        foreach( $response->customerIdentity as $getAddressIdentity ) {
+            if( $getAddressIdentity->addressSelector === $addressSelector ) {
 
-            // invoice address not present, add it to address book for this customer
-            $foundInvoiceAddress = $queryFactoryResult->recordCount();
-            
-            if( $foundInvoiceAddress == 0) {    
-                // TODO extend to handle companies with several addresses, see getAddresses above
-                $sqlAddInvoiceAddress = array();
-                $sqlAddInvoiceAddress['customers_id'] = intval($_SESSION['customer_id']);
-                $sqlAddInvoiceAddress['entry_firstname'] = $getAddressIdentity->firstName;
-                $sqlAddInvoiceAddress['entry_lastname'] = $getAddressIdentity->lastName;
-                $sqlAddInvoiceAddress['entry_company'] = $getAddressIdentity->fullName;         // check if company first, else empty string?
-                $sqlAddInvoiceAddress['entry_street_address'] = $getAddressIdentity->street;
-                $sqlAddInvoiceAddress['entry_postcode'] = strval($getAddressIdentity->zipCode);
-                $sqlAddInvoiceAddress['entry_city'] = $getAddressIdentity->locality;
-                $sqlAddInvoiceAddress['entry_country_id'] = intval($_SESSION['customer_country_id']);    // TODO check this vs returned address
+                // does the customer already have the invoice address in her address book?
+                $sqlGetInvoiceAddressBookId =
+                     "SELECT address_book_id FROM " . TABLE_ADDRESS_BOOK . " " .
+                     "WHERE customers_id = '" . intval($_SESSION['customer_id']) . "' " . 
+                     "AND entry_firstname = '" . $getAddressIdentity->firstName . "' " .
+                     "AND entry_lastname = '" . $getAddressIdentity->lastName . "' " .
+                     "AND entry_company = '" . $getAddressIdentity->fullName . "' " .
+                     "AND entry_street_address = '" . $getAddressIdentity->street . "' " .
+                     "AND entry_postcode = '" . strval($getAddressIdentity->zipCode) . "' " .
+                     "AND entry_city = '" . $getAddressIdentity->locality . "' " .
+                     "AND entry_country_id ='" . intval($_SESSION['customer_country_id']) . "'" // TODO get zen country # = ->countryCode
+                ;
+                $queryFactoryResult = $db->execute($sqlGetInvoiceAddressBookId);
 
-                $sqlInsertInvoiceAddressResult = zen_db_perform(TABLE_ADDRESS_BOOK, $sqlAddInvoiceAddress);     // returns true if insert succeeded
+                // invoice address not present, add it to address book for this customer
+                $foundInvoiceAddress = $queryFactoryResult->recordCount();
 
-                // needed as zen_db_perform doesn't provide insert_id
-                if( $sqlInsertInvoiceAddressResult ) {
-                    $queryFactoryResult = $db->execute($sqlGetInvoiceAddressBookId);
-                }   
+                if( $foundInvoiceAddress == 0) {    
+                    $sqlAddInvoiceAddress = array();
+                    $sqlAddInvoiceAddress['customers_id'] = intval($_SESSION['customer_id']);
+                    $sqlAddInvoiceAddress['entry_firstname'] = $getAddressIdentity->firstName;
+                    $sqlAddInvoiceAddress['entry_lastname'] = $getAddressIdentity->lastName;
+                    $sqlAddInvoiceAddress['entry_company'] = $getAddressIdentity->fullName;         // check if company first, else empty string?
+                    $sqlAddInvoiceAddress['entry_street_address'] = $getAddressIdentity->street;
+                    $sqlAddInvoiceAddress['entry_postcode'] = strval($getAddressIdentity->zipCode);
+                    $sqlAddInvoiceAddress['entry_city'] = $getAddressIdentity->locality;
+                    $sqlAddInvoiceAddress['entry_country_id'] = intval($_SESSION['customer_country_id']); // TODO get zen country # = ->countryCode
+
+                    $sqlInsertInvoiceAddressResult = zen_db_perform(TABLE_ADDRESS_BOOK, $sqlAddInvoiceAddress); // returns true if insert succeeded
+
+                    // needed as zen_db_perform doesn't provide insert_id
+                    if( $sqlInsertInvoiceAddressResult ) {
+                        $queryFactoryResult = $db->execute($sqlGetInvoiceAddressBookId);
+                    }   
+                }
+
+                // get latest address book entry for this customer, use as billing address
+                $invoiceAddressBookId = $queryFactoryResult->fields['address_book_id'];
+                $_SESSION['billto'] = $invoiceAddressBookId;
+
+                echo $invoiceAddressBookId;
             }
-
-            // get latest address book entry for this customer, use as shipping/delivery address
-            $invoiceAddressBookId = $queryFactoryResult->fields['address_book_id'];
-            $_SESSION['sendto'] = $_SESSION['billto'] = $invoiceAddressBookId;
-
-            // then remove this address in cleanup, after having stored the order in the shop db.
-            echo $invoiceAddressBookId;
         }
+    }
+    
+    // no addressSelector, so we respect the shipping/billing addresses for now.
+    else {
+        echo $_SESSION['billto'];
     }
 }
 
