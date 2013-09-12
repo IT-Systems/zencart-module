@@ -490,10 +490,10 @@ class sveawebpay_invoice {
             }
   
             //Split street address and house no
-            $pattern = "/^(?:\s)*([0-9]*[A-Za-z]*\s*[A-Za-z]+)(?:\s*)([0-9]*\s*[A-Za-z]*[^\s])?(?:\s)*$/"; // 2 groups, matching from start/end
+            $pattern ="/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*[^\s])?(?:\s)*$/"; 
             $myStreetAddress = Array();
             preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
-            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = "0"; }  // TODO handle case Street w/o number in package?!
+            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }  // TODO handle case Street w/o number in package?!
   
             // set common fields
             $swp_customer
@@ -560,10 +560,10 @@ class sveawebpay_invoice {
             }
 
             //Split street address and house no
-            $pattern = "/^(?:\s)*([0-9]*[A-Za-z]*\s*[A-Za-z]+)(?:\s*)([0-9]*\s*[A-Za-z]*[^\s])?(?:\s)*$/"; // 2 groups, matching from start/end
+            $pattern ="/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*[^\s])?(?:\s)*$/"; 
             $myStreetAddress = Array();
             preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
-            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = "0"; }  // TODO handle case Street w/o number in package?!
+            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }  // TODO handle case Street w/o number in package?!
 
             // set common fields
             $swp_customer          
@@ -645,13 +645,16 @@ class sveawebpay_invoice {
             // TODO check default zencart CHARSET define (should equal used database collation, i.e. utf-8). 
             // if not utf-8, must handle that when parsing swp_response (in utf-8) -- use utf8_decode(response-> ?)
             // also, check that php 5.3 and 5.4+ behaves the same in zen_output_string ( htmlspecialchars() defaults to utf-8 from 5.4)
-            $order->billing['street_address'] = $order->delivery['street_address'] = $swp_response->customerIdentity->street;
+            $order->billing['street_address'] = $order->delivery['street_address'] = 
+                    $swp_response->customerIdentity->street . " " . $swp_response->customerIdentity->houseNumber;
             $order->billing['suburb'] = $order->delivery['suburb'] = $swp_response->customerIdentity->coAddress;
             $order->billing['city'] = $order->delivery['city'] = $swp_response->customerIdentity->locality;
             $order->billing['postcode'] = $order->delivery['postcode'] = $swp_response->customerIdentity->zipCode;
             $order->billing['state'] = $order->delivery['state'] = '';  // "state" is not applicable in SWP countries
-            $order->billing['country'] = $order->delivery['country'] = '';   // TODO, where to get country full name?
-
+            
+            $order->billing['country']['title'] = $order->delivery['country']['title'] = // country name only needed for address
+                    $this->getCountryName( $swp_response->customerIdentity->countryCode );
+            
             // save the response object 
             $_SESSION["swp_response"] = serialize($swp_response);
         }
@@ -856,6 +859,262 @@ class sveawebpay_invoice {
         }
     }
 
+    function getCountryName( $iso3166 ) {
+        
+        // countrynames from https://github.com/johannesl/Internationalization, thanks!
+        $countrynames = array(
+            "AF"=>"Afghanistan",
+            "AX"=>"\xc3\x85land Islands",
+            "AL"=>"Albania",
+            "DZ"=>"Algeria",
+            "AS"=>"American Samoa",
+            "AD"=>"Andorra",
+            "AO"=>"Angola",
+            "AI"=>"Anguilla",
+            "AQ"=>"Antarctica",
+            "AG"=>"Antigua and Barbuda",
+            "AR"=>"Argentina",
+            "AM"=>"Armenia",
+            "AW"=>"Aruba",
+            "AU"=>"Australia",
+            "AT"=>"Austria",
+            "AZ"=>"Azerbaijan",
+            "BS"=>"Bahamas",
+            "BH"=>"Bahrain",
+            "BD"=>"Bangladesh",
+            "BB"=>"Barbados",
+            "BY"=>"Belarus",
+            "BE"=>"Belgium",
+            "BZ"=>"Belize",
+            "BJ"=>"Benin",
+            "BM"=>"Bermuda",
+            "BT"=>"Bhutan",
+            "BO"=>"Bolivia, Plurinational State of",
+            "BQ"=>"Bonaire, Sint Eustatius and Saba",
+            "BA"=>"Bosnia and Herzegovina",
+            "BW"=>"Botswana",
+            "BV"=>"Bouvet Island",
+            "BR"=>"Brazil",
+            "IO"=>"British Indian Ocean Territory",
+            "BN"=>"Brunei Darussalam",
+            "BG"=>"Bulgaria",
+            "BF"=>"Burkina Faso",
+            "BI"=>"Burundi",
+            "KH"=>"Cambodia",
+            "CM"=>"Cameroon",
+            "CA"=>"Canada",
+            "CV"=>"Cape Verde",
+            "KY"=>"Cayman Islands",
+            "CF"=>"Central African Republic",
+            "TD"=>"Chad",
+            "CL"=>"Chile",
+            "CN"=>"China",
+            "CX"=>"Christmas Island",
+            "CC"=>"Cocos (Keeling) Islands",
+            "CO"=>"Colombia",
+            "KM"=>"Comoros",
+            "CG"=>"Congo",
+            "CD"=>"Congo, The Democratic Republic of the",
+            "CK"=>"Cook Islands",
+            "CR"=>"Costa Rica",
+            "CI"=>"C\xc3\xb4te d'Ivoire",
+            "HR"=>"Croatia",
+            "CU"=>"Cuba",
+            "CW"=>"Cura\xc3\xa7ao",
+            "CY"=>"Cyprus",
+            "CZ"=>"Czech Republic",
+            "DK"=>"Denmark",
+            "DJ"=>"Djibouti",
+            "DM"=>"Dominica",
+            "DO"=>"Dominican Republic",
+            "EC"=>"Ecuador",
+            "EG"=>"Egypt",
+            "SV"=>"El Salvador",
+            "GQ"=>"Equatorial Guinea",
+            "ER"=>"Eritrea",
+            "EE"=>"Estonia",
+            "ET"=>"Ethiopia",
+            "FK"=>"Falkland Islands (Malvinas)",
+            "FO"=>"Faroe Islands",
+            "FJ"=>"Fiji",
+            "FI"=>"Finland",
+            "FR"=>"France",
+            "GF"=>"French Guiana",
+            "PF"=>"French Polynesia",
+            "TF"=>"French Southern Territories",
+            "GA"=>"Gabon",
+            "GM"=>"Gambia",
+            "GE"=>"Georgia",
+            "DE"=>"Germany",
+            "GH"=>"Ghana",
+            "GI"=>"Gibraltar",
+            "GR"=>"Greece",
+            "GL"=>"Greenland",
+            "GD"=>"Grenada",
+            "GP"=>"Guadeloupe",
+            "GU"=>"Guam",
+            "GT"=>"Guatemala",
+            "GG"=>"Guernsey",
+            "GN"=>"Guinea",
+            "GW"=>"Guinea-Bissau",
+            "GY"=>"Guyana",
+            "HT"=>"Haiti",
+            "HM"=>"Heard Island and McDonald Islands",
+            "VA"=>"Holy See (Vatican City State)",
+            "HN"=>"Honduras",
+            "HK"=>"Hong Kong",
+            "HU"=>"Hungary",
+            "IS"=>"Iceland",
+            "IN"=>"India",
+            "ID"=>"Indonesia",
+            "IR"=>"Iran, Islamic Republic of",
+            "IQ"=>"Iraq",
+            "IE"=>"Ireland",
+            "IM"=>"Isle of Man",
+            "IL"=>"Israel",
+            "IT"=>"Italy",
+            "JM"=>"Jamaica",
+            "JP"=>"Japan",
+            "JE"=>"Jersey",
+            "JO"=>"Jordan",
+            "KZ"=>"Kazakhstan",
+            "KE"=>"Kenya",
+            "KI"=>"Kiribati",
+            "KP"=>"Korea, Democratic People's Republic of",
+            "KR"=>"Korea, Republic of",
+            "KW"=>"Kuwait",
+            "KG"=>"Kyrgyzstan",
+            "LA"=>"Lao People's Democratic Republic",
+            "LV"=>"Latvia",
+            "LB"=>"Lebanon",
+            "LS"=>"Lesotho",
+            "LR"=>"Liberia",
+            "LY"=>"Libya",
+            "LI"=>"Liechtenstein",
+            "LT"=>"Lithuania",
+            "LU"=>"Luxembourg",
+            "MO"=>"Macao",
+            "MK"=>"Macedonia, The Former Yugoslav Republic of",
+            "MG"=>"Madagascar",
+            "MW"=>"Malawi",
+            "MY"=>"Malaysia",
+            "MV"=>"Maldives",
+            "ML"=>"Mali",
+            "MT"=>"Malta",
+            "MH"=>"Marshall Islands",
+            "MQ"=>"Martinique",
+            "MR"=>"Mauritania",
+            "MU"=>"Mauritius",
+            "YT"=>"Mayotte",
+            "MX"=>"Mexico",
+            "FM"=>"Micronesia, Federated States of",
+            "MD"=>"Moldova, Republic of",
+            "MC"=>"Monaco",
+            "MN"=>"Mongolia",
+            "ME"=>"Montenegro",
+            "MS"=>"Montserrat",
+            "MA"=>"Morocco",
+            "MZ"=>"Mozambique",
+            "MM"=>"Myanmar",
+            "NA"=>"Namibia",
+            "NR"=>"Nauru",
+            "NP"=>"Nepal",
+            "NL"=>"Netherlands",
+            "NC"=>"New Caledonia",
+            "NZ"=>"New Zealand",
+            "NI"=>"Nicaragua",
+            "NE"=>"Niger",
+            "NG"=>"Nigeria",
+            "NU"=>"Niue",
+            "NF"=>"Norfolk Island",
+            "MP"=>"Northern Mariana Islands",
+            "NO"=>"Norway",
+            "OM"=>"Oman",
+            "PK"=>"Pakistan",
+            "PW"=>"Palau",
+            "PS"=>"Palestine, State of",
+            "PA"=>"Panama",
+            "PG"=>"Papua New Guinea",
+            "PY"=>"Paraguay",
+            "PE"=>"Peru",
+            "PH"=>"Philippines",
+            "PN"=>"Pitcairn",
+            "PL"=>"Poland",
+            "PT"=>"Portugal",
+            "PR"=>"Puerto Rico",
+            "QA"=>"Qatar",
+            "RE"=>"R\xc3\xa9union",
+            "RO"=>"Romania",
+            "RU"=>"Russian Federation",
+            "RW"=>"Rwanda",
+            "BL"=>"Saint Barth\xc3\xa9lemy",
+            "SH"=>"Saint Helena, Ascension and Tristan Da Cunha",
+            "KN"=>"Saint Kitts and Nevis",
+            "LC"=>"Saint Lucia",
+            "MF"=>"Saint Martin (French part)",
+            "PM"=>"Saint Pierre and Miquelon",
+            "VC"=>"Saint Vincent and the Grenadines",
+            "WS"=>"Samoa",
+            "SM"=>"San Marino",
+            "ST"=>"Sao Tome and Principe",
+            "SA"=>"Saudi Arabia",
+            "SN"=>"Senegal",
+            "RS"=>"Serbia",
+            "SC"=>"Seychelles",
+            "SL"=>"Sierra Leone",
+            "SG"=>"Singapore",
+            "SX"=>"Sint Maarten (Dutch part)",
+            "SK"=>"Slovakia",
+            "SI"=>"Slovenia",
+            "SB"=>"Solomon Islands",
+            "SO"=>"Somalia",
+            "ZA"=>"South Africa",
+            "GS"=>"South Georgia and the South Sandwich Islands",
+            "SS"=>"South Sudan",
+            "ES"=>"Spain",
+            "LK"=>"Sri Lanka",
+            "SD"=>"Sudan",
+            "SR"=>"Suriname",
+            "SJ"=>"Svalbard and Jan Mayen",
+            "SZ"=>"Swaziland",
+            "SE"=>"Sweden",
+            "CH"=>"Switzerland",
+            "SY"=>"Syrian Arab Republic",
+            "TW"=>"Taiwan, Province of China",
+            "TJ"=>"Tajikistan",
+            "TZ"=>"Tanzania, United Republic of",
+            "TH"=>"Thailand",
+            "TL"=>"Timor-Leste",
+            "TG"=>"Togo",
+            "TK"=>"Tokelau",
+            "TO"=>"Tonga",
+            "TT"=>"Trinidad and Tobago",
+            "TN"=>"Tunisia",
+            "TR"=>"Turkey",
+            "TM"=>"Turkmenistan",
+            "TC"=>"Turks and Caicos Islands",
+            "TV"=>"Tuvalu",
+            "UG"=>"Uganda",
+            "UA"=>"Ukraine",
+            "AE"=>"United Arab Emirates",
+            "GB"=>"United Kingdom",
+            "US"=>"United States",
+            "UM"=>"United States Minor Outlying Islands",
+            "UY"=>"Uruguay",
+            "UZ"=>"Uzbekistan",
+            "VU"=>"Vanuatu",
+            "VE"=>"Venezuela, Bolivarian Republic of",
+            "VN"=>"Viet Nam",
+            "VG"=>"Virgin Islands, British",
+            "VI"=>"Virgin Islands, U.S.",
+            "WF"=>"Wallis and Futuna",
+            "EH"=>"Western Sahara",
+            "YE"=>"Yemen",
+            "ZM"=>"Zambia",
+            "ZW"=>"Zimbabwe"
+        );
+    
+        return( array_key_exists( $iso3166, $countrynames) ? $countrynames[$iso3166] : $iso3166 );
+    }
 }
-
 ?>
