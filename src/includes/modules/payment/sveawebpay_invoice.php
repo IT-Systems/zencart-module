@@ -618,21 +618,23 @@ class sveawebpay_invoice {
 
             // TODO no errno for certain errors gives strange error message
             $payment_error_return = 'payment_error=sveawebpay_invoice&payment_errno=' .
-                                    $this->responseCodes($swp_response->CreateOrderEuResult->ResultCode);
+                                    $swp_response->resultcode;
 
             zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return)); // error handled in selection() above
         }
 
         //
         // payment request succeded, store response in session
-        if ($swp_response->accepted === true) {
+        if ($swp_response->accepted == true) {
             
             //
-            // set zencart billing/shipping address to invoice address from payment request response
+            // set zencart billing address to invoice address from payment request response
 
             // is private individual?
-            if( $swp_response->customerIdentity->customerType === "Individual") {
-                $order->billing['name'] = $swp_response->customerIdentity->fullName;
+            if( $swp_response->customerIdentity->customerType == "Individual") {
+                $order->billing['firstname'] = $swp_response->customerIdentity->fullName; // workaround for zen_address_format not showing 'name' in order information view/
+                $order->billing['lastname'] = "";
+                $order->billing['company'] = "";
             }
             else {
                 $order->billing['company'] = $swp_response->customerIdentity->fullName;
@@ -778,7 +780,6 @@ class sveawebpay_invoice {
         return number_format(zen_round($value * $currencies->currencies[$currency]['value'], $decimal_places), 2, $decimal_symbol, '');
     }
 
-    // TODO look over error codes, match with webservices api docs
     //Error Responses
     function responseCodes($err) {
         switch ($err) {
@@ -875,7 +876,7 @@ class sveawebpay_invoice {
                 break;   
             
             default :
-                return ERROR_CODE_DEFAULT . $err;
+                return ERROR_CODE_DEFAULT;
                 break;
         }
     }
