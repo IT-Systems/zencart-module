@@ -6,11 +6,9 @@ require('includes/application_top.php');
  *  get iso 3166 customerCountry from zencart customer settings
  */
 if( isset($_POST['SveaAjaxGetCustomerCountry']) ) {
-    global $order;
     
     $country = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );    
     echo $country['countries_iso_code_2'];
-
 }
 
 /**

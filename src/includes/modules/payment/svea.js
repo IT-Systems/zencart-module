@@ -1,28 +1,29 @@
 jQuery(document).ready(function (){
-    
-    
-    //get country
-    var customerCountry = "";
-    jQuery.ajax({
-        type: "POST",
-        url: "sveaAjax.php",
-        data: { 
-            SveaAjaxGetCustomerCountry: true, 
-        }, 
-        success: function(msg) { 
-            customerCountry = msg;
+
+    // store customerCountry in attribute
+     jQuery.ajax({
+         type: "POST",
+         url: "sveaAjax.php",
+        data: 
+        { 
+            SveaAjaxGetCustomerCountry: true 
         }
-    });
-    
+     }).done( function( msg ) {
+          jQuery('#sveaSSN').attr("customerCountry",msg);
+     });
+
     // show fields depending on payment method selected
     jQuery("input[type=radio][name='payment']").prop('checked', false);
     jQuery("input[type=radio][name='payment']").click( function() {
         
-        var checked_payment = jQuery("input:radio[name=payment]:checked").val();
+    var checked_payment = jQuery("input:radio[name=payment]:checked").val();
 
         //If Svea invoice is selected
         if (checked_payment === 'sveawebpay_invoice'){
-            
+              
+            // get customerCountry
+            customerCountry = jQuery('#sveaSSN').attr("customerCountry");
+              
             // hide billing address in getAddresses countries
             if( (customerCountry === 'SE') ||
                 (customerCountry === 'NO') || 
@@ -90,40 +91,42 @@ jQuery(document).ready(function (){
         jQuery('#sveaVatNo_div').show();
     });
     
+
+    //
+    // new getAddresses() that uses the integration package
+    function getAddresses(){
+
+        // Show loader
+        jQuery('#sveaSSN').after('<img src="images/svea_indicator.gif" id="SveaInvoiceLoader" />');
+
+        // Do getAddresses call 
+        jQuery.ajax({
+            type: "POST",
+            url: "sveaAjax.php",
+            data: { SveaAjaxGetAddresses: true, 
+                    sveaSSN: jQuery('#sveaSSN').val(),
+                    sveaIsCompany: jQuery('#sveaInvoiceField input[type="radio"]:checked').val(),
+                    sveaCountryCode: jQuery('#sveaSSN').attr("customerCountry") // stored countryCode
+            },
+            success: function(msg){
+                jQuery('#SveaInvoiceLoader').remove();
+                // TODO remove additional addresses from selector on multiple submit?
+                jQuery("#sveaAddressSelector").append(msg);
+                jQuery('label[for="sveaAddressSelector"]').show();
+                jQuery("#sveaAddressSelector").show();
+
+                // update billing/shipping addresses in db for display on checkout_confirmation page
+                jQuery.ajax({
+                    type: "POST",
+                    url: "sveaAjax.php",
+                    data: { 
+                        SveaAjaxSetCustomerInvoiceAddress: true, 
+                        SveaAjaxAddressSelectorValue: jQuery('#sveaAddressSelector').val()
+                    }, 
+                    success: function(msg) { msg; }
+               });
+            }
+        });
+    }
+
 });
-
-//
-// new getAddresses() that uses the integration package
-function getAddresses(){
-  
-    // Show loader
-    jQuery('#sveaSSN').after('<img src="images/svea_indicator.gif" id="SveaInvoiceLoader" />');
-
-    // Do getAddresses call 
-    jQuery.ajax({
-        type: "POST",
-        url: "sveaAjax.php",
-        data: { SveaAjaxGetAddresses: true, 
-                sveaSSN: jQuery('#sveaSSN').val(),
-                sveaIsCompany: jQuery('#sveaInvoiceField input[type="radio"]:checked').val(),
-                sveaCountryCode: customerCountry },
-        success: function(msg){
-            jQuery('#SveaInvoiceLoader').remove();
-            // TODO remove additional addresses from selector on multiple submit?
-            jQuery("#sveaAddressSelector").append(msg);
-            jQuery('label[for="sveaAddressSelector"]').show();
-            jQuery("#sveaAddressSelector").show();
-            
-            // update billing/shipping addresses in db for display on checkout_confirmation page
-            jQuery.ajax({
-                type: "POST",
-                url: "sveaAjax.php",
-                data: { 
-                    SveaAjaxSetCustomerInvoiceAddress: true, 
-                    SveaAjaxAddressSelectorValue: jQuery('#sveaAddressSelector').val()
-                }, 
-                success: function(msg) { msg; }
-           });
-        }
-    });
-}

@@ -782,7 +782,10 @@ class sveawebpay_invoice {
     //Error Responses
     function responseCodes($err) {
         switch ($err) {
-            case "CusomterCreditRejected" :
+            
+            // TODO can these be removed?
+            /*
+            case "CustomerCreditRejected" :
                 return ERROR_CODE_1;
                 break;
             case "CustomerOverCreditLimit" :
@@ -809,6 +812,12 @@ class sveawebpay_invoice {
             case "CustomerCreditNoSuchEntity" :
                 return ERROR_CODE_9;
                 break;
+            */
+            
+            // EU error codes
+            case "20000" :
+                return ERROR_CODE_20000;
+                break;
             case "20001" :
                 return ERROR_CODE_20001;
                 break;
@@ -827,15 +836,14 @@ class sveawebpay_invoice {
             case "20006" :
                 return ERROR_CODE_20006;
                 break;
-            case "20007" :
-                return ERROR_CODE_20007;
+            case "20013" :
+                return ERROR_CODE_20013;
                 break;
-            case "20008" :
-                return ERROR_CODE_20008;
+
+            case "24000" :
+                return ERROR_CODE_24000;
                 break;
-            case "20000" :
-                return ERROR_CODE_20000;
-                break;
+            
             case "30000" :
                 return ERROR_CODE_30000;
                 break;
@@ -848,6 +856,24 @@ class sveawebpay_invoice {
             case "30003" :
                 return ERROR_CODE_30003;
                 break;
+
+            case "40000" :
+                return ERROR_CODE_40000;
+                break;            
+            case "40001" :
+                return ERROR_CODE_40001;
+                break;   
+            case "40002" :
+                return ERROR_CODE_40002;
+                break;   
+            case "40004" :
+                return ERROR_CODE_40004;
+                break;   
+            
+            case "50000" :
+                return ERROR_CODE_50000;
+                break;   
+            
             default :
                 return ERROR_CODE_DEFAULT . $err;
                 break;
