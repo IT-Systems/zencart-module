@@ -1,3 +1,11 @@
+/**
+ * Svea WebPay Zencart module svea.js
+ * javascript used to pass Svea WebPay payment method credentials et al
+ * 
+ * Version 4.0 - Zen Cart
+ * Kristian Grossman-Madsen, Shaho Ghobadi
+ */
+
 jQuery(document).ready(function (){
 
     // store customerCountry in attribute
@@ -12,13 +20,15 @@ jQuery(document).ready(function (){
           jQuery('#sveaSSN').attr("customerCountry",msg);
      });
 
-    // show fields depending on payment method selected
+      // first, uncheck all payment buttons
     jQuery("input[type=radio][name='payment']").prop('checked', false);
+    
+    // show fields depending on payment method selected  
     jQuery("input[type=radio][name='payment']").click( function() {
         
     var checked_payment = jQuery("input:radio[name=payment]:checked").val();
 
-        //If Svea invoice is selected
+    // Svea invoice payment method selected
         if (checked_payment === 'sveawebpay_invoice'){
               
             // get customerCountry
@@ -57,7 +67,8 @@ jQuery(document).ready(function (){
                 });
             });
         }
-
+        
+        // Svea invoice payment method selected
         else if (checked_payment === 'sveawebpay_partpay') {    
             // TODO
         }
