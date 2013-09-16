@@ -204,7 +204,32 @@ class sveawebpay_invoice {
                                     '<input type="text" name="sveaVatNo" id="sveaVatNo" maxlength="14" />' . 
                                 '</div><br />';
         }
-       
+
+        //
+        // add information about handling fee for invoice payment method
+        if (isset($this->handling_fee) && $this->handling_fee > 0) {
+            $paymentfee_cost = $this->handling_fee;
+
+            // is the handling fee a percentage?
+            if (substr($paymentfee_cost, -1) == '%')
+                $fields[] = array(  'title' => sprintf(MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $paymentfee_cost), 
+                                    'field' => $paymentfee_cost);
+
+            // no, handling fee is a fixed amount
+            else {
+                if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0) {
+                    $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
+                    
+                    // calculate tax based on deliver country? TODO use zen cart tax zone??
+                    $paymentfee_tax = 
+                        $paymentfee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
+                } 
+            }
+            
+            $sveaHandlingFee =
+                '<br />' . sprintf( MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $currencies->format($paymentfee_cost + $paymentfee_tax));
+        }
+        
         $sveaError = '<br /><span id="sveaSSN_error_invoice" style="color:red"></span>';
    
         // create and add the field to be shown by our js when we select SveaInvoice payment method
@@ -216,33 +241,13 @@ class sveawebpay_invoice {
                             $sveaInitialsDiv .      //  NL
                             $sveaBirthDateDiv .     //  NL, DE
                             $sveaVatNoDiv .         // NL, DE
+                            $sveaHandlingFee .
                             // FI, NL, DE also uses customer address data from zencart
                         '</div>';
        
         $fields[] = array('title' => '', 'field' => '<br />' . $sveaField . $sveaError);
 
-        //
-        // add information about handling fee for invoice payment method
-        if (isset($this->handling_fee) && $this->handling_fee > 0) {
-            $paymentfee_cost = $this->handling_fee;
-
-            // is the handling fee a percentage?
-            if (substr($paymentfee_cost, -1) == '%')
-                $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $paymentfee_cost), 'field' => $paymentfee_cost);
-
-            // no, handling fee is a fixed amount
-            else {
-                if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0) {
-                    $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
-                    
-                    // calculate tax based on deliver country? TODO use zen cart tax zone??
-                    $paymentfee_tax = $paymentfee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
-                }
-                
-                $fields[] = array( 'title' =>  '', 'field' =>  '<br />' . 
-                                sprintf( MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $currencies->format($paymentfee_cost + $paymentfee_tax)) );
-            }
-        }
+ 
               
         // return module fields to zencart
         return array(   'id' => $this->code,
