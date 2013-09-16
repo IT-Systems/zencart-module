@@ -15,24 +15,25 @@ if( isset($_POST['SveaAjaxGetCustomerCountry']) ) {
  *  perform getAddresses() via php integration package, return dropdown html widget
  */
 if( isset($_POST['SveaAjaxGetAddresses']) ) {
-    
+
     // Include Svea php integration package files    
     require('includes/modules/payment/svea_v4/Includes.php'); 
 
-    $ssn = $_POST['sveaSSN'];
-    $country = $_POST['sveaCountryCode'];
+    $ssn = isset( $_POST['sveaSSN'] ) ? $_POST['sveaSSN'] : "swp_not_set";
+    $country = isset( $_POST['sveaCountryCode'] ) ? $_POST['sveaCountryCode'] : "swp_not_set";
+    $isCompany = isset( $_POST['sveaIsCompany'] ) ? $_POST['sveaIsCompany'] : "swp_not_set";
 
     // private individual
-    if( isset($_POST['sveaIsCompany']) && $_POST['sveaIsCompany'] === "false" ) {
+    if( $isCompany === 'false' ) {
         $response = WebPay::getAddresses()
             ->setOrderTypeInvoice()
             ->setCountryCode( $country )              
             ->setIndividual( $ssn )
-            ->doRequest();    
+            ->doRequest();
     }
-    
+
     // company/organisation
-    if( isset($_POST['sveaIsCompany']) && $_POST['sveaIsCompany'] === 'true' ) {
+    if(  $isCompany === 'true' ) {
         $response = WebPay::getAddresses()
             ->setOrderTypeInvoice()
             ->setCountryCode( $country )

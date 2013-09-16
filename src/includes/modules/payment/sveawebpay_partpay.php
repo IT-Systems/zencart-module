@@ -203,10 +203,7 @@ class sveawebpay_partpay {
                                 '</div><br />';
         }
         
-        $sveaPaymentOptionsPP = FORM_TEXT_GET_PAYPLAN . '<br /><select name="sveaPaymentOptionsPP" id="sveaPaymentOptionsPP" style="display:none"></select><br />';
-        //+ add the handlingfee info if applicable
-       
-        
+        $sveaPaymentOptionsPP = FORM_TEXT_GET_PAYPLAN . '<br /><select name="sveaPaymentOptionsPP" id="sveaPaymentOptionsPP" style="display:none"></select><br />'; 
         
         $sveaError = '<br /><span id="sveaSSN_error_invoicePP" style="color:red"></span>';
    
