@@ -17,7 +17,8 @@ jQuery(document).ready(function (){
             SveaAjaxGetCustomerCountry: true 
         }
      }).done( function( msg ) {
-          jQuery('#sveaSSN').attr("customerCountry",msg);
+        jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry",msg);
+        jQuery('#pmt-sveawebpay_partpay').attr("sveaCustomerCountry",msg);       
      });
 
       // first, uncheck all payment buttons
@@ -26,14 +27,15 @@ jQuery(document).ready(function (){
     // show fields depending on payment method selected  
     jQuery("input[type=radio][name='payment']").click( function() {
         
-        var checked_payment = jQuery("input:radio[name=payment]:checked").val();
-
         // Svea invoice payment method selected
-        if (checked_payment === 'sveawebpay_invoice'){
+        var checked_payment = jQuery("input:radio[name=payment]:checked").val();
+        switch( checked_payment ) {
+                
+            case 'sveawebpay_invoice':
               
             // get customerCountry
-            customerCountry = jQuery('#sveaSSN').attr("customerCountry");
-              
+            var customerCountry = jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry");
+            
             // hide billing, invoice fields in getAddress countries
             if( (customerCountry === 'SE') ||
                 (customerCountry === 'NO') || 
@@ -65,14 +67,14 @@ jQuery(document).ready(function (){
                     success: function(msg) { msg; }
                 });
             });
-        }
+            break; //case 'sveawebpay_invoice':
         
-        // Svea invoice payment method selected
-        if(checked_payment === 'sveawebpay_partpay') {
+            // Svea invoice payment method selected
+            case 'sveawebpay_partpay':
 
             // get customerCountry
-            customerCountry = jQuery('#sveaSSN').attr("customerCountry");
-            alert(customerCountry);
+            var customerCountry = jQuery('#pmt-sveawebpay_partpay').attr("sveaCustomerCountry");
+ console.log("cp:cc: " + customerCountry); //TODO remove
             // hide billing, invoice fields in getAddress countries
             if( (customerCountry === 'SE') ||
                 (customerCountry === 'NO') || 
@@ -104,23 +106,20 @@ jQuery(document).ready(function (){
                     success: function(msg) { msg; }
                 });
             });
-        }
+            break; //case 'sveawebpay_partpay':
         
-        //If other payment methods are selected, hide all svea related    
-        else{
-            // show billing address if getAddresses countries
-            if( (customerCountry  === 'SE') ||
-                (customerCountry === 'NO') || 
-                (customerCountry === 'DK') ) 
-            {
-                jQuery('#checkoutPaymentHeadingAddress').show();
-                jQuery('#checkoutBillto').show();
-                jQuery('#checkoutPayment .floatingBox').show();
-            }
-
+            //If other payment methods are selected, hide all svea related    
+            default:
+                
+            // show billing address if hidden
+            jQuery('#checkoutPaymentHeadingAddress').show();
+            jQuery('#checkoutBillto').show();
+            jQuery('#checkoutPayment .floatingBox').show();
+            
             // hide svea payment methods
             jQuery('#sveaInvoiceField').hide();
             jQuery('#sveaPartPayField').hide();
+            break; //default:
         }
     });
 
@@ -151,7 +150,7 @@ jQuery(document).ready(function (){
             data: { SveaAjaxGetAddresses: true, 
                     sveaSSN: jQuery('#sveaSSN').val(),
                     sveaIsCompany: jQuery('#sveaInvoiceField input[type="radio"]:checked').val(),
-                    sveaCountryCode: jQuery('#sveaSSN').attr("customerCountry") // stored countryCode
+                    sveaCountryCode: jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry") // stored countryCode
             },
             success: function(msg){
                 jQuery('#SveaInvoiceLoader').remove();
