@@ -239,103 +239,164 @@ class sveawebpay_partpay {
         return false;
     }
 
+        /** process_button() is called from tpl_checkout_confirmation.php in
+     *  includes/templates/template_default/templates when we press the
+     *  continue checkout button after having selected payment method and 
+     *  entered required payment method input.
+     * 
+     *  Here we prepare to populate the order object by creating the 
+     *  WebPayItem::orderRow objects that make up the order.
+     */
+    
     function process_button() {
 
         global $db, $order, $order_totals, $language;
 
-
         require('includes/modules/payment/svea/svea.php');
 
-        //Get the order
+        //
+        // handle postback of payment method info fields, if present
+        $post_sveaSSN = isset($_POST['sveaSSNPP']) ? $_POST['sveaSSNPP'] : "swp_not_set" ;
+        $post_sveaSSNFI = isset($_POST['sveaSSNFIPP']) ? $_POST['sveaSSNFIPP'] : "swp_not_set" ;
+     
+        $post_sveaAddressSelector = isset($_POST['sveaAddressSelectorPP']) ? $_POST['sveaAddressSelectorPP'] : "swp_not_set";      
+
+        $post_sveaBirthDay = isset($_POST['sveaBirthDayPP']) ? $_POST['sveaBirthDayPP'] : "swp_not_set";
+        $post_sveaBirthMonth = isset($_POST['sveaBirthMonthPP']) ? $_POST['sveaBirthMonthPP'] : "swp_not_set";
+        $post_sveaBirthYear = isset($_POST['sveaBirthYearPP']) ? $_POST['sveaBirthYearPP'] : "swp_not_set";
+        $post_sveaInitials = isset($_POST['sveaInitialsPP']) ? $_POST['sveaInitialsPP'] : "swp_not_set" ;
+        
+        $_SESSION['sveaPaymentOptionsPP'] = isset($_POST['sveaPaymentOptionsPP']) ? $_POST['sveaPaymentOptionsPP'] : "swp_not_set" ;
+        
+        
+        // calculate the order number
         $new_order_rs = $db->Execute("select orders_id from " . TABLE_ORDERS . " order by orders_id desc limit 1");
         $new_order_field = $new_order_rs->fields;
+        $client_order_number = ($new_order_field['orders_id'] + 1) . '-' . time();
 
         // localization parameters
         $user_country = $order->billing['country']['iso_code_2'];
+        
         $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
         $user_language = $user_language->fields['code'];
-
-
-        // switch to default currency if the customers currency is not supported
+    
+         // switch to default currency if the customers currency is not supported
         $currency = $order->info['currency'];
-        if (!in_array($currency, $this->allowed_currencies))
+        if (!in_array($currency, $this->allowed_currencies)) {
             $currency = $this->default_currency;
-
-
-        // we'll store the generated orderid in a session variable so we can check
-        // it when returning from payment gateway for security reasons:
-        // Set up SSN and company
-        $_SESSION['swp_orderid'] = $hosted_params['OrderId'];
-
-
-        /*         * * Set up The request Array ** */
-
-        $i = 0;
-        // Order rows for Nordic
-        foreach ($order->products as $productId => $product) {
-            $i++;
-            $orderRows = Array(
-                "ClientOrderRowNr" => $i,
-                "Description" => $product['name'],
-                "PricePerUnit" => $this->convert_to_currency(round($product['final_price'], 2), $currency),
-                "NrOfUnits" => $product['qty'],
-                "Unit" => "st",
-                "VatPercent" => $product['tax'],
-                "DiscountPercent" => 0
-            );
-
-            if (isset($clientInvoiceRows)) {
-
-                $clientInvoiceRows[$productId] = $orderRows;
-            } else {
-                $clientInvoiceRows[] = $orderRows;
-            }
         }
+        
+        // Include Svea php integration package files    
+        require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
+        // Create and initialize order object, using either test or production configuration
+        $swp_order = WebPay::createOrder() // TODO uses default testmode config for now
+            ->setCountryCode( $user_country )
+            ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
+            ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
+            ->setOrderDate(date('c'))                      //Required for synchronous payments -- TODO check format "2012-12-12"
+        ;
 
+        //
+        // for each item in cart, create WebPayItem::orderRow objects and add to order
+        foreach ($order->products as $productId => $product) {
 
-        // handle order totals
+            $amount_ex_vat = $this->convert_to_currency(round($product['final_price'], 2), $currency);
+
+            $swp_order->addOrderRow(
+                    WebPayItem::orderRow()
+                            ->setQuantity($product['qty'])          //Required
+                            ->setAmountExVat($amount_ex_vat)          //Optional, see info above
+                            //->setAmountIncVat(125.00)               //Optional, see info above
+                            ->setVatPercent(intval($product['tax']))  //Optional, see info above
+                            //->setArticleNumber()                    //Optional
+                            ->setDescription($product['name'])        //Optional
+                            //->setName($product['model'])             //Optional
+                            //->setUnit("st")                           //Optional  //TODO hardcoded?
+                            //->setDiscountPercent(0)                   //Optional  //TODO hardcoded
+            );
+        }
+       
+        //        
+        // handle order total modules 
+        // i.e shipping fee, handling fee items
         foreach ($order_totals as $ot_id => $order_total) {
-            $current_row++;
+          
             switch ($order_total['code']) {
+                case in_array(  $order_total['code'], 
+                                $this->ignore_list):
                 case 'ot_subtotal':
                 case 'ot_total':
                 case 'ot_tax':
-                case in_array($order_total['code'], $this->ignore_list):
-                    // do nothing for these
-                    $current_row--;
+                    // do nothing
                     break;
+
+                //
+                // if shipping fee, create WebPayItem::shippingFee object and add to order
                 case 'ot_shipping':
-                    $shipping_code = explode('_', $_SESSION['shipping']['id']);
-                    $shipping = $GLOBALS[$shipping_code[0]];
-                    if (isset($shipping->description))
-                        $shipping_description = $shipping->title . ' [' . $shipping->description . ']';
-                    else
-                        $shipping_description = $shipping->title;
-
-                    $clientInvoiceRows[] = Array(
-                        "ClientOrderRowNr" => $i + 1,
-                        "Description" => $shipping_description,
-                        "PricePerUnit" => $this->convert_to_currency($_SESSION['shipping']['cost'], $currency),
-                        "NrOfUnits" => 1,
-                        "VatPercent" => (string) zen_get_tax_rate($shipping->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']),
-                        "DiscountPercent" => 0
+                    
+                    //makes use of zencart $order-info[] shipping information to populate object
+    
+                    // add WebPayItem::shippingFee to swp_order object 
+                    $swp_order->addFee(
+                            WebPayItem::shippingFee()
+                                    ->setDescription($order->info['shipping_method'])
+                                    ->setAmountExVat( floatval($order->info['shipping_cost']) )
+                                    ->setAmountIncVat( floatval($order->info['shipping_cost']) + floatval($order->info['shipping_tax']) )
                     );
                     break;
+
+                //
+                // if handling fee applies, create WebPayItem::invoiceFee object and add to order
+                case 'sveawebpay_handling_fee' :
+
+                    // is the handling_fee module activated?
+                    if (isset($this->handling_fee) && $this->handling_fee > 0) {
+
+                        // handlingfee expressed as percentage?
+                        if (substr($this->handling_fee, -1) == '%') {
+                        
+                            // sum of products + shipping * handling_fee as percentage
+                            $hf_percentage = floatval(substr($this->handling_fee, 0, -1));
+
+                            $hf_price = ($order->info['subtotal'] + $order->info['shipping_cost']) * ($hf_percentage / 100.0);
+                        }
+                        // handlingfee expressed as absolute amount (incl. tax)
+                        else {
+                            $hf_price = $this->convert_to_currency(floatval($this->handling_fee), $currency);
+                        }
+                        $hf_taxrate =   zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS, 
+                                        $order->delivery['country']['id'], $order->delivery['zone_id']);
+
+                        // add WebPayItem::invoiceFee to swp_order object 
+                        $swp_order->addFee(
+                                WebPayItem::invoiceFee()
+                                        ->setDescription()
+                                        ->setAmountExVat($hf_price)
+                                        ->setVatPercent($hf_taxrate)
+                        );
+                    }
+                    break;
+
+                // TODO
                 case 'ot_coupon':
-
+                   //calculate price whithout tax
+                    $b_tax = $this->convert_to_currency(strip_tags($order_total['value']), $currency);
+                    $price = $b_tax / ((100 + $order->products[0]['tax']) / 100);
+                    
                     $clientInvoiceRows[] = Array(
-                        "ClientOrderRowNr" => $i + 1,
                         "Description" => strip_tags($order_total['title']),
-                        "PricePerUnit" => -$this->convert_to_currency(strip_tags($order_total['value']), $currency),
-                        "NrOfUnits" => 1,
-                        "VatPercent" => 0,
+                        "PricePerUnit" => -$price,
+                        "NumberOfUnits" => 1,
+                        "Unit" => "",
+                        "VatPercent" => $order->products[0]['tax'],
                         "DiscountPercent" => 0
                     );
 
                     break;
-                // default case handles order totals like handling fee, but also
-                // 'unknown' items from other plugins. Might cause problems.
+
+                // TODO
+                // default case handles 'unknown' items from other plugins. Might cause problems.
                 default:
                     $order_total_obj = $GLOBALS[$order_total['code']];
                     $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
@@ -344,10 +405,10 @@ class sveawebpay_partpay {
                         $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
 
                     $clientInvoiceRows[] = Array(
-                        "ClientOrderRowNr" => $i + 1,
                         "Description" => strip_tags($order_total['title']),
                         "PricePerUnit" => $this->convert_to_currency(strip_tags($order_total['value']), $currency),
-                        "NrOfUnits" => 1,
+                        "NumberOfUnits" => 1,
+                        "Unit" => "",
                         "VatPercent" => $tax_rate,
                         "DiscountPercent" => 0
                     );
@@ -355,212 +416,172 @@ class sveawebpay_partpay {
                     break;
             }
         }
+        
+        // customer is private individual with partpay
 
+        // create individual customer object
+        $swp_customer = WebPayItem::individualCustomer();
 
+        // set individual customer name
+        $swp_customer->setName( $order->billing['firstname'], $order->billing['lastname'] );
 
-        if (($order->customer['country']['iso_code_2'] == 'NL' || $order->customer['country']['iso_code_2'] == 'DE') && $order->info['currency'] == 'EUR') {
-
-            //Get svea configuration for each country based on currency
-            $sveaConf = getCountryConfigPP($order->info['currency'], $order->customer['country']['iso_code_2']);
-
-            //Split street address and house no
-            $streetAddress = preg_split('/ /', $order->customer['street_address'], -1, PREG_SPLIT_NO_EMPTY);
-
-            //Get initials
-            $initials = substr($order->customer['firstname'], 0, 1) . substr($order->customer['lastname'], 0, 1);
-
-
-            /*             * ********** CREATE ORDER FOR EU ****************** */
-
-
-            //The createOrder Data for Euro
-            $request = Array(
-                "Auth" => Array(
-                    "Username" => $sveaConf['username'],
-                    "Password" => $sveaConf['password'],
-                    "ClientNumber" => $sveaConf['clientno']
-                ),
-                "CreateOrderInformation" => Array(
-                    "ClientOrderNr" => ($new_order_field['orders_id'] + 1) . '-' . time(),
-                    "OrderRows" => array('OrderRow' => $clientInvoiceRows),
-                    "CustomerIdentity" => array(
-                        //"NationalIdNumber" => '',//$_POST['sveaSSN'],
-                        "Email" => $order->customer['email_address'],
-                        "PhoneNumber" => $order->customer['telephone'],
-                        "FullName" => $order->customer['firstname'] . ' ' . $order->customer['lastname'],
-                        "Street" => $streetAddress[0],
-                        "ZipCode" => $order->customer['postcode'],
-                        "HouseNumber" => $streetAddress[1],
-                        "Locality" => $order->customer['city'],
-                        "CountryCode" => $order->customer['country']['iso_code_2'],
-                        "CustomerType" => "Individual",
-                        "IndividualIdentity" => array(
-                            "FirstName" => $order->customer['firstname'],
-                            "LastName" => $order->customer['lastname'],
-                            "Initials" => $initials,
-                            "BirthDate" => $_POST['sveaSSN_partpayment']
-                        )
-                    ),
-                    "OrderDate" => date(c),
-                    "AddressSelector" => $_POST['adressSelectorPP'],
-                    "CustomerReference" => "",
-                    "OrderType" => "PaymentPlan",
-                    "CreatePaymentPlanDetails" => array("CampaignCode" => $_POST['paymentOptions'],
-                        "SendAutomaticGiroPaymentForm" => false)
-                )
-            );
-        } else {
-
-            //Get svea configuration for each country based on currency
-            $sveaConf = getCountryConfigPP($order->info['currency']);
-
-
-            /*             * ********** CREATE ORDER FOR NORDIC COUNTRIES ****************** */
-
-            $request = Array(
-                "Auth" => Array(
-                    "Username" => $sveaConf['username'],
-                    "Password" => $sveaConf['password'],
-                    "ClientNumber" => $sveaConf['clientno']
-                ),
-                'Amount' => 0,
-                'PayPlan' => Array(
-                    'SendAutomaticGiropaymentForm' => false,
-                    'ClientPaymentPlanNr' => ($new_order_field['orders_id'] + 1) . '-' . time(),
-                    'CampainCode' => $_POST['paymentOptions'],
-                    'CountryCode' => $sveaConf['countryCode'],
-                    'SecurityNumber' => $_POST['sveaSSN_partpayment'],
-                    'IsCompany' => ''
-                ),
-                "InvoiceRows" => array('ClientInvoiceRowInfo' => $clientInvoiceRows)
-            );
+        // set individual customer SSN
+        if( ($user_country == 'SE') ||
+            ($user_country == 'NO') || 
+            ($user_country == 'DK') ) 
+        {
+            $swp_customer->setNationalIdNumber( $post_sveaSSN );
+        }
+        if( ($user_country == 'FI') ) 
+        {
+            $swp_customer->setNationalIdNumber( $post_sveaSSNFI );
         }
 
+        // set BirthDate if required
+        if( ($user_country == 'NL') ||
+            ($user_country == 'DE') ) 
+        {        
+            $swp_customer->setBirthDate(intval($post_sveaBirthYear), intval($post_sveaBirthMonth), intval($post_sveaBirthDay));
+        }
 
-        $_SESSION['swp_fakt_request'] = $request;
+        // set initials if required
+        if( ($user_country == 'NL') ) 
+        {        
+            $swp_customer->setInitials($post_sveaInitials);  //TODO calculate from string
+        }
 
+        //Split street address and house no
+        $pattern ="/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*[^\s])?(?:\s)*$/"; 
+        $myStreetAddress = Array();
+        preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
+        if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }  // TODO handle case Street w/o number in package?!
+
+        // set common fields
+        $swp_customer          
+            ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )  // street, housenumber             
+            ->setZipCode($order->billing['postcode'])                                 
+            ->setLocality($order->billing['city'])                                    
+            ->setEmail($order->customer['email_address'])                             
+            ->setIpAddress($_SERVER['REMOTE_ADDR'])                                                                      
+            ->setCoAddress($order->billing['suburb'])                       // c/o address
+            ->setPhoneNumber($order->customer['telephone'])                         
+        ;
+
+        // add customer to order
+        $swp_order->addCustomerDetails($swp_customer);             
+
+        //
+        // store our order object in session, to be retrieved in before_process()
+        $_SESSION["swp_order"] = serialize($swp_order);
+
+        //
+        // we're done here
         return false;
     }
-
+     
+    /**
+     * before_process is called from modules/checkout_process.
+     * It instantiates and populates a WebPay::createOrder object
+     * as well as sends the actual payment request
+     */   
     function before_process() {
-        global $order, $order_totals, $language, $billto, $sendto, $db;
+        global $order, $order_totals, $language, $billto, $sendto;
 
+        // Include Svea php integration package files
+        require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
-        //Put all the data in request tag
-        $data['request'] = $_SESSION['swp_fakt_request'];
+        // retrieve order object set in process_button()
+        $swp_order = unserialize($_SESSION["swp_order"]);
+        //print_r("swp_order:" . serialize($swp_order) );
+        //debug tip: use serialized object to test in less complex (no shop) test environment
 
-        $svea_server = (MODULE_PAYMENT_SWPPARTPAY_MODE == 'Test') ? 'https://webservices.sveaekonomi.se/webpay_test/SveaWebPay.asmx?WSDL' : 'https://webservices.sveaekonomi.se/webpay/SveaWebPay.asmx?WSDL';
-        //Call Soap
-        $client = new SoapClient($svea_server);
-
-
-        /*         * ********** RESPONSE HANDLING EUROPE *************** */
-        if (($order->customer['country']['iso_code_2'] == 'NL' || $order->customer['country']['iso_code_2'] == 'DE') && $order->info['currency'] == 'EUR') {
-
-            //Make soap call to below method using above data
-            $svea_req = $client->CreateOrderEU($data);
-
-
-            $response = $svea_req->CreateOrderEuResult->Accepted;
-
-            // handle failed payments
-            if ($response != '1') {
-                $_SESSION['SWP_ERROR'] = $this->responseCodes($svea_req->CreateOrderEuResult->CreateOrderResult->ResultCode);
-
-                $payment_error_return = 'payment_error=' . $svea_req->CreateOrderEuResult->CreateOrderResult->ResultCode;
-                zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
-            }
-
-
-            // handle successful payments
-            if ($response == '1') {
-                unset($_SESSION['swp_fakt_request']);
-                if (isset($svea_req->CreateOrderEuResult->CustomerIdentity->IndividualIdentity))
-                    $order->info['securityNumber'] = $svea_req->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->BirthDate;
-                else
-                    $order->info['securityNumber'] = $svea_req->CreateOrderEuResult->CustomerIdentity->CompanyIdentity->CompanyVatNumber;
-            }
-
-            if (isset($svea_req->CreateOrderEuResult->FullName)) {
-
-                $order->billing['firstname'] = $svea_req->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->FirstName;
-                $order->billing['lastname'] = $svea_req->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->LastName;
-                $order->billing['street_address'] = $svea_req->CreateOrderEuResult->CustomerIdentity->Street . ' ' . $svea_req->CreateOrderEuResult->HouseNumber;
-                //$order->billing['suburb']          = $svea_req->CreateOrderEuResult->AddressLine2;
-                $order->billing['city'] = $svea_req->CreateOrderEuResult->CustomerIdentity->Locality;
-                $order->billing['state'] = '';                    // "state" is not applicable in SWP countries
-                $order->billing['postcode'] = $svea_req->CreateOrderEuResult->CustomerIdentity->ZipCode;
-
-                $order->delivery['firstname'] = $svea_req->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->FirstName;
-                $order->delivery['lastname'] = $svea_req->CreateOrderEuResult->CustomerIdentity->IndividualIdentity->LastName;
-                $order->delivery['street_address'] = $svea_req->CreateOrderEuResult->CustomerIdentity->Street . ' ' . $svea_req->CreateOrderEuResult->HouseNumber;
-                //$order->delivery['suburb']         = $svea_req->CreateOrderEuResult->AddressLine2;
-                $order->delivery['city'] = $svea_req->CreateOrderEuResult->CustomerIdentity->Locality;
-                $order->delivery['state'] = '';                    // "state" is not applicable in SWP countries
-                $order->delivery['postcode'] = $svea_req->CreateOrderEuResult->CustomerIdentity->ZipCode;
-            }
-
-
-            /*             * ********** RESPONSE HANDLING NORDIC *************** */
-        } else {
-            //print_r($data);
-            //Make soap call to below method using above data
-            $svea_req = $client->CreatePaymentPlan($data);
-
-
-            $response = $svea_req->CreatePaymentPlanResult->RejectionCode;
-            // handle failed payments
-            if ($response != 'Accepted') {
-                $_SESSION['SWP_ERROR'] = $this->responseCodes($response);
-
-                $payment_error_return = 'payment_error=' . $this->code;
-                zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
-            }
-
-
-            // handle successful payments
-            if ($response == 'Accepted') {
-                unset($_SESSION['swp_fakt_request']);
-                $order->info['securityNumber'] = $svea_req->CreatePaymentPlanResult->SecurityNumber;
-            }
-
-            if (isset($svea_req->CreatePaymentPlanResult->LegalName)) {
-                $name = explode(',', $svea_req->CreatePaymentPlanResult->LegalName);
-
-                $order->billing['firstname'] = $name[1];
-                $order->billing['lastname'] = $name[0];
-                $order->billing['street_address'] = $svea_req->CreatePaymentPlanResult->AddressLine1;
-                $order->billing['suburb'] = $svea_req->CreatePaymentPlanResult->AddressLine2;
-                $order->billing['city'] = $svea_req->CreatePaymentPlanResult->Postarea;
-                $order->billing['state'] = '';                    // "state" is not applicable in SWP countries
-                $order->billing['postcode'] = $svea_req->CreatePaymentPlanResult->Postcode;
-
-                $order->delivery['firstname'] = $name[1];
-                $order->delivery['lastname'] = $name[0];
-                $order->delivery['street_address'] = $svea_req->CreatePaymentPlanResult->AddressLine1;
-                $order->delivery['suburb'] = $svea_req->CreatePaymentPlanResult->AddressLine2;
-                $order->delivery['city'] = $svea_req->CreatePaymentPlanResult->Postarea;
-                $order->delivery['state'] = '';                    // "state" is not applicable in SWP countries
-                $order->delivery['postcode'] = $svea_req->CreatePaymentPlanResult->Postcode;
-            }
+        // throws an exception if the payment request can't be done with current order content
+        try {
+            // set the chosen payment plan
+            $swp_order->usePaymentPlanPayment($_SESSION['sveaPaymentOptionsPP'])->prepareRequest();  // TODO debug, remove in production
+        } catch (Exception $e) {
+            echo 'Caught exception: ', $e->getMessage(), "\n";
         }
-        $table = array(
-            'PARTPAYMENTSE' => MODULE_PAYMENT_SWPPARTPAY_TEXT_TITLE,
-            'SHBNP' => MODULE_PAYMENT_SWPPARTPAY_TEXT_TITLE);
+
+        //
+        // send payment request to svea, receive response
+        $swp_response = $swp_order->usePaymentPlanPayment($_SESSION['sveaPaymentOptionsPP'])->doRequest();
+        
+        //
+        // payment request failed; handle this by redirecting w/result code as error message
+        if ($swp_response->accepted === false) {
+//            $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->CreateOrderEuResult->ResultCode);
+
+            // TODO no errno for certain errors gives strange error message
+            $payment_error_return = 'payment_error=sveawebpay_invoice&payment_errno=' .
+                                    $swp_response->resultcode;
+
+            zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return)); // error handled in selection() above
+        }
+
+        //
+        // payment request succeded, store response in session
+        if ($swp_response->accepted == true) {
+            
+            //
+            // set zencart billing address to invoice address from payment request response
+
+            // is private individual?
+            if( $swp_response->customerIdentity->customerType == "Individual") {
+                $order->billing['firstname'] = $swp_response->customerIdentity->fullName; // workaround for zen_address_format not showing 'name' in order information view/
+                $order->billing['lastname'] = "";
+                $order->billing['company'] = "";
+            }
+
+            // TODO check default zencart CHARSET define (should equal used database collation, i.e. utf-8). 
+            // if not utf-8, must handle that when parsing swp_response (in utf-8) -- use utf8_decode(response-> ?)
+            // also, check that php 5.3 and 5.4+ behaves the same in zen_output_string ( htmlspecialchars() defaults to utf-8 from 5.4)
+            $order->billing['street_address'] =  
+                    $swp_response->customerIdentity->street . " " . $swp_response->customerIdentity->houseNumber;
+            $order->billing['suburb'] =  $swp_response->customerIdentity->coAddress;
+            $order->billing['city'] = $swp_response->customerIdentity->locality;
+            $order->billing['postcode'] = $swp_response->customerIdentity->zipCode;
+            $order->billing['state'] = '';  // "state" is not applicable in SWP countries
+            
+            $order->billing['country']['title'] =                                           // country name only needed for address
+                    $this->getCountryName( $swp_response->customerIdentity->countryCode );
+            
+            // save the response object 
+            $_SESSION["swp_response"] = serialize($swp_response);
+        }
     }
-
+    
     // if payment accepted, insert order into database
-    function after_process() {
-        global $insert_id, $order;
+     function after_process() {
+        global $insert_id, $order, $db;
 
+        //
+        // retrieve response object from before_process()
+        require('includes/modules/payment/svea_v4/Includes.php');
+        $swp_response = unserialize($_SESSION["swp_response"]);
+
+        // set zencart order info using data from response object
+        $order->info['SveaOrderId'] = $swp_response->sveaOrderId;
+        $order->info['type'] = $swp_response->customerIdentity->customerType;
+
+        // set zencart order securityNumber -- if request to webservice, use sveaOrderId, if hosted use transactionId
+        $order->info['securityNumber'] = isset( $swp_response->sveaOrderId ) ? $swp_response->sveaOrderId : $swp_response->transactionId; 
+           
+        // insert zencart order into database
         $sql_data_array = array('orders_id' => $insert_id,
             'orders_status_id' => $order->info['order_status'],
             'date_added' => 'now()',
             'customer_notified' => 0,
+            // TODO take comments below to language files?
             'comments' => 'Accepted by SveaWebPay ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);
         zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
-
+        //
+        // clean up our session variables set during checkout   //$SESSION[swp_*
+        unset($_SESSION['swp_order']);
+        unset($_SESSION['swp_response']);
+        
+        // TODO: why false?
         return false;
     }
 
@@ -653,7 +674,10 @@ class sveawebpay_partpay {
     //Error Responses
     function responseCodes($err) {
         switch ($err) {
-            case "CusomterCreditRejected" :
+            
+            // TODO can these be removed?
+            /*
+            case "CustomerCreditRejected" :
                 return ERROR_CODE_1;
                 break;
             case "CustomerOverCreditLimit" :
@@ -680,6 +704,12 @@ class sveawebpay_partpay {
             case "CustomerCreditNoSuchEntity" :
                 return ERROR_CODE_9;
                 break;
+            */
+            
+            // EU error codes
+            case "20000" :
+                return ERROR_CODE_20000;
+                break;
             case "20001" :
                 return ERROR_CODE_20001;
                 break;
@@ -698,15 +728,14 @@ class sveawebpay_partpay {
             case "20006" :
                 return ERROR_CODE_20006;
                 break;
-            case "20007" :
-                return ERROR_CODE_20007;
+            case "20013" :
+                return ERROR_CODE_20013;
                 break;
-            case "20008" :
-                return ERROR_CODE_20008;
+
+            case "24000" :
+                return ERROR_CODE_24000;
                 break;
-            case "20000" :
-                return ERROR_CODE_20000;
-                break;
+            
             case "30000" :
                 return ERROR_CODE_30000;
                 break;
@@ -716,12 +745,289 @@ class sveawebpay_partpay {
             case "30002" :
                 return ERROR_CODE_30002;
                 break;
+            case "30003" :
+                return ERROR_CODE_30003;
+                break;
+
+            case "40000" :
+                return ERROR_CODE_40000;
+                break;            
+            case "40001" :
+                return ERROR_CODE_40001;
+                break;   
+            case "40002" :
+                return ERROR_CODE_40002;
+                break;   
+            case "40004" :
+                return ERROR_CODE_40004;
+                break;   
+            
+            case "50000" :
+                return ERROR_CODE_50000;
+                break;   
+            
             default :
                 return ERROR_CODE_DEFAULT;
                 break;
         }
     }
 
+    function getCountryName( $iso3166 ) {
+        
+        // countrynames from https://github.com/johannesl/Internationalization, thanks!
+        $countrynames = array(
+            "AF"=>"Afghanistan",
+            "AX"=>"\xc3\x85land Islands",
+            "AL"=>"Albania",
+            "DZ"=>"Algeria",
+            "AS"=>"American Samoa",
+            "AD"=>"Andorra",
+            "AO"=>"Angola",
+            "AI"=>"Anguilla",
+            "AQ"=>"Antarctica",
+            "AG"=>"Antigua and Barbuda",
+            "AR"=>"Argentina",
+            "AM"=>"Armenia",
+            "AW"=>"Aruba",
+            "AU"=>"Australia",
+            "AT"=>"Austria",
+            "AZ"=>"Azerbaijan",
+            "BS"=>"Bahamas",
+            "BH"=>"Bahrain",
+            "BD"=>"Bangladesh",
+            "BB"=>"Barbados",
+            "BY"=>"Belarus",
+            "BE"=>"Belgium",
+            "BZ"=>"Belize",
+            "BJ"=>"Benin",
+            "BM"=>"Bermuda",
+            "BT"=>"Bhutan",
+            "BO"=>"Bolivia, Plurinational State of",
+            "BQ"=>"Bonaire, Sint Eustatius and Saba",
+            "BA"=>"Bosnia and Herzegovina",
+            "BW"=>"Botswana",
+            "BV"=>"Bouvet Island",
+            "BR"=>"Brazil",
+            "IO"=>"British Indian Ocean Territory",
+            "BN"=>"Brunei Darussalam",
+            "BG"=>"Bulgaria",
+            "BF"=>"Burkina Faso",
+            "BI"=>"Burundi",
+            "KH"=>"Cambodia",
+            "CM"=>"Cameroon",
+            "CA"=>"Canada",
+            "CV"=>"Cape Verde",
+            "KY"=>"Cayman Islands",
+            "CF"=>"Central African Republic",
+            "TD"=>"Chad",
+            "CL"=>"Chile",
+            "CN"=>"China",
+            "CX"=>"Christmas Island",
+            "CC"=>"Cocos (Keeling) Islands",
+            "CO"=>"Colombia",
+            "KM"=>"Comoros",
+            "CG"=>"Congo",
+            "CD"=>"Congo, The Democratic Republic of the",
+            "CK"=>"Cook Islands",
+            "CR"=>"Costa Rica",
+            "CI"=>"C\xc3\xb4te d'Ivoire",
+            "HR"=>"Croatia",
+            "CU"=>"Cuba",
+            "CW"=>"Cura\xc3\xa7ao",
+            "CY"=>"Cyprus",
+            "CZ"=>"Czech Republic",
+            "DK"=>"Denmark",
+            "DJ"=>"Djibouti",
+            "DM"=>"Dominica",
+            "DO"=>"Dominican Republic",
+            "EC"=>"Ecuador",
+            "EG"=>"Egypt",
+            "SV"=>"El Salvador",
+            "GQ"=>"Equatorial Guinea",
+            "ER"=>"Eritrea",
+            "EE"=>"Estonia",
+            "ET"=>"Ethiopia",
+            "FK"=>"Falkland Islands (Malvinas)",
+            "FO"=>"Faroe Islands",
+            "FJ"=>"Fiji",
+            "FI"=>"Finland",
+            "FR"=>"France",
+            "GF"=>"French Guiana",
+            "PF"=>"French Polynesia",
+            "TF"=>"French Southern Territories",
+            "GA"=>"Gabon",
+            "GM"=>"Gambia",
+            "GE"=>"Georgia",
+            "DE"=>"Germany",
+            "GH"=>"Ghana",
+            "GI"=>"Gibraltar",
+            "GR"=>"Greece",
+            "GL"=>"Greenland",
+            "GD"=>"Grenada",
+            "GP"=>"Guadeloupe",
+            "GU"=>"Guam",
+            "GT"=>"Guatemala",
+            "GG"=>"Guernsey",
+            "GN"=>"Guinea",
+            "GW"=>"Guinea-Bissau",
+            "GY"=>"Guyana",
+            "HT"=>"Haiti",
+            "HM"=>"Heard Island and McDonald Islands",
+            "VA"=>"Holy See (Vatican City State)",
+            "HN"=>"Honduras",
+            "HK"=>"Hong Kong",
+            "HU"=>"Hungary",
+            "IS"=>"Iceland",
+            "IN"=>"India",
+            "ID"=>"Indonesia",
+            "IR"=>"Iran, Islamic Republic of",
+            "IQ"=>"Iraq",
+            "IE"=>"Ireland",
+            "IM"=>"Isle of Man",
+            "IL"=>"Israel",
+            "IT"=>"Italy",
+            "JM"=>"Jamaica",
+            "JP"=>"Japan",
+            "JE"=>"Jersey",
+            "JO"=>"Jordan",
+            "KZ"=>"Kazakhstan",
+            "KE"=>"Kenya",
+            "KI"=>"Kiribati",
+            "KP"=>"Korea, Democratic People's Republic of",
+            "KR"=>"Korea, Republic of",
+            "KW"=>"Kuwait",
+            "KG"=>"Kyrgyzstan",
+            "LA"=>"Lao People's Democratic Republic",
+            "LV"=>"Latvia",
+            "LB"=>"Lebanon",
+            "LS"=>"Lesotho",
+            "LR"=>"Liberia",
+            "LY"=>"Libya",
+            "LI"=>"Liechtenstein",
+            "LT"=>"Lithuania",
+            "LU"=>"Luxembourg",
+            "MO"=>"Macao",
+            "MK"=>"Macedonia, The Former Yugoslav Republic of",
+            "MG"=>"Madagascar",
+            "MW"=>"Malawi",
+            "MY"=>"Malaysia",
+            "MV"=>"Maldives",
+            "ML"=>"Mali",
+            "MT"=>"Malta",
+            "MH"=>"Marshall Islands",
+            "MQ"=>"Martinique",
+            "MR"=>"Mauritania",
+            "MU"=>"Mauritius",
+            "YT"=>"Mayotte",
+            "MX"=>"Mexico",
+            "FM"=>"Micronesia, Federated States of",
+            "MD"=>"Moldova, Republic of",
+            "MC"=>"Monaco",
+            "MN"=>"Mongolia",
+            "ME"=>"Montenegro",
+            "MS"=>"Montserrat",
+            "MA"=>"Morocco",
+            "MZ"=>"Mozambique",
+            "MM"=>"Myanmar",
+            "NA"=>"Namibia",
+            "NR"=>"Nauru",
+            "NP"=>"Nepal",
+            "NL"=>"Netherlands",
+            "NC"=>"New Caledonia",
+            "NZ"=>"New Zealand",
+            "NI"=>"Nicaragua",
+            "NE"=>"Niger",
+            "NG"=>"Nigeria",
+            "NU"=>"Niue",
+            "NF"=>"Norfolk Island",
+            "MP"=>"Northern Mariana Islands",
+            "NO"=>"Norway",
+            "OM"=>"Oman",
+            "PK"=>"Pakistan",
+            "PW"=>"Palau",
+            "PS"=>"Palestine, State of",
+            "PA"=>"Panama",
+            "PG"=>"Papua New Guinea",
+            "PY"=>"Paraguay",
+            "PE"=>"Peru",
+            "PH"=>"Philippines",
+            "PN"=>"Pitcairn",
+            "PL"=>"Poland",
+            "PT"=>"Portugal",
+            "PR"=>"Puerto Rico",
+            "QA"=>"Qatar",
+            "RE"=>"R\xc3\xa9union",
+            "RO"=>"Romania",
+            "RU"=>"Russian Federation",
+            "RW"=>"Rwanda",
+            "BL"=>"Saint Barth\xc3\xa9lemy",
+            "SH"=>"Saint Helena, Ascension and Tristan Da Cunha",
+            "KN"=>"Saint Kitts and Nevis",
+            "LC"=>"Saint Lucia",
+            "MF"=>"Saint Martin (French part)",
+            "PM"=>"Saint Pierre and Miquelon",
+            "VC"=>"Saint Vincent and the Grenadines",
+            "WS"=>"Samoa",
+            "SM"=>"San Marino",
+            "ST"=>"Sao Tome and Principe",
+            "SA"=>"Saudi Arabia",
+            "SN"=>"Senegal",
+            "RS"=>"Serbia",
+            "SC"=>"Seychelles",
+            "SL"=>"Sierra Leone",
+            "SG"=>"Singapore",
+            "SX"=>"Sint Maarten (Dutch part)",
+            "SK"=>"Slovakia",
+            "SI"=>"Slovenia",
+            "SB"=>"Solomon Islands",
+            "SO"=>"Somalia",
+            "ZA"=>"South Africa",
+            "GS"=>"South Georgia and the South Sandwich Islands",
+            "SS"=>"South Sudan",
+            "ES"=>"Spain",
+            "LK"=>"Sri Lanka",
+            "SD"=>"Sudan",
+            "SR"=>"Suriname",
+            "SJ"=>"Svalbard and Jan Mayen",
+            "SZ"=>"Swaziland",
+            "SE"=>"Sweden",
+            "CH"=>"Switzerland",
+            "SY"=>"Syrian Arab Republic",
+            "TW"=>"Taiwan, Province of China",
+            "TJ"=>"Tajikistan",
+            "TZ"=>"Tanzania, United Republic of",
+            "TH"=>"Thailand",
+            "TL"=>"Timor-Leste",
+            "TG"=>"Togo",
+            "TK"=>"Tokelau",
+            "TO"=>"Tonga",
+            "TT"=>"Trinidad and Tobago",
+            "TN"=>"Tunisia",
+            "TR"=>"Turkey",
+            "TM"=>"Turkmenistan",
+            "TC"=>"Turks and Caicos Islands",
+            "TV"=>"Tuvalu",
+            "UG"=>"Uganda",
+            "UA"=>"Ukraine",
+            "AE"=>"United Arab Emirates",
+            "GB"=>"United Kingdom",
+            "US"=>"United States",
+            "UM"=>"United States Minor Outlying Islands",
+            "UY"=>"Uruguay",
+            "UZ"=>"Uzbekistan",
+            "VU"=>"Vanuatu",
+            "VE"=>"Venezuela, Bolivarian Republic of",
+            "VN"=>"Viet Nam",
+            "VG"=>"Virgin Islands, British",
+            "VI"=>"Virgin Islands, U.S.",
+            "WF"=>"Wallis and Futuna",
+            "EH"=>"Western Sahara",
+            "YE"=>"Yemen",
+            "ZM"=>"Zambia",
+            "ZW"=>"Zimbabwe"
+        );
+    
+        return( array_key_exists( $iso3166, $countrynames) ? $countrynames[$iso3166] : $iso3166 );
+    }
 }
-
 ?>
