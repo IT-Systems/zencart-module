@@ -12,16 +12,50 @@ if( isset($_POST['SveaAjaxGetCustomerCountry']) ) {
 }
 
 /**
+ * perform getPaymentPlanParams, paymentPlanPricePerMonth, return dropdown widget
+ */
+if( isset($_POST['SveaAjaxGetPaymentOptions']) ) {
+
+    $price = isset( $_SESSION['sveaAjaxOrderTotal'] ) ? $_SESSION['sveaAjaxOrderTotal'] : "swp_not_set";
+    $country = isset( $_SESSION['sveaAjaxCountryCode'] ) ? $_SESSION['sveaAjaxCountryCode'] : "swp_not_set";
+
+    sveaAjaxGetPaymentOptions( $price, $country );
+    exit();
+}
+
+function sveaAjaxGetPaymentOptions( $price, $country ) {
+    // Include Svea php integration package files    
+    require('includes/modules/payment/svea_v4/Includes.php'); 
+    
+    $plansResponse = WebPay::getPaymentPlanParams()->setCountryCode($country)->doRequest();
+    $priceResponse = WebPay::paymentPlanPricePerMonth( $price, $plansResponse );
+    
+    if( sizeof( $priceResponse->values ) == 0 ) {
+        return "NO APPLICABLE PAYMENT PLAN FOR THIS ORDER AMOUNT"; //TODO cleanup
+    }
+    else
+        foreach( $priceResponse->values as $cc) {
+            echo sprintf( '<option value="%s">%s (%.2f)</option>', $cc['campaignCode'], $cc['description'], $cc['pricePerMonth'] );
+        }
+}
+
+/**
  *  perform getAddresses() via php integration package, return dropdown html widget
  */
 if( isset($_POST['SveaAjaxGetAddresses']) ) {
 
-    // Include Svea php integration package files    
-    require('includes/modules/payment/svea_v4/Includes.php'); 
-
     $ssn = isset( $_POST['sveaSSN'] ) ? $_POST['sveaSSN'] : "swp_not_set";
     $country = isset( $_POST['sveaCountryCode'] ) ? $_POST['sveaCountryCode'] : "swp_not_set";
     $isCompany = isset( $_POST['sveaIsCompany'] ) ? $_POST['sveaIsCompany'] : "swp_not_set";
+    
+    sveaAjaxGetAddresses($ssn, $country, $isCompany );
+    exit();
+}    
+
+function sveaAjaxGetAddresses( $ssn, $country, $isCompany ) {
+
+    // Include Svea php integration package files    
+    require('includes/modules/payment/svea_v4/Includes.php'); 
 
     // private individual
     if( $isCompany === 'false' ) {
@@ -70,6 +104,11 @@ if( isset($_POST['SveaAjaxGetAddresses']) ) {
  * store invoice address in customer address book, return zen address book id used for billing
  */
 if( isset($_POST['SveaAjaxSetCustomerInvoiceAddress']) ) {
+    sveaAjaxSetCustomerInvoiceAddress();
+    exit;
+}
+
+function sveaAjaxSetCustomerInvoiceAddress() {
     global $db;
 
     // have we got an address selector (i.e. a getAddresses country)?
@@ -136,89 +175,4 @@ if( isset($_POST['SveaAjaxSetCustomerInvoiceAddress']) ) {
     }
 }
 
-
-// --------------------------------------------------------
-
-/*
- *
- * PartPayment
- *
- */
- 
-if (isset($_POST['paymentOptions'])) {
-    
-    $language_page_directory = DIR_WS_LANGUAGES . $_SESSION['language'] . '/';
-
-    require $language_page_directory.'modules/payment/sveawebpay_partpay.php';
-
-    $currencies = new currencies;
-    
-    $sveaConf = getCountryConfigPP($order->info['currency'],'NL') ;
-     
-    //Order rows
-    foreach($order->products as $i => $Item) {
-    
-    $orderRowArr = Array(
-              "ClientOrderRowNr" => $i,
-              "Description" => $Item['name'],
-              "PricePerUnit" => convert_to_currency(round($Item['final_price'],2),$order->info['currency']),
-              "NrOfUnits" => $Item['qty'],
-              "Unit" => "st",
-              "VatPercent" => $Item['tax'],
-              "DiscountPercent" => 0
-            );
-    
-    if (isset($clientInvoiceRows)){
-        $clientInvoiceRows[$i] = $orderRowArr;
-    }else{
-        $clientInvoiceRows[] = $orderRowArr;
-    }
-    }
-    
-    //The createOrder Data
-    $request = Array(
-    	"request" => Array(
-          "Auth" => Array(
-            "Username" => $sveaConf['username'],
-            "Password" => $sveaConf['password'],
-            "ClientNumber" => $sveaConf['clientno']
-           ),
-          "Amount" => 0,
-          "InvoiceRows" => array('ClientInvoiceRowInfo' => $clientInvoiceRows)
-        )
-    );
-
-
-//Call Soap
-$client = new SoapClient( $svea_server );
-
- //Make soap call to below method using above data
-$svea_req = $client->GetPaymentPlanOptions( $request);
-
-$response = $svea_req->GetPaymentPlanOptionsResult->PaymentPlanOptions;
-//print_r($response);
-echo 'jQuery("#paymentOptions").empty();';
-
-//print_r($svea_req);
-foreach ($svea_req->GetPaymentPlanOptionsResult->PaymentPlanOptions->PaymentPlanOption as $key => $ss){
-	
-	if ($ss->ContractLengthInMonths == 3){
-		$description = DD_PAY_IN_THREE;
-	}else{
-		$description = DD_PARTPAY_IN.$ss->ContractLengthInMonths.DD_MONTHS.', ('.$ss->MonthlyAnnuity.' '.DD_CURRENY_PER_MONTH.')';
-	}
-	echo '
-		jQuery("#paymentOptions").append("<option id=\"paymentOption'.$key.'\" value=\"'.$ss->CampainCode.'\">'.$description.'</option>");
-	';
-}
-
-echo 'jQuery("#paymentOptions").show();';    
-
-} 
-
-function convert_to_currency($value, $currency) {
-    global $currencies;
-    // item price is ALWAYS given in internal price from the products DB, so just multiply by currency rate from currency table
-    return number_format(zen_round($value * $currencies->currencies[$currency]['value'], $decimal_places), 2, $decimal_symbol, '');
-}
 ?>

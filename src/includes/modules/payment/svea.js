@@ -82,13 +82,14 @@ jQuery(document).ready(function (){
                 jQuery('#sveaPartPayField').show();
                 jQuery('#sveaInvoiceField').hide();
 
-                // force getAddresses on ssn input
+                // force getAddresses & show part payment options on ssn input 
                 jQuery("#sveaSSNPP").change( function(){
                     getAddresses(   jQuery('#sveaSSNPP').val(), 
                                     "false", // partpay not available to companies
                                     jQuery('#pmt-sveawebpay_partpay').attr("sveaCustomerCountry"),
                                     "sveaAddressSelectorPP"
                     );
+                    getPaymentOptions( customerCountry );
                 });
 
                 // set zencart billing/shipping to match getAddresses selection
@@ -184,6 +185,24 @@ function getAddresses( ssn, isCompany, countryCode, addressSelectorName ) {
                 }, 
                 success: function(msg) { msg; }
            });
+        }
+    });
+}
+
+function getPaymentOptions( countryCode ) {
+    
+    jQuery.ajax({
+        type: "POST",
+        url: "sveaAjax.php",
+        data: {
+            SveaAjaxGetPaymentOptions: true,
+            sveaCountryCode: countryCode
+        },
+        success: function(msg){
+            jQuery( "#sveaPaymentOptionsPP").empty();
+            jQuery( "#sveaPaymentOptionsPP" ).append(msg);
+            jQuery( 'label[for="sveaPaymentOptionsPP"]' ).show();
+            jQuery( "#sveaPaymentOptionsPP" ).show();
         }
     });
 }

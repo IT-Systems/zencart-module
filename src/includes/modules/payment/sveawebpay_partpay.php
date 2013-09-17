@@ -90,6 +90,15 @@ class sveawebpay_partpay {
     function selection() {
         global $order, $currencies;
 
+        //
+        // we need the order total and customer country in ajax functions. as
+        // the shop order object is unavailable, store these in session when
+        // we enter checkout_payment page (i.e. $order is set
+        if( isset($order) ) {
+            $_SESSION['sveaAjaxOrderTotal'] = $order->info['total'];
+            $_SESSION['sveaAjaxCountryCode'] = $order->customer['country']['iso_code_2'];
+        }
+        
         $fields = array();
 
         // image
@@ -130,12 +139,6 @@ class sveawebpay_partpay {
            // input text field for individual/company SSN, without getAddresses hook
             $sveaSSNFIPP =        FORM_TEXT_SS_NO . '<br /><input type="text" name="sveaSSNFIPP" id="sveaSSNFIPP" maxlength="11" /><br />';             
         }
-        
-        // radiobutton for choosing individual or organization
-        $sveaIsCompanyField = FORM_TEXT_COMPANY_OR_PRIVATE . ' <br />' .
-                            '<label><input type="radio" name="sveaIsCompanyPP" value="false" checked>' . FORM_TEXT_PRIVATE . '</label>' .
-                            '<label><input type="radio" name="sveaIsCompanyPP" value="true">' . FORM_TEXT_COMPANY . '</label><br />';
-
         
         //
         // these are the countries we support getAddress in (getAddress also depends on sveaSSN being present)
@@ -194,7 +197,7 @@ class sveawebpay_partpay {
 
             $sveaBirthDateDivPP = '<div id="sveaBirthDate_divPP" >' . 
                                     '<label for="sveaBirthYearPP">' . FORM_TEXT_BIRTHDATE . '</label><br />' .
-                                    $birthYear . $birthMonth . $birthDay .  // TODO better default selected, date order conforms w/DE,NL standard? 
+                                    $birthYear . $birthMonth . $birthDay .  // TODO better default, date order conforms w/DE,NL standard? 
                                 '</div><br />';
 
             $sveaVatNoDivPP = '<div id="sveaVatNo_divPP" hidden="true">' . 
@@ -203,21 +206,21 @@ class sveawebpay_partpay {
                                 '</div><br />';
         }
         
-        $sveaPaymentOptionsPP = FORM_TEXT_GET_PAYPLAN . '<br /><select name="sveaPaymentOptionsPP" id="sveaPaymentOptionsPP" style="display:none"></select><br />'; 
+        $sveaPaymentOptionsPP = 
+            FORM_TEXT_GET_PAYPLAN . '<br /><select name="sveaPaymentOptionsPP" id="sveaPaymentOptionsPP" style="display:none"></select><br />'; 
         
         $sveaError = '<br /><span id="sveaSSN_error_invoicePP" style="color:red"></span>';
    
         // create and add the field to be shown by our js when we select SveaInvoice payment method
         $sveaField =    '<div id="sveaPartPayField" style="display:none">' . 
-                            $sveaIsCompanyFieldPP .   //  SE, DK, NO
                             $sveaSSNPP .              //  SE, DK, NO        
                             $sveaSSNFIPP .            //  FI, no getAddresses     
                             $sveaAddressDDPP .        //  SE, Dk, NO   
                             $sveaInitialsDivPP .      //  NL
                             $sveaBirthDateDivPP .     //  NL, DE
-                            $sveaVatNoDivPP .         // NL, DE
+                            $sveaVatNoDivPP .         //  NL, DE
                             $sveaPaymentOptionsPP .
-                        // FI, NL, DE also uses customer address data from zencart
+                            // FI, NL, DE also uses customer address data from zencart
                         '</div>';
        
         $fields[] = array('title' => '', 'field' => '<br />' . $sveaField . $sveaError);
@@ -228,7 +231,6 @@ class sveawebpay_partpay {
                         'fields' => $fields );
     }
      
-
     function pre_confirmation_check() {
         return false;
     }
