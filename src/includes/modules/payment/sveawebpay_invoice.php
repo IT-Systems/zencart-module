@@ -407,17 +407,21 @@ class sveawebpay_invoice {
                     break;
 
                 case 'ot_coupon':
+                    
+                    // TODO for now, we only support fixed amount coupons. 
+                    // Investigate how zencart calculates %-rebates if shop set to display prices inc.tax i.e. 69.99*1.25 => 8.12 if 10% off?!
+                    
                     // as the ot_coupon module doesn't seem to honor "show prices with/without tax" setting in zencart, we assume that
-                    // coupons of a fixed amount are meant to be made out in an amount _including_ tax iff the shop displays prices incl. tax 
-                    if (DISPLAY_PRICE_WITH_TAX == 'false') {
-                        $amountExVat = $order_total['value'];
+                    // coupons of a fixed amount are meant to be made out in an amount _including_ tax iff the shop displays prices incl. tax
+                    if (DISPLAY_PRICE_WITH_TAX == 'false') { 
+                       $amountExVat = $order_total['value'];
                         //calculate price incl. tax
                         $amountIncVat = $amountExVat * ( (100 + $order->products[0]['tax']) / 100);     //Shao's magic way to get shop tax  
                     }
                     else {
                         $amountIncVat = $order_total['value'];                   
                     }
-                    
+             
                     // add WebPayItem::fixedDiscount to swp_order object 
                     $swp_order->addDiscount(
                             WebPayItem::fixedDiscount()
@@ -429,27 +433,27 @@ class sveawebpay_invoice {
                                     ->setAmountIncVat( $amountIncVat )
                                     ->setDescription( $order_total['title'] )
                     );                
+                               
                 break;
 
-                // TODO
-                // default case handles 'unknown' items from other plugins. Might cause problems.
+                // TODO default case not tested, lack of test case/data. ported from 3.0 zencart module
                 default:
+                // default case handles 'unknown' items from other plugins. Might cause problems.   
                     $order_total_obj = $GLOBALS[$order_total['code']];
                     $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
                     // if displayed WITH tax, REDUCE the value since it includes tax
-                    if (DISPLAY_PRICE_WITH_TAX == 'true')
+                    if (DISPLAY_PRICE_WITH_TAX == 'true') {
                         $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
-
-                    $clientInvoiceRows[] = Array(
-                        "Description" => strip_tags($order_total['title']),
-                        "PricePerUnit" => $this->convert_to_currency(strip_tags($order_total['value']), $currency),
-                        "NumberOfUnits" => 1,
-                        "Unit" => "",
-                        "VatPercent" => $tax_rate,
-                        "DiscountPercent" => 0
+                    }
+                    
+                    $swp_order->addOrderRow(
+                        WebPayItem::orderRow()
+                            ->setQuantity(1)          //Required
+                            ->setAmountExVat($this->convert_to_currency(strip_tags($order_total['value']), $currency))
+                            ->setVatPercent($tax_rate)  //Optional, see info above
+                            ->setDescription($order_total['title'])        //Optional
                     );
-
-                    break;
+                break;
             }
         }
 
