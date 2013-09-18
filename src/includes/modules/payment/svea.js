@@ -53,7 +53,7 @@ jQuery(document).ready(function (){
                                     "sveaAddressSelector"
                     );
                 });
-
+                
                 // set zencart billing/shipping to match getAddresses selection
                 jQuery('#sveaAddressSelector').change( function() {
                     jQuery.ajax({
@@ -82,6 +82,9 @@ jQuery(document).ready(function (){
                 jQuery('#sveaPartPayField').show();
                 jQuery('#sveaInvoiceField').hide();
 
+                // get & show getPaymentOptions 
+                getPaymentOptions( customerCountry );
+
                 // force getAddresses & show part payment options on ssn input 
                 jQuery("#sveaSSNPP").change( function(){
                     getAddresses(   jQuery('#sveaSSNPP').val(), 
@@ -89,7 +92,6 @@ jQuery(document).ready(function (){
                                     jQuery('#pmt-sveawebpay_partpay').attr("sveaCustomerCountry"),
                                     "sveaAddressSelectorPP"
                     );
-                    getPaymentOptions( customerCountry );
                 });
 
                 // set zencart billing/shipping to match getAddresses selection
