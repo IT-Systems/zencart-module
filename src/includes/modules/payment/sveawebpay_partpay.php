@@ -336,16 +336,25 @@ class sveawebpay_partpay {
                 case 'ot_shipping':
                     
                     //makes use of zencart $order-info[] shipping information to populate object
-    
+                    // shop shows prices including tax, take this into accord when calculating tax 
+                    if (DISPLAY_PRICE_WITH_TAX == 'false') {
+                        $amountExVat = $order->info['shipping_cost'];
+                        $amountIncVat = $order->info['shipping_cost'] + $order->info['shipping_tax'];  
+                    }
+                    else {
+                        $amountExVat = $order->info['shipping_cost'] - $order->info['shipping_tax'];
+                        $amountIncVat = $order->info['shipping_cost'] ;                     
+                    }
+                    
                     // add WebPayItem::shippingFee to swp_order object 
                     $swp_order->addFee(
                             WebPayItem::shippingFee()
                                     ->setDescription($order->info['shipping_method'])
-                                    ->setAmountExVat( floatval($order->info['shipping_cost']) )
-                                    ->setAmountIncVat( floatval($order->info['shipping_cost']) + floatval($order->info['shipping_tax']) )
+                                    ->setAmountExVat( $amountExVat )
+                                    ->setAmountIncVat( $amountIncVat )
                     );
-                    break;
-
+                break;
+                
                 //
                 // if handling fee applies, create WebPayItem::invoiceFee object and add to order
                 case 'sveawebpay_handling_fee' :
@@ -378,22 +387,30 @@ class sveawebpay_partpay {
                     }
                     break;
 
-                // TODO
                 case 'ot_coupon':
-                   //calculate price whithout tax
-                    $b_tax = $this->convert_to_currency(strip_tags($order_total['value']), $currency);
-                    $price = $b_tax / ((100 + $order->products[0]['tax']) / 100);
+                    // as the ot_coupon module doesn't seem to honor "show prices with/without tax" setting in zencart, we assume that
+                    // coupons of a fixed amount are meant to be made out in an amount _including_ tax iff the shop displays prices incl. tax
+                    if (DISPLAY_PRICE_WITH_TAX == 'false') {
+                        $amountExVat = $order_total['value'];
+                        //calculate price incl. tax
+                        $amountIncVat = $amountExVat * ( (100 + $order->products[0]['tax']) / 100);     //Shao's magic way to get shop tax  
+                    }
+                    else {
+                        $amountIncVat = $order_total['value'];                   
+                    }
                     
-                    $clientInvoiceRows[] = Array(
-                        "Description" => strip_tags($order_total['title']),
-                        "PricePerUnit" => -$price,
-                        "NumberOfUnits" => 1,
-                        "Unit" => "",
-                        "VatPercent" => $order->products[0]['tax'],
-                        "DiscountPercent" => 0
-                    );
-
-                    break;
+                    // add WebPayItem::fixedDiscount to swp_order object 
+                    $swp_order->addDiscount(
+                            WebPayItem::fixedDiscount()
+//                                        ->setAmountIncVat(100.00)               //Required
+//                                        ->setDiscountId("1")                    //Optional
+//                                        ->setUnit("st")                         //Optional
+//                                        ->setDescription("FixedDiscount")       //Optional
+//                                        ->setName("Fixed")                      //Optional
+                                    ->setAmountIncVat( $amountIncVat )
+                                    ->setDescription( $order_total['title'] )
+                    );                
+                break;
 
                 // TODO
                 // default case handles 'unknown' items from other plugins. Might cause problems.

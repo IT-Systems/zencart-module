@@ -170,6 +170,7 @@ function getAddresses( ssn, isCompany, countryCode, addressSelectorName ) {
                 sveaIsCompany: isCompany,
                 sveaCountryCode: countryCode
         },
+        
         success: function(msg){
             jQuery('#SveaInvoiceLoader').remove();
             jQuery( "#" + addressSelectorName ).empty(); 
