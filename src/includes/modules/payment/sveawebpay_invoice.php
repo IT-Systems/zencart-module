@@ -355,13 +355,22 @@ class sveawebpay_invoice {
                 case 'ot_shipping':
                     
                     //makes use of zencart $order-info[] shipping information to populate object
-    
+                    // shop shows prices including tax, take this into accord when calculating tax 
+                    if (DISPLAY_PRICE_WITH_TAX == 'false') {
+                        $amountExVat = $order->info['shipping_cost'];
+                        $amountIncVat = $order->info['shipping_cost'] + $order->info['shipping_tax'];  
+                    }
+                    else {
+                        $amountExVat = $order->info['shipping_cost'] - $order->info['shipping_tax'];
+                        $amountIncVat = $order->info['shipping_cost'] ;                     
+                    }
+                    
                     // add WebPayItem::shippingFee to swp_order object 
                     $swp_order->addFee(
                             WebPayItem::shippingFee()
                                     ->setDescription($order->info['shipping_method'])
-                                    ->setAmountExVat( floatval($order->info['shipping_cost']) )
-                                    ->setAmountIncVat( floatval($order->info['shipping_cost']) + floatval($order->info['shipping_tax']) )
+                                    ->setAmountExVat( $amountExVat )
+                                    ->setAmountIncVat( $amountIncVat )
                     );
                     break;
 
