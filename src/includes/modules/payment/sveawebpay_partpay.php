@@ -14,7 +14,7 @@ class sveawebpay_partpay {
         global $order;
 
         $this->code = 'sveawebpay_partpay';
-        $this->version = 2;
+        $this->version = 4;
 
         $_SESSION['SWP_CODE'] = $this->code;
 

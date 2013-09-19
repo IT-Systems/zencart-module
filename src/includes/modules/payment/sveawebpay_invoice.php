@@ -14,7 +14,7 @@ class sveawebpay_invoice {
         global $order;
 
         $this->code = 'sveawebpay_invoice';
-        $this->version = 2;                         // TODO version of what?
+        $this->version = 4;                         // TODO version of what?
 
         $_SESSION['SWP_CODE'] = $this->code;
 
@@ -313,7 +313,7 @@ class sveawebpay_invoice {
             ->setCountryCode( $user_country )
             ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
             ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
-            ->setOrderDate(date('c'))                      //Required for synchronous payments -- TODO check format "2012-12-12"
+            ->setOrderDate(date('c'))                      //Required for synchronous payments
         ;
 
         //
