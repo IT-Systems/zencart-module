@@ -5,8 +5,11 @@
  * Version 4.0 - Zen Cart
  * Kristian Grossman-Madsen, Shaho Ghobadi
  */
-
+var isReady; //undefined
+    
 jQuery(document).ready(function (){
+      
+    if( !isReady ) { isReady = true;  // as svea.js is included w/both payplan & invoice, only hook functions once.
 
     // store customerCountry in attribute
     jQuery.ajax({
@@ -133,6 +136,8 @@ jQuery(document).ready(function (){
         jQuery('#sveaBirthDate_div').hide();
         jQuery('#sveaVatNo_div').show();
     });
+
+    } // isReady
 });
     
 // hide billing, invoice fields in getAddress countries
