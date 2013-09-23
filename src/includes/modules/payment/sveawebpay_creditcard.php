@@ -2,8 +2,8 @@
 /*
 HOSTED SVEAWEBPAY PAYMENT MODULE FOR ZEN CART
 -----------------------------------------------
-Version 3.0 - Zen Cart
-Shaho Ghobadi
+Version 4.0 - Zen Cart
+Kristian Grossman-Madsen, Shaho Ghobadi
 */
 
 class sveawebpay_creditcard {
@@ -12,7 +12,7 @@ class sveawebpay_creditcard {
     global $order;
 
     $this->code = 'sveawebpay_creditcard';
-    $this->version = 2;
+    $this->version = 4;
 
     $_SESSION['SWP_CODE'] = $this->code;
     
@@ -120,413 +120,349 @@ class sveawebpay_creditcard {
     
     global $db, $order, $order_totals, $language;
     
-    $new_order_rs = $db->Execute("select orders_id from ".TABLE_ORDERS." order by orders_id desc limit 1");
+    // calculate the order number
+    $new_order_rs = $db->Execute("select orders_id from " . TABLE_ORDERS . " order by orders_id desc limit 1");
     $new_order_field = $new_order_rs->fields;
-    
+    $client_order_number = ($new_order_field['orders_id'] + 1) . '-' . time();
+
     // localization parameters
     $user_country = $order->billing['country']['iso_code_2'];
+
     $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
     $user_language = $user_language->fields['code'];
-    
+
+
     // switch to default currency if the customers currency is not supported
     $currency = $order->info['currency'];
-    if(!in_array($currency, $this->allowed_currencies))
-        $currency = $this->default_currency;   
-    
-    //Import SVEA files
-    require('includes/modules/payment/svea/SveaConfig.php');
-    
-    //SVEA config settings
-    $configSvea = SveaConfig::getConfig();
-    $configSvea->merchantId = MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID;
-    $configSvea->secret = MODULE_PAYMENT_SWPCREDITCARD_SW; 
-    
-    //Build Order rows
-    $totalPrice = 0;
-    $totalTax = 0;
-    
-    $paymentRequest = new SveaPaymentRequest();
-    $orderSvea = new SveaOrder();
-    $paymentRequest->order = $orderSvea;;  
-           
-    
-    foreach($order_totals as $ot_id => $order_total) {
-      $current_row++;
-      switch($order_total['code']) {
-        case 'ot_subtotal':
-        case 'ot_total':
-        case 'ot_tax':
-        case in_array($order_total['code'],$this->ignore_list):
-          // do nothing for these
-          $current_row--;
-          break;
-        case 'ot_shipping':
-          $shipping_code = explode('_', $_SESSION['shipping']['id']);
-          $shipping = $GLOBALS[$shipping_code[0]];
-          if (isset($shipping->description))
-            $shipping_description = $shipping->title . ' [' . $shipping->description . ']';
-          else
-            $shipping_description = $shipping->title;
-            //Nya rader här
-            $shippingPriceExVat   = $this->convert_to_currency($_SESSION['shipping']['cost'],$currency);
-            $shippingTaxRate = zen_get_tax_rate($shipping->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
-            $shippingTax     = ($shippingTaxRate / 100) * $shippingPriceExVat; 
-            
-            $orderRow = new SveaOrderRow();
-            $orderRow->amount = number_format(round($shippingPriceExVat+$shippingTax,2),2,'','');
-            $orderRow->vat = number_format(round($shippingTax,2),2,'','');
-            $orderRow->name = $shipping_description;
-            $orderRow->quantity = 1;
-            $orderRow->unit = "st";
-                	
-            //Add the order rows to your order
-            $orderSvea->addOrderRow($orderRow);
-            
-            //Add to totals    
-            $totalPrice = $totalPrice+$shippingPriceExVat+$shippingTax;
-            $totalTax = $totalTax + $shippingTax;
-
-          break;
-        case 'ot_coupon':
-          //Nya rader här
-          $discountPrice = -$this->convert_to_currency(strip_tags($order_total['value']),$currency);
-          
-          $orderRow = new SveaOrderRow();
-          $orderRow->amount = number_format(round($discountPrice,2),2,'','');
-          $orderRow->vat = 0;
-          $orderRow->name = strip_tags($order_total['title']);
-          $orderRow->quantity = 1;
-          $orderRow->unit = "st";
-          
-          //Add the order rows to your order
-          $orderSvea->addOrderRow($orderRow);
-        
-          //Add to totals    
-          $totalPrice = $totalPrice+$discountPrice;
-
-        break;
-        // default case handles order totals like handling fee, but also
-        // 'unknown' items from other plugins. Might cause problems.
-        default:
-          $order_total_obj = $GLOBALS[$order_total['code']];
-          $tax_rate = (string) zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
-          // if displayed WITH tax, REDUCE the value since it includes tax
-          if (DISPLAY_PRICE_WITH_TAX == 'true')
-            $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
-            $otherTax     = ($tax_rate / 100) * $order_total['value']; 
-            
-            $orderRow = new SveaOrderRow();
-            $orderRow->amount = number_format(round($order_total['value']+$otherTax,2),2,'','');
-            $orderRow->vat = number_format(round($otherTax,2),2,'','');
-            $orderRow->name = strip_tags($order_total['title']);
-            $orderRow->quantity = 1;
-            $orderRow->unit = "st";
-                	
-            //Add the order rows to your order
-            $orderSvea->addOrderRow($orderRow);
-            
-            //Add to totals    
-            $totalPrice = $totalPrice+$otherPriceExVat+$otherTax;
-            $totalTax = $totalTax + $otherTax;
-
-        break;
-      }
+    if (!in_array($currency, $this->allowed_currencies)) {
+        $currency = $this->default_currency;
     }
+
+    //
+    // Include Svea php integration package files    
+    require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+ 
+    // Create and initialize order object, using either test or production configuration
+    $swp_order = WebPay::createOrder() // TODO uses default testmode config for now
+        ->setCountryCode( $user_country )
+        ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
+        ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
+        ->setOrderDate(date('c'))                      //Required for synchronous payments
+    ;
     
+
+        //
+        // for each item in cart, create WebPayItem::orderRow objects and add to order
+        foreach ($order->products as $productId => $product) {
+
+            $amount_ex_vat = $this->convert_to_currency(round($product['final_price'], 2), $currency);
+
+            $swp_order->addOrderRow(
+                    WebPayItem::orderRow()
+                            ->setQuantity($product['qty'])          //Required
+                            ->setAmountExVat($amount_ex_vat)          //Optional, see info above
+                            //->setAmountIncVat(125.00)               //Optional, see info above
+                            ->setVatPercent(intval($product['tax']))  //Optional, see info above
+                            //->setArticleNumber()                    //Optional
+                            ->setDescription($product['name'])        //Optional
+                            //->setName($product['model'])             //Optional
+                            //->setUnit("st")                           //Optional  //TODO hardcoded?
+                            //->setDiscountPercent(0)                   //Optional  //TODO hardcoded
+            );
+        }
+
+        //        
+        // handle order total modules 
+        // i.e shipping fee, handling fee items
+        foreach ($order_totals as $ot_id => $order_total) {
+          
+            switch ($order_total['code']) {
+                case in_array(  $order_total['code'], 
+                                $this->ignore_list):
+                case 'ot_subtotal':
+                case 'ot_total':
+                case 'ot_tax':
+                    // do nothing
+                    break;
+
+                //
+                // if shipping fee, create WebPayItem::shippingFee object and add to order
+                case 'ot_shipping':
+                    
+                    // makes use of zencart $order-info[] shipping information to populate object
+                    // shop shows prices including tax, take this into accord when calculating tax 
+                    if (DISPLAY_PRICE_WITH_TAX == 'false') {
+                        $amountExVat = $order->info['shipping_cost'];
+                        $amountIncVat = $order->info['shipping_cost'] + $order->info['shipping_tax'];  
+                    }
+                    else {
+                        $amountExVat = $order->info['shipping_cost'] - $order->info['shipping_tax'];
+                        $amountIncVat = $order->info['shipping_cost'] ;                     
+                    }
+                    
+                    // add WebPayItem::shippingFee to swp_order object 
+                    $swp_order->addFee(
+                            WebPayItem::shippingFee()
+                                    ->setDescription($order->info['shipping_method'])
+                                    ->setAmountExVat( $amountExVat )
+                                    ->setAmountIncVat( $amountIncVat )
+                    );
+                break;
+
+                //
+                // if handling fee applies, create WebPayItem::invoiceFee object and add to order
+                case 'sveawebpay_handling_fee' :
+
+                    // is the handling_fee module activated?
+                    if (isset($this->handling_fee) && $this->handling_fee > 0) {
+
+                        // handlingfee expressed as percentage?
+                        if (substr($this->handling_fee, -1) == '%') {
+                        
+                            // sum of products + shipping * handling_fee as percentage
+                            $hf_percentage = floatval(substr($this->handling_fee, 0, -1));
+
+                            $hf_price = ($order->info['subtotal'] + $order->info['shipping_cost']) * ($hf_percentage / 100.0);
+                        }
+                        // handlingfee expressed as absolute amount (incl. tax)
+                        else {
+                            $hf_price = $this->convert_to_currency(floatval($this->handling_fee), $currency);
+                        }
+                        $hf_taxrate =   zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS, 
+                                        $order->delivery['country']['id'], $order->delivery['zone_id']);
+
+                        // add WebPayItem::invoiceFee to swp_order object 
+                        $swp_order->addFee(
+                                WebPayItem::invoiceFee()
+                                        ->setDescription()
+                                        ->setAmountExVat($hf_price)
+                                        ->setVatPercent($hf_taxrate)
+                        );
+                    }
+                    break;
+
+                case 'ot_coupon':
+                    
+                    // TODO for now, we only support fixed amount coupons. 
+                    // Investigate how zencart calculates %-rebates if shop set to display prices inc.tax i.e. 69.99*1.25 => 8.12 if 10% off?!
+                    
+                    // as the ot_coupon module doesn't seem to honor "show prices with/without tax" setting in zencart, we assume that
+                    // coupons of a fixed amount are meant to be made out in an amount _including_ tax iff the shop displays prices incl. tax
+                    if (DISPLAY_PRICE_WITH_TAX == 'false') { 
+                       $amountExVat = $order_total['value'];
+                        //calculate price incl. tax
+                        $amountIncVat = $amountExVat * ( (100 + $order->products[0]['tax']) / 100);     //Shao's magic way to get shop tax  
+                    }
+                    else {
+                        $amountIncVat = $order_total['value'];                   
+                    }
+             
+                    // add WebPayItem::fixedDiscount to swp_order object 
+                    $swp_order->addDiscount(
+                            WebPayItem::fixedDiscount()
+//                                        ->setAmountIncVat(100.00)               //Required
+//                                        ->setDiscountId("1")                    //Optional
+//                                        ->setUnit("st")                         //Optional
+//                                        ->setDescription("FixedDiscount")       //Optional
+//                                        ->setName("Fixed")                      //Optional
+                                    ->setAmountIncVat( $amountIncVat )
+                                    ->setDescription( $order_total['title'] )
+                    );                
+                               
+                break;
+
+                // TODO default case not tested, lack of test case/data. ported from 3.0 zencart module
+                default:
+                // default case handles 'unknown' items from other plugins. Might cause problems.   
+                    $order_total_obj = $GLOBALS[$order_total['code']];
+                    $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
+                    // if displayed WITH tax, REDUCE the value since it includes tax
+                    if (DISPLAY_PRICE_WITH_TAX == 'true') {
+                        $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
+                    }
+                    
+                    $swp_order->addOrderRow(
+                        WebPayItem::orderRow()
+                            ->setQuantity(1)          //Required
+                            ->setAmountExVat($this->convert_to_currency(strip_tags($order_total['value']), $currency))
+                            ->setVatPercent($tax_rate)  //Optional, see info above
+                            ->setDescription($order_total['title'])        //Optional
+                    );
+                break;
+            }
+        }
     
-    // Ordered Products
-    foreach($order->products as $i => $Item) {
-         
-        $tax = ($Item['tax'] / 100) * $this->convert_to_currency($Item['final_price'],$currency);
-        $price = $this->convert_to_currency($Item['final_price'],$currency) + $tax;
-        
-        $totalPrice = $totalPrice+($price * $Item['qty']);
-        $totalTax = $totalTax + ($tax * $Item['qty']);
-        
-        $orderRow = new SveaOrderRow();
-        $orderRow->amount = number_format(round($price,2),2,'','');
-        $orderRow->vat = number_format(round($tax,2),2,'','');
-        $orderRow->name = $Item['name'];
-        $orderRow->quantity = $Item['qty'];
-        $orderRow->sku = $Item['sku'];
-        $orderRow->unit = "st";
-    
-    	
-        //Add the order rows to your order
-        $orderSvea->addOrderRow($orderRow);
+        $swp_form =  $swp_order->usePaymentMethod(PaymentMethod::KORTCERT)
+           ->setCancelUrl( zen_href_link(FILENAME_CHECKOUT_PAYMENT, '', 'SSL', true) )      // todo test this
+           ->setReturnUrl( zen_href_link(FILENAME_CHECKOUT_PROCESS, '', 'SSL') )
+           ->getPaymentForm();
+
+        //return $process_button_string;
+        return  $swp_form->htmlFormFieldsAsArray['input_merchantId'] .
+                $swp_form->htmlFormFieldsAsArray['input_message'] .
+                $swp_form->htmlFormFieldsAsArray['input_mac'];
+
     }
-       
-    //Set base data for the order
-    $orderSvea->amount = number_format(round($totalPrice,2),2,'','');
-    $orderSvea->customerRefno = ($new_order_field['orders_id'] + 1).'-'.time();
-    $orderSvea->returnUrl = zen_href_link(FILENAME_CHECKOUT_PROCESS, '', 'SSL');
-    $orderSvea->vat = number_format(round($totalTax,2),2,'','');
-    $orderSvea->currency = $currency;
-    $orderSvea->paymentMethod = SveaOrder::CARD;
-    $orderSvea->cancelurl = zen_href_link(FILENAME_CHECKOUT_PAYMENT, '', 'SSL');
-    
-    $paymentRequest->createPaymentMessage();
-
-    $formString  = "<input type='hidden' name='merchantid' value='{$paymentRequest->merchantid}'/>";
-    $formString .= "<input type='hidden' name='message' value='{$paymentRequest->payment}'/>";
-    $formString .= "<input type='hidden' name='mac' value='{$paymentRequest->mac}'/>";
-    
-    //return $process_button_string;
-    return $formString;
-  }
-
-  function before_process() {
-    global $db, $order, $order_totals, $language;
-    
+  
+ function before_process() {
+    global $db, $order, $order_totals, $language;    
     
     if ($_REQUEST['response']){
         
-        //REQUESTS
-        $responseSvea   = $_REQUEST['response'];
-        $macSvea        = $_REQUEST['mac'];
-        $merchantidSvea = $_REQUEST['merchantid'];
+        //
+        // Include Svea php integration package files    
+        require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');
+    
+        // localization parameters
+        $user_country = $order->billing['country']['iso_code_2'];
         
-        //Import SVEA files
-        require('includes/modules/payment/svea/SveaConfig.php');
-        
-        $resp = new SveaPaymentResponse($responseSvea);
+        // TODO use config in this
+        $resp = new SveaResponse($_REQUEST, $user_country); //HostedPaymentResponse 
 
-        if($resp->validateMac($macSvea,MODULE_PAYMENT_SWPCREDITCARD_SW) == true){
-            
-            //SUCCESS 
-            if ($resp->statuscode == '0'){
-                	                
+        // check for bad response
+        if( $resp->response->resultcode == '0' ) {     
+            die('Response failed authorization. AC not valid or 
+                Response is not recognized');  // TODO don't die()            
+        }
+        
+        // response ok, check if payment accepted
+        else {            
             // handle successful payments
+            if ($resp->response->accepted == '1'){           
+                $table = array (
+                        'KORTABSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+                        'KORTINDK'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+                        'KORTINFI'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+                        'KORTINNO'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+                        'KORTINSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+                        'NETELLER'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+                        'PAYSON'        => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE);
 
-        
-            $table = array (
-                    'KORTABSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                    'KORTINDK'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                    'KORTINFI'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                    'KORTINNO'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                    'KORTINSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                    'NETELLER'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                    'PAYSON'        => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE);
+                if(array_key_exists($_GET['PaymentMethod'], $table)) {
+                    $order->info['payment_method'] = 
+                        $table[$_GET['PaymentMethod']] . ' - ' . $_GET['PaymentMethod'];
+                }
 
-            if(array_key_exists($_GET['PaymentMethod'], $table))
-              $order->info['payment_method'] = $table[$_GET['PaymentMethod']] . ' - ' . $_GET['PaymentMethod'];
-                  
-            }else{
-                    //FAIL
-                    $payment_error_return = 'payment_error=' . $this->code;
-                      switch ($resp->statuscode) {
-                          case 100:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_100;
-                            break;
-                          case 105:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_105;
-                            break;
-                          case 106:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_106;
-                            break;
-                          case 107:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_107;
-                            break;
-                          case 108:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_108;
-                            break;
-                          case 109:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_109;
-                            break;
-                          case 110:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_110;
-                            break;
-                          case 113:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_113;
-                            break;
-                          case 114:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_114;
-                            break;
-                          case 121:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_121;
-                            break;
-                          case 124:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_124;
-                            break;
-                          case 143:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_143;
-                            break;
-                          default:
-                            $_SESSION['SWP_ERROR'] = ERROR_CODE_DEFAULT . $resp->statuscode;
-                            break;
-                      }
-                      if (isset($_SESSION['payment_attempt'])) unset($_SESSION['payment_attempt']);
-                        zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
-                            
-                      //zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
-                    }
-        
-           
-        }else{
-            //MAC NOT VALID
-            die('nej');
-        }
+            }
+            // handle failed payments
+            else{
+                
+                $payment_error_return = 'payment_error=' . $resp->response->resultcode;
+    
+                switch ($resp->response->resultcode) {
+                    case 100:
+                      $_SESSION['SWP_ERROR'] = ERROR_CODE_100;
+                      break;
+                    case 105:
+                      $_SESSION['SWP_ERROR'] = ERROR_CODE_105;
+                      break;
+                    case 106:
+                      $_SESSION['SWP_ERROR'] = ERROR_CODE_106;
+                      break;
+                    case 107:
+                      $_SESSION['SWP_ERROR'] = ERROR_CODE_107;
+                      break;
+                    case 108:
+                      $_SESSION['SWP_ERROR'] = ERROR_CODE_108;
+                      break;
+                    case 109:
+                      $_SESSION['SWP_ERROR'] = ERROR_CODE_109;
+                      break;
+                    case 110:
+                      $_SESSION['SWP_ERROR'] = ERROR_CODE_110;
+                      break;
+                    case 113:
+                      $_SESSION['SWP_ERROR'] = ERROR_CODE_113;
+                      break;
+                    case 114:
+                      $_SESSION['SWP_ERROR'] = ERROR_CODE_114;
+                      break;
+                    case 121:
+                      $_SESSION['SWP_ERROR'] = ERROR_CODE_121;
+                      break;
+                    case 124:
+                      $_SESSION['SWP_ERROR'] = ERROR_CODE_124;
+                      break;
+                    case 143:
+                      $_SESSION['SWP_ERROR'] = ERROR_CODE_143;
+                      break;
+                    default:
+                      $_SESSION['SWP_ERROR'] = 
+                            ERROR_CODE_DEFAULT . $resp->response->resultcode;
+                      break;
+                }
+                
+                if (isset($_SESSION['payment_attempt'])) {
+                    unset($_SESSION['payment_attempt']);
+                }
+                
+                zen_redirect( zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return) );
+            }
+        } 
     }
     
-    /*
-    // first round, when we redirect to hosted solution
-    if (!isset($_GET['Success'])) {
-      $new_order_rs = $db->Execute("select orders_id from ".TABLE_ORDERS." order by orders_id desc limit 1");
-      $new_order_field = $new_order_rs->fields;
-
-      // localization parameters
-      $user_country = $order->billing['country']['iso_code_2'];
-      $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
-      $user_language = $user_language->fields['code'];
-
-      // switch to default currency if the customers currency is not supported
-      $currency = $order->info['currency'];
-      if(!in_array($currency, $this->allowed_currencies))
-        $currency = $this->default_currency;
-
-      // setup user parameters for hosted solution
-      $hosted_params = array( 'Username'      =>  MODULE_PAYMENT_SWPCREDITCARD_USERNAME,
-                              'OrderId'       =>  ($new_order_field['orders_id'] + 1).'-'.time(),
-                              'ResponseURL'   =>  urlencode((ENABLE_SSL == 'true' ? HTTPS_SERVER.DIR_WS_HTTPS_CATALOG : HTTP_SERVER.DIR_WS_CATALOG).'swphosted/response.php'),
-                              'Testmode'      =>  (MODULE_PAYMENT_SWPCREDITCARD_MODE == 'Test' ? 'True' : 'False'),
-                              'Language'      =>  $user_language,
-                              'Country'       =>  $user_country,
-                              'Paymentmethod' =>  'card',
-                              'Currency'      =>  $currency,
-                              'Version'       =>  $this->version,
-                              'Module'        =>  'ZenCart');
-      $current_row = 0;
-
-      // handle products
-      foreach($order->products as $productId => $product) {
-        $current_row++;
-        $hosted_params['Row'.$current_row.'AmountExVAT']    = $this->convert_to_currency($product['final_price'],$currency);
-        $hosted_params['Row'.$current_row.'VATPercentage']  = $product['tax'];
-        $hosted_params['Row'.$current_row.'Description']    = urlencode(utf8_encode($product['name']));
-        $hosted_params['Row'.$current_row.'Quantity']       = $product['qty'];
-      }
-
-      // handle order totals
-      foreach($order_totals as $ot_id => $order_total) {
-        $current_row++;
-        switch($order_total['code']) {
-          case 'ot_subtotal':
-          case 'ot_total':
-          case 'ot_tax':
-          case in_array($order_total['code'],$this->ignore_list):
-            // do nothing for these
-            $current_row--;
-            break;
-          case 'ot_shipping':
-            $shipping_code = explode('_', $_SESSION['shipping']['id']);
-            $shipping = $GLOBALS[$shipping_code[0]];
-            if (isset($shipping->description))
-              $shipping_description = $shipping->title . ' [' . $shipping->description . ']';
-            else
-              $shipping_description = $shipping->title;
-            $hosted_params['Row'.$current_row.'AmountExVAT']    = $this->convert_to_currency($_SESSION['shipping']['cost'],$currency);
-            $hosted_params['Row'.$current_row.'VATPercentage']  = zen_get_tax_rate($shipping->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
-            $hosted_params['Row'.$current_row.'Description']    = urlencode( utf8_encode($shipping_description) );
-            $hosted_params['Row'.$current_row.'Quantity']       = '1';
-            break;
-          case 'ot_coupon':
-            $hosted_params['Row'.$current_row.'VATPercentage']  = '0';
-            $hosted_params['Row'.$current_row.'AmountExVAT']    = -$this->convert_to_currency(strip_tags($order_total['value']),$currency);
-            $hosted_params['Row'.$current_row.'Description']    = urlencode( utf8_encode(strip_tags($order_total['title'])) );
-            $hosted_params['Row'.$current_row.'Quantity']       = '1';
-            break;
-          // default case handles order totals like handling fee, but also
-          // 'unknown' items from other plugins. Might cause problems.
-          default:
-            $order_total_obj = $GLOBALS[$order_total['code']];
-            $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
-            // if displayed WITH tax, REDUCE the value since it includes tax
-            if (DISPLAY_PRICE_WITH_TAX == 'true')
-              $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
-            $hosted_params['Row'.$current_row.'VATPercentage']  = $tax_rate;
-            $hosted_params['Row'.$current_row.'AmountExVAT']    = $this->convert_to_currency(strip_tags($order_total['value']),$currency);
-            $hosted_params['Row'.$current_row.'Description']    = urlencode( utf8_encode(strip_tags($order_total['title'])) );
-            $hosted_params['Row'.$current_row.'Quantity']       = '1';
-            break;
-        }
-      }
-
-      foreach($hosted_params as $key => $value) {
-        $hosted_params_array[] = $key.'='.$value;
-      }
-
-      // create get data from param array and create MD5 verification
-      $process_md5_check = $this->sveawebpay_url.'?'.mb_convert_encoding(implode('&', $hosted_params_array), 'utf-8');
-      $md5 = md5($process_md5_check.MODULE_PAYMENT_SWPCREDITCARD_PASSWORD);
-      $redirect_url = $process_md5_check.'&MD5='.$md5;
-
-      // send to hosted solution
-      zen_redirect($redirect_url);
-    }
-    
-    
-    // second round, when we return from hosted solution, whether sucessful or not
-
-    // check MD5 verification, although it should really not fail
-    $no_page_query = explode(FILENAME_CHECKOUT_PROCESS.'&',$_SERVER['QUERY_STRING']);
-    $raw_query    = explode('&MD5=', $no_page_query[1]);
-    $page_url     = (ENABLE_SSL == 'true' ? HTTPS_SERVER.DIR_WS_HTTPS_CATALOG : HTTP_SERVER.DIR_WS_CATALOG).'swphosted/response.php';
-    $md5_string   = $page_url.'?'.$raw_query[0].MODULE_PAYMENT_SWPCREDITCARD_PASSWORD;
-    if (md5($md5_string) != $raw_query[1]) {
-      $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_MESSAGE_PAYMENT_MD5_FAILED);
-      zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
-    }
-
-    // handle failed payments
-    if (strtolower($_GET['Success']) == 'false') {
-      switch ($_GET['ErrorCode']) {
-          case 1:
-            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_1);
-            break;
-          case 2:
-            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_2);
-            break;
-          case 3:
-            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_3);
-            break;
-          case 4:
-            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_4);
-            break;
-          case 5:
-            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_5);
-            break;
-          default:
-            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_DEFAULT . $_GET['ErrorCode']);
-            break;
-      }
-      // unset this since otherwise shop thinks we are slamming if we try to process again
-      if (isset($_SESSION['payment_attempt'])) unset($_SESSION['payment_attempt']);
-      zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
-    }
-
-    // handle successful payments
-    if (isset($_GET['SecurityNumber']))
-      $order->info['securityNumber']    = $_GET['SecurityNumber'];
-    if (isset($_GET['Firstname'])) {
-      $order->billing['firstname']      = $_GET['Firstname'];
-      $order->billing['lastname']       = $_GET['Lastname'];
-      $order->billing['street_address'] = $_GET['AddressLine1'];
-      $order->billing['suburb']         = $_GET['AddressLine2'];
-      $order->billing['state']          = $_GET['PostArea'];
-      $order->billing['postcode']       = $_GET['PostCode'];
-    }
-
-    $table = array (
-            'KORTABSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-            'KORTINDK'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-            'KORTINFI'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-            'KORTINNO'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-            'KORTINSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-            'NETELLER'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-            'PAYSON'        => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE);
-
-    if(array_key_exists($_GET['PaymentMethod'], $table))
-      $order->info['payment_method'] = $table[$_GET['PaymentMethod']] . ' - ' . $_GET['PaymentMethod'];*/
+//    // second round, when we return from hosted solution, whether sucessful or not
+//
+//    // check MD5 verification, although it should really not fail
+//    $no_page_query = explode(FILENAME_CHECKOUT_PROCESS.'&',$_SERVER['QUERY_STRING']);
+//    $raw_query    = explode('&MD5=', $no_page_query[1]);
+//    $page_url     = (ENABLE_SSL == 'true' ? HTTPS_SERVER.DIR_WS_HTTPS_CATALOG : HTTP_SERVER.DIR_WS_CATALOG).'swphosted/response.php';
+//    $md5_string   = $page_url.'?'.$raw_query[0].MODULE_PAYMENT_SWPCREDITCARD_PASSWORD;
+//    if (md5($md5_string) != $raw_query[1]) {
+//      $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_MESSAGE_PAYMENT_MD5_FAILED);
+//      zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
+//    }
+//
+//    // handle failed payments
+//    if (strtolower($_GET['Success']) == 'false') {
+//      switch ($_GET['ErrorCode']) {
+//          case 1:
+//            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_1);
+//            break;
+//          case 2:
+//            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_2);
+//            break;
+//          case 3:
+//            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_3);
+//            break;
+//          case 4:
+//            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_4);
+//            break;
+//          case 5:
+//            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_5);
+//            break;
+//          default:
+//            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_DEFAULT . $_GET['ErrorCode']);
+//            break;
+//      }
+//      // unset this since otherwise shop thinks we are slamming if we try to process again
+//      if (isset($_SESSION['payment_attempt'])) unset($_SESSION['payment_attempt']);
+//      zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
+//    }
+//
+//    // handle successful payments
+//    if (isset($_GET['SecurityNumber']))
+//      $order->info['securityNumber']    = $_GET['SecurityNumber'];
+//    if (isset($_GET['Firstname'])) {
+//      $order->billing['firstname']      = $_GET['Firstname'];
+//      $order->billing['lastname']       = $_GET['Lastname'];
+//      $order->billing['street_address'] = $_GET['AddressLine1'];
+//      $order->billing['suburb']         = $_GET['AddressLine2'];
+//      $order->billing['state']          = $_GET['PostArea'];
+//      $order->billing['postcode']       = $_GET['PostCode'];
+//    }
+//
+//    $table = array (
+//            'KORTABSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+//            'KORTINDK'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+//            'KORTINFI'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+//            'KORTINNO'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+//            'KORTINSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+//            'NETELLER'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+//            'PAYSON'        => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE);
+//
+//    if(array_key_exists($_GET['PaymentMethod'], $table))
+//      $order->info['payment_method'] = $table[$_GET['PaymentMethod']] . ' - ' . $_GET['PaymentMethod'];*/
   }
 
   // if payment accepted, insert order into database
