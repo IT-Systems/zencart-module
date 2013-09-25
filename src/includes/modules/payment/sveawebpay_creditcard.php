@@ -305,51 +305,35 @@ class sveawebpay_creditcard {
     }
   
  function before_process() {
-    global $db, $order, $order_totals, $language;    
+    global $order;    
     
     if ($_REQUEST['response']){
         
-        //
         // Include Svea php integration package files    
         require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');
     
         // localization parameters
         $user_country = $order->billing['country']['iso_code_2'];
         
-        // TODO use config in this
-        $resp = new SveaResponse($_REQUEST, $user_country); //HostedPaymentResponse 
+        // put response into responsehandler
+        // TODO use config as third parameter in this
+        $swp_response = (new SveaResponse( $_REQUEST, $user_country ))->response; // returns HostedPaymentResponse 
 
         // check for bad response
-        if( $resp->response->resultcode == '0' ) {     
+        if( $swp_response->resultcode == '0' ) {     
             die('Response failed authorization. AC not valid or 
                 Response is not recognized');  // TODO don't die()            
         }
         
         // response ok, check if payment accepted
-        else {            
-            // handle successful payments
-            if ($resp->response->accepted == '1'){           
-                $table = array (
-                        'KORTABSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                        'KORTINDK'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                        'KORTINFI'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                        'KORTINNO'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                        'KORTINSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                        'NETELLER'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                        'PAYSON'        => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE);
-
-                if(array_key_exists($_GET['PaymentMethod'], $table)) {
-                    $order->info['payment_method'] = 
-                        $table[$_GET['PaymentMethod']] . ' - ' . $_GET['PaymentMethod'];
-                }
-
-            }
+        else {
+            
             // handle failed payments
-            else{
+            if ($swp_response->accepted != '1'){           
                 
-                $payment_error_return = 'payment_error=' . $resp->response->resultcode;
+                $payment_error_return = 'payment_error=' . $swp_response->response->resultcode;
     
-                switch ($resp->response->resultcode) {
+                switch ($swp_response->resultcode) {
                     case 100:
                       $_SESSION['SWP_ERROR'] = ERROR_CODE_100;
                       break;
@@ -368,113 +352,135 @@ class sveawebpay_creditcard {
                     case 109:
                       $_SESSION['SWP_ERROR'] = ERROR_CODE_109;
                       break;
-                    case 110:
-                      $_SESSION['SWP_ERROR'] = ERROR_CODE_110;
-                      break;
-                    case 113:
-                      $_SESSION['SWP_ERROR'] = ERROR_CODE_113;
-                      break;
+                  
+                      // 110,113 not in opencart
+//                    case 110:
+//                      $_SESSION['SWP_ERROR'] = ERROR_CODE_110;
+//                      break;
+//                    case 113:
+//                      $_SESSION['SWP_ERROR'] = ERROR_CODE_113;
+//                      break;
                     case 114:
                       $_SESSION['SWP_ERROR'] = ERROR_CODE_114;
                       break;
                     case 121:
                       $_SESSION['SWP_ERROR'] = ERROR_CODE_121;
                       break;
-                    case 124:
-                      $_SESSION['SWP_ERROR'] = ERROR_CODE_124;
-                      break;
-                    case 143:
-                      $_SESSION['SWP_ERROR'] = ERROR_CODE_143;
-                      break;
+                    // TODO +122 +123 -124 +127 +129 -143 wrt/opencart
+                    case 122:
+                        $_SESSION['SWP_ERROR'] = ERROR_CODE_122;
+                        break;
+                    case 123:
+                        $_SESSION['SWP_ERROR'] = ERROR_CODE_123;
+                        break;
+//                    case 124:
+//                      $_SESSION['SWP_ERROR'] = ERROR_CODE_124;
+//                      break;
+                    case 127:
+                        $_SESSION['SWP_ERROR'] = ERROR_CODE_123;
+                        break;
+                    case 129:
+                        $_SESSION['SWP_ERROR'] = ERROR_CODE_123;
+                        break;                    
+//                    case 143:
+//                      $_SESSION['SWP_ERROR'] = ERROR_CODE_143;
+//                      break;           
                     default:
                       $_SESSION['SWP_ERROR'] = 
-                            ERROR_CODE_DEFAULT . $resp->response->resultcode;
+                            ERROR_CODE_DEFAULT . $swp_response->resultcode;   // TODO use ->response->errorcode instead, + in languagefiles?
                       break;
                 }
                 
-                if (isset($_SESSION['payment_attempt'])) {
+                if (isset($_SESSION['payment_attempt'])) {  // TODO still needed?
                     unset($_SESSION['payment_attempt']);
                 }
                 
                 zen_redirect( zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return) );
             }
+
+            // handle successful payments
+            else{
+                
+                $table = array (
+                        //TODO update language files!
+                        'KORTABSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+                        'KORTINDK'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+                        'KORTINFI'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+                        'KORTINNO'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+                        'KORTINSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+                        'NETELLER'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
+                        'PAYSON'        => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE);
+
+                if(array_key_exists($_GET['PaymentMethod'], $table)) {          // TODO still needed?
+                    $order->info['payment_method'] = 
+                        $table[$_GET['PaymentMethod']] . ' - ' . $_GET['PaymentMethod'];
+                }
+                
+// TODO from _invoice.php
+                // payment request succeded, store response in session
+                if ($swp_response->accepted == true) {
+
+                    // set zencart billing address to invoice address from payment request response
+
+                    // is private individual?
+                    if( $swp_response->customerIdentity->customerType == "Individual") {
+                        $order->billing['firstname'] = $swp_response->customerIdentity->fullName; // workaround for zen_address_format not showing 'name' in order information view/
+                        $order->billing['lastname'] = "";
+                        $order->billing['company'] = "";
+                    }
+                    else {
+                        $order->billing['company'] = $swp_response->customerIdentity->fullName;
+                    }
+                    // TODO check default zencart CHARSET define (should equal used database collation, i.e. utf-8). 
+                    // if not utf-8, must handle that when parsing swp_response (in utf-8) -- use utf8_decode(response-> ?)
+                    // also, check that php 5.3 and 5.4+ behaves the same in zen_output_string ( htmlspecialchars() defaults to utf-8 from 5.4)
+                    $order->billing['street_address'] =  
+                            $swp_response->customerIdentity->street . " " . $swp_response->customerIdentity->houseNumber;
+                    $order->billing['suburb'] =  $swp_response->customerIdentity->coAddress;
+                    $order->billing['city'] = $swp_response->customerIdentity->locality;
+                    $order->billing['postcode'] = $swp_response->customerIdentity->zipCode;
+                    $order->billing['state'] = '';  // "state" is not applicable in SWP countries
+
+                    $order->billing['country']['title'] =                                           // country name only needed for address
+                            $this->getCountryName( $swp_response->customerIdentity->countryCode );
+
+                    // save the response object 
+                    $_SESSION["swp_response"] = serialize($swp_response);
+                }                
+            }
         } 
     }
-    
-//    // second round, when we return from hosted solution, whether sucessful or not
-//
-//    // check MD5 verification, although it should really not fail
-//    $no_page_query = explode(FILENAME_CHECKOUT_PROCESS.'&',$_SERVER['QUERY_STRING']);
-//    $raw_query    = explode('&MD5=', $no_page_query[1]);
-//    $page_url     = (ENABLE_SSL == 'true' ? HTTPS_SERVER.DIR_WS_HTTPS_CATALOG : HTTP_SERVER.DIR_WS_CATALOG).'swphosted/response.php';
-//    $md5_string   = $page_url.'?'.$raw_query[0].MODULE_PAYMENT_SWPCREDITCARD_PASSWORD;
-//    if (md5($md5_string) != $raw_query[1]) {
-//      $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_MESSAGE_PAYMENT_MD5_FAILED);
-//      zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
-//    }
-//
-//    // handle failed payments
-//    if (strtolower($_GET['Success']) == 'false') {
-//      switch ($_GET['ErrorCode']) {
-//          case 1:
-//            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_1);
-//            break;
-//          case 2:
-//            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_2);
-//            break;
-//          case 3:
-//            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_3);
-//            break;
-//          case 4:
-//            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_4);
-//            break;
-//          case 5:
-//            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_5);
-//            break;
-//          default:
-//            $payment_error_return = 'payment_error=' . $this->code . '&swperror=' . urlencode(ERROR_CODE_DEFAULT . $_GET['ErrorCode']);
-//            break;
-//      }
-//      // unset this since otherwise shop thinks we are slamming if we try to process again
-//      if (isset($_SESSION['payment_attempt'])) unset($_SESSION['payment_attempt']);
-//      zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return));
-//    }
-//
-//    // handle successful payments
-//    if (isset($_GET['SecurityNumber']))
-//      $order->info['securityNumber']    = $_GET['SecurityNumber'];
-//    if (isset($_GET['Firstname'])) {
-//      $order->billing['firstname']      = $_GET['Firstname'];
-//      $order->billing['lastname']       = $_GET['Lastname'];
-//      $order->billing['street_address'] = $_GET['AddressLine1'];
-//      $order->billing['suburb']         = $_GET['AddressLine2'];
-//      $order->billing['state']          = $_GET['PostArea'];
-//      $order->billing['postcode']       = $_GET['PostCode'];
-//    }
-//
-//    $table = array (
-//            'KORTABSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-//            'KORTINDK'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-//            'KORTINFI'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-//            'KORTINNO'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-//            'KORTINSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-//            'NETELLER'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-//            'PAYSON'        => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE);
-//
-//    if(array_key_exists($_GET['PaymentMethod'], $table))
-//      $order->info['payment_method'] = $table[$_GET['PaymentMethod']] . ' - ' . $_GET['PaymentMethod'];*/
   }
 
   // if payment accepted, insert order into database
   function after_process() {
     global $insert_id, $order;
+   
+    // retrieve response object from before_process()
+    require('includes/modules/payment/svea_v4/Includes.php');
+    $swp_response = unserialize($_SESSION["swp_response"]);
 
-    $sql_data_array = array(  'orders_id'         => $insert_id,
-                              'orders_status_id'  => $order->info['order_status'],
-                              'date_added'        => 'now()',
-                              'customer_notified' => 0,
-                              'comments'          => 'Accepted by SveaWebPay '.date("Y-m-d G:i:s") .' Security Number #: '.$order->info['securityNumber']);
+    // set zencart order info using data from response object
+    $order->info['SveaOrderId'] = $swp_response->sveaOrderId;
+    $order->info['type'] = $swp_response->customerIdentity->customerType;
+
+    // set zencart order securityNumber -- if request to webservice, use sveaOrderId, if hosted use transactionId
+    $order->info['securityNumber'] = isset( $swp_response->sveaOrderId ) ? $swp_response->sveaOrderId : $swp_response->transactionId; 
+
+    // insert zencart order into database
+    $sql_data_array = array('orders_id' => $insert_id,
+        'orders_status_id' => $order->info['order_status'],
+        'date_added' => 'now()',
+        'customer_notified' => 0,
+        // TODO take comments below to language files?
+        'comments' => 'Accepted by SveaWebPay ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);
     zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
+
+    //
+    // clean up our session variables set during checkout   //$SESSION[swp_*
+    unset($_SESSION['swp_order']);
+    unset($_SESSION['swp_response']);
+
     return false;
   }
 
@@ -537,5 +543,263 @@ class sveawebpay_creditcard {
     // item price is ALWAYS given in internal price from the products DB, so just multiply by currency rate from currency table
     return number_format(zen_round($value * $currencies->currencies[$currency]['value'], $currencies->currencies[$currency]['decimal_places']), $currencies->currencies[$currency]['decimal_places'], ',', '');
   }
+  
+      function getCountryName( $iso3166 ) {
+        
+        // countrynames from https://github.com/johannesl/Internationalization, thanks!
+        $countrynames = array(
+            "AF"=>"Afghanistan",
+            "AX"=>"\xc3\x85land Islands",
+            "AL"=>"Albania",
+            "DZ"=>"Algeria",
+            "AS"=>"American Samoa",
+            "AD"=>"Andorra",
+            "AO"=>"Angola",
+            "AI"=>"Anguilla",
+            "AQ"=>"Antarctica",
+            "AG"=>"Antigua and Barbuda",
+            "AR"=>"Argentina",
+            "AM"=>"Armenia",
+            "AW"=>"Aruba",
+            "AU"=>"Australia",
+            "AT"=>"Austria",
+            "AZ"=>"Azerbaijan",
+            "BS"=>"Bahamas",
+            "BH"=>"Bahrain",
+            "BD"=>"Bangladesh",
+            "BB"=>"Barbados",
+            "BY"=>"Belarus",
+            "BE"=>"Belgium",
+            "BZ"=>"Belize",
+            "BJ"=>"Benin",
+            "BM"=>"Bermuda",
+            "BT"=>"Bhutan",
+            "BO"=>"Bolivia, Plurinational State of",
+            "BQ"=>"Bonaire, Sint Eustatius and Saba",
+            "BA"=>"Bosnia and Herzegovina",
+            "BW"=>"Botswana",
+            "BV"=>"Bouvet Island",
+            "BR"=>"Brazil",
+            "IO"=>"British Indian Ocean Territory",
+            "BN"=>"Brunei Darussalam",
+            "BG"=>"Bulgaria",
+            "BF"=>"Burkina Faso",
+            "BI"=>"Burundi",
+            "KH"=>"Cambodia",
+            "CM"=>"Cameroon",
+            "CA"=>"Canada",
+            "CV"=>"Cape Verde",
+            "KY"=>"Cayman Islands",
+            "CF"=>"Central African Republic",
+            "TD"=>"Chad",
+            "CL"=>"Chile",
+            "CN"=>"China",
+            "CX"=>"Christmas Island",
+            "CC"=>"Cocos (Keeling) Islands",
+            "CO"=>"Colombia",
+            "KM"=>"Comoros",
+            "CG"=>"Congo",
+            "CD"=>"Congo, The Democratic Republic of the",
+            "CK"=>"Cook Islands",
+            "CR"=>"Costa Rica",
+            "CI"=>"C\xc3\xb4te d'Ivoire",
+            "HR"=>"Croatia",
+            "CU"=>"Cuba",
+            "CW"=>"Cura\xc3\xa7ao",
+            "CY"=>"Cyprus",
+            "CZ"=>"Czech Republic",
+            "DK"=>"Denmark",
+            "DJ"=>"Djibouti",
+            "DM"=>"Dominica",
+            "DO"=>"Dominican Republic",
+            "EC"=>"Ecuador",
+            "EG"=>"Egypt",
+            "SV"=>"El Salvador",
+            "GQ"=>"Equatorial Guinea",
+            "ER"=>"Eritrea",
+            "EE"=>"Estonia",
+            "ET"=>"Ethiopia",
+            "FK"=>"Falkland Islands (Malvinas)",
+            "FO"=>"Faroe Islands",
+            "FJ"=>"Fiji",
+            "FI"=>"Finland",
+            "FR"=>"France",
+            "GF"=>"French Guiana",
+            "PF"=>"French Polynesia",
+            "TF"=>"French Southern Territories",
+            "GA"=>"Gabon",
+            "GM"=>"Gambia",
+            "GE"=>"Georgia",
+            "DE"=>"Germany",
+            "GH"=>"Ghana",
+            "GI"=>"Gibraltar",
+            "GR"=>"Greece",
+            "GL"=>"Greenland",
+            "GD"=>"Grenada",
+            "GP"=>"Guadeloupe",
+            "GU"=>"Guam",
+            "GT"=>"Guatemala",
+            "GG"=>"Guernsey",
+            "GN"=>"Guinea",
+            "GW"=>"Guinea-Bissau",
+            "GY"=>"Guyana",
+            "HT"=>"Haiti",
+            "HM"=>"Heard Island and McDonald Islands",
+            "VA"=>"Holy See (Vatican City State)",
+            "HN"=>"Honduras",
+            "HK"=>"Hong Kong",
+            "HU"=>"Hungary",
+            "IS"=>"Iceland",
+            "IN"=>"India",
+            "ID"=>"Indonesia",
+            "IR"=>"Iran, Islamic Republic of",
+            "IQ"=>"Iraq",
+            "IE"=>"Ireland",
+            "IM"=>"Isle of Man",
+            "IL"=>"Israel",
+            "IT"=>"Italy",
+            "JM"=>"Jamaica",
+            "JP"=>"Japan",
+            "JE"=>"Jersey",
+            "JO"=>"Jordan",
+            "KZ"=>"Kazakhstan",
+            "KE"=>"Kenya",
+            "KI"=>"Kiribati",
+            "KP"=>"Korea, Democratic People's Republic of",
+            "KR"=>"Korea, Republic of",
+            "KW"=>"Kuwait",
+            "KG"=>"Kyrgyzstan",
+            "LA"=>"Lao People's Democratic Republic",
+            "LV"=>"Latvia",
+            "LB"=>"Lebanon",
+            "LS"=>"Lesotho",
+            "LR"=>"Liberia",
+            "LY"=>"Libya",
+            "LI"=>"Liechtenstein",
+            "LT"=>"Lithuania",
+            "LU"=>"Luxembourg",
+            "MO"=>"Macao",
+            "MK"=>"Macedonia, The Former Yugoslav Republic of",
+            "MG"=>"Madagascar",
+            "MW"=>"Malawi",
+            "MY"=>"Malaysia",
+            "MV"=>"Maldives",
+            "ML"=>"Mali",
+            "MT"=>"Malta",
+            "MH"=>"Marshall Islands",
+            "MQ"=>"Martinique",
+            "MR"=>"Mauritania",
+            "MU"=>"Mauritius",
+            "YT"=>"Mayotte",
+            "MX"=>"Mexico",
+            "FM"=>"Micronesia, Federated States of",
+            "MD"=>"Moldova, Republic of",
+            "MC"=>"Monaco",
+            "MN"=>"Mongolia",
+            "ME"=>"Montenegro",
+            "MS"=>"Montserrat",
+            "MA"=>"Morocco",
+            "MZ"=>"Mozambique",
+            "MM"=>"Myanmar",
+            "NA"=>"Namibia",
+            "NR"=>"Nauru",
+            "NP"=>"Nepal",
+            "NL"=>"Netherlands",
+            "NC"=>"New Caledonia",
+            "NZ"=>"New Zealand",
+            "NI"=>"Nicaragua",
+            "NE"=>"Niger",
+            "NG"=>"Nigeria",
+            "NU"=>"Niue",
+            "NF"=>"Norfolk Island",
+            "MP"=>"Northern Mariana Islands",
+            "NO"=>"Norway",
+            "OM"=>"Oman",
+            "PK"=>"Pakistan",
+            "PW"=>"Palau",
+            "PS"=>"Palestine, State of",
+            "PA"=>"Panama",
+            "PG"=>"Papua New Guinea",
+            "PY"=>"Paraguay",
+            "PE"=>"Peru",
+            "PH"=>"Philippines",
+            "PN"=>"Pitcairn",
+            "PL"=>"Poland",
+            "PT"=>"Portugal",
+            "PR"=>"Puerto Rico",
+            "QA"=>"Qatar",
+            "RE"=>"R\xc3\xa9union",
+            "RO"=>"Romania",
+            "RU"=>"Russian Federation",
+            "RW"=>"Rwanda",
+            "BL"=>"Saint Barth\xc3\xa9lemy",
+            "SH"=>"Saint Helena, Ascension and Tristan Da Cunha",
+            "KN"=>"Saint Kitts and Nevis",
+            "LC"=>"Saint Lucia",
+            "MF"=>"Saint Martin (French part)",
+            "PM"=>"Saint Pierre and Miquelon",
+            "VC"=>"Saint Vincent and the Grenadines",
+            "WS"=>"Samoa",
+            "SM"=>"San Marino",
+            "ST"=>"Sao Tome and Principe",
+            "SA"=>"Saudi Arabia",
+            "SN"=>"Senegal",
+            "RS"=>"Serbia",
+            "SC"=>"Seychelles",
+            "SL"=>"Sierra Leone",
+            "SG"=>"Singapore",
+            "SX"=>"Sint Maarten (Dutch part)",
+            "SK"=>"Slovakia",
+            "SI"=>"Slovenia",
+            "SB"=>"Solomon Islands",
+            "SO"=>"Somalia",
+            "ZA"=>"South Africa",
+            "GS"=>"South Georgia and the South Sandwich Islands",
+            "SS"=>"South Sudan",
+            "ES"=>"Spain",
+            "LK"=>"Sri Lanka",
+            "SD"=>"Sudan",
+            "SR"=>"Suriname",
+            "SJ"=>"Svalbard and Jan Mayen",
+            "SZ"=>"Swaziland",
+            "SE"=>"Sweden",
+            "CH"=>"Switzerland",
+            "SY"=>"Syrian Arab Republic",
+            "TW"=>"Taiwan, Province of China",
+            "TJ"=>"Tajikistan",
+            "TZ"=>"Tanzania, United Republic of",
+            "TH"=>"Thailand",
+            "TL"=>"Timor-Leste",
+            "TG"=>"Togo",
+            "TK"=>"Tokelau",
+            "TO"=>"Tonga",
+            "TT"=>"Trinidad and Tobago",
+            "TN"=>"Tunisia",
+            "TR"=>"Turkey",
+            "TM"=>"Turkmenistan",
+            "TC"=>"Turks and Caicos Islands",
+            "TV"=>"Tuvalu",
+            "UG"=>"Uganda",
+            "UA"=>"Ukraine",
+            "AE"=>"United Arab Emirates",
+            "GB"=>"United Kingdom",
+            "US"=>"United States",
+            "UM"=>"United States Minor Outlying Islands",
+            "UY"=>"Uruguay",
+            "UZ"=>"Uzbekistan",
+            "VU"=>"Vanuatu",
+            "VE"=>"Venezuela, Bolivarian Republic of",
+            "VN"=>"Viet Nam",
+            "VG"=>"Virgin Islands, British",
+            "VI"=>"Virgin Islands, U.S.",
+            "WF"=>"Wallis and Futuna",
+            "EH"=>"Western Sahara",
+            "YE"=>"Yemen",
+            "ZM"=>"Zambia",
+            "ZW"=>"Zimbabwe"
+        );
+    
+        return( array_key_exists( $iso3166, $countrynames) ? $countrynames[$iso3166] : $iso3166 );
+    }
 }
 ?>

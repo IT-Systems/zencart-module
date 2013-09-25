@@ -30,8 +30,6 @@ jQuery(document).ready(function (){
     // show fields depending on payment method selected  
     jQuery("input[type=radio][name='payment']").click( function() {
 
-        
-
         var checked_payment = jQuery("input:radio[name=payment]:checked").val();
         switch( checked_payment ) {
         

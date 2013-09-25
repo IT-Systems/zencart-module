@@ -653,7 +653,6 @@ class sveawebpay_invoice {
         // payment request succeded, store response in session
         if ($swp_response->accepted == true) {
             
-            //
             // set zencart billing address to invoice address from payment request response
 
             // is private individual?
@@ -714,7 +713,6 @@ class sveawebpay_invoice {
         unset($_SESSION['swp_order']);
         unset($_SESSION['swp_response']);
         
-        // TODO: why false?
         return false;
     }
 
