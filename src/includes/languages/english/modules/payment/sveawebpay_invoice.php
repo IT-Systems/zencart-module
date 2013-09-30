@@ -1,7 +1,8 @@
 <?php
 /*
-SVEAWEBPAY PAYMENT MODULE FOR Zencart 1.3.9
+SVEAWEBPAY PAYMENT MODULE FOR ZenCart
 -----------------------------------------------
+Version 4.0
 */
 define('MODULE_PAYMENT_SWPINVOICE_TEXT_TITLE','SVEA Invoice');
 define('MODULE_PAYMENT_SWPINVOICE_TEXT_DESCRIPTION','SveaWebPay Webservice Invoice - ver 4.0');
