@@ -155,8 +155,8 @@ class sveawebpay_creditcard {
         // for each item in cart, create WebPayItem::orderRow objects and add to order
         foreach ($order->products as $productId => $product) {
 
-            $amount_ex_vat = $this->convert_to_currency(round($product['final_price'], 2), $currency);
-
+            // convert_to_currency 
+            $amount_ex_vat = floatval(  $this->convert_to_currency( round($product['final_price'], 2), $currency ) );         
             $swp_order->addOrderRow(
                     WebPayItem::orderRow()
                             ->setQuantity($product['qty'])          //Required
@@ -416,33 +416,10 @@ class sveawebpay_creditcard {
                         $table[$_GET['PaymentMethod']] . ' - ' . $_GET['PaymentMethod'];
                 }
                 
-// TODO from _invoice.php
                 // payment request succeded, store response in session
                 if ($swp_response->accepted == true) {
 
-                    // set zencart billing address to invoice address from payment request response
-
-                    // is private individual?
-                    if( $swp_response->customerIdentity->customerType == "Individual") {
-                        $order->billing['firstname'] = $swp_response->customerIdentity->fullName; // workaround for zen_address_format not showing 'name' in order information view/
-                        $order->billing['lastname'] = "";
-                        $order->billing['company'] = "";
-                    }
-                    else {
-                        $order->billing['company'] = $swp_response->customerIdentity->fullName;
-                    }
-                    // TODO check default zencart CHARSET define (should equal used database collation, i.e. utf-8). 
-                    // if not utf-8, must handle that when parsing swp_response (in utf-8) -- use utf8_decode(response-> ?)
-                    // also, check that php 5.3 and 5.4+ behaves the same in zen_output_string ( htmlspecialchars() defaults to utf-8 from 5.4)
-                    $order->billing['street_address'] =  
-                            $swp_response->customerIdentity->street . " " . $swp_response->customerIdentity->houseNumber;
-                    $order->billing['suburb'] =  $swp_response->customerIdentity->coAddress;
-                    $order->billing['city'] = $swp_response->customerIdentity->locality;
-                    $order->billing['postcode'] = $swp_response->customerIdentity->zipCode;
-                    $order->billing['state'] = '';  // "state" is not applicable in SWP countries
-
-                    $order->billing['country']['title'] =                                           // country name only needed for address
-                            $this->getCountryName( $swp_response->customerIdentity->countryCode );
+                    // (with creditcard payments, shipping and billing addresses are unchanged from customer entries)
 
                     // save the response object 
                     $_SESSION["swp_response"] = serialize($swp_response);
@@ -459,10 +436,6 @@ class sveawebpay_creditcard {
     // retrieve response object from before_process()
     require('includes/modules/payment/svea_v4/Includes.php');
     $swp_response = unserialize($_SESSION["swp_response"]);
-
-    // set zencart order info using data from response object
-    $order->info['SveaOrderId'] = $swp_response->sveaOrderId;
-    $order->info['type'] = $swp_response->customerIdentity->customerType;
 
     // set zencart order securityNumber -- if request to webservice, use sveaOrderId, if hosted use transactionId
     $order->info['securityNumber'] = isset( $swp_response->sveaOrderId ) ? $swp_response->sveaOrderId : $swp_response->transactionId; 
@@ -538,13 +511,28 @@ class sveawebpay_creditcard {
                   'MODULE_PAYMENT_SWPCREDITCARD_SORT_ORDER');
   }
 
-  function convert_to_currency($value, $currency) {
-    global $currencies;
-    // item price is ALWAYS given in internal price from the products DB, so just multiply by currency rate from currency table
-    return number_format(zen_round($value * $currencies->currencies[$currency]['value'], $currencies->currencies[$currency]['decimal_places']), $currencies->currencies[$currency]['decimal_places'], ',', '');
-  }
+  /**
+   * 
+   * @global type $currencies
+   * @param float $value amount to convert
+   * @param string $currency as three-letter $iso3166 country code
+   * @param boolean $no_number_format if true, don't convert the to i.e. Swedish decimal indicator (",")
+   *    Having a non-standard decimal may cause i.e. number conversion with floatval() to truncate fractions.
+   * @return type
+   */
+    function convert_to_currency($value, $currency, $no_number_format = true) {
+        global $currencies;
+
+        // item price is ALWAYS given in internal price from the products DB, so just multiply by currency rate from currency table
+        $rounded_value = zen_round($value * $currencies->currencies[$currency]['value'], $currencies->currencies[$currency]['decimal_places']);
+
+        return $no_number_format ? $rounded_value : number_format(  $rounded_value, 
+                                                                    $currencies->currencies[$currency]['decimal_places'], 
+                                                                    $currencies->currencies[$currency]['decimal_point'], 
+                                                                    $currencies->currencies[$currency]['thousands_point']);   
+    }
   
-      function getCountryName( $iso3166 ) {
+    function getCountryName( $iso3166 ) {
         
         // countrynames from https://github.com/johannesl/Internationalization, thanks!
         $countrynames = array(
