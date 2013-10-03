@@ -56,7 +56,7 @@ class sveawebpay_internetbank {
     }
 
     // do not use this module if the geograhical zone is set and we are not in it
-    if ( ($this->enabled == true) && ((int)MODULE_PAYMENT_SWPCREDITCARD_ZONE > 0) ) {
+    if ( ($this->enabled == true) && ((int)MODULE_PAYMENT_SWPCREDITCARD_ZONE > 0) ) {   //TODO check swpcreditcard => swpinternetbank?
       $check_flag = false;
       $check_query = $db->Execute("select zone_id from " . TABLE_ZONES_TO_GEO_ZONES . " where geo_zone_id = '" . MODULE_PAYMENT_SWPCREDITCARD_ZONE . "' and zone_country_id = '" . $order->billing['country']['id'] . "' order by zone_id");
 
@@ -399,26 +399,27 @@ class sveawebpay_internetbank {
             // handle successful payments
             else{
 
-                $table = array (
-                    //TODO update language files!
-                    'EKOP'          => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-                    'AKTIA'         => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-                    'BANKAXNO'      => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-                    'FSPA'          => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-                    'GIROPAY'       => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-                    'NORDEADK'      => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-                    'NORDEAFI'      => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-                    'NORDEASE'      => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-                    'OP'            => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-                    'SAMPO'         => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-                    'SEBFTG'        => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-                    'SEBPRV'        => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-                    'SHB'           => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE);
-                
-                if(array_key_exists($_GET['PaymentMethod'], $table)) {          // TODO still needed?
-                    $order->info['payment_method'] = 
-                        $table[$_GET['PaymentMethod']] . ' - ' . $_GET['PaymentMethod'];
-                }
+                // not present in current opencart module, and $order->info['payment_method'] is already set to same value as MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE, so will remove this
+//                $table = array (
+//                    //TODO update language files!
+//                    'EKOP'          => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
+//                    'AKTIA'         => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
+//                    'BANKAXNO'      => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
+//                    'FSPA'          => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
+//                    'GIROPAY'       => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
+//                    'NORDEADK'      => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
+//                    'NORDEAFI'      => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
+//                    'NORDEASE'      => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
+//                    'OP'            => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
+//                    'SAMPO'         => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
+//                    'SEBFTG'        => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
+//                    'SEBPRV'        => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
+//                    'SHB'           => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE);
+//                
+//                if(array_key_exists($_GET['PaymentMethod'], $table)) {          // TODO still needed?
+//                    $order->info['payment_method'] = 
+//                        $table[$_GET['PaymentMethod']] . ' - ' . $_GET['PaymentMethod'];
+//                }
                 
                 // payment request succeded, store response in session
                 if ($swp_response->accepted == true) {
