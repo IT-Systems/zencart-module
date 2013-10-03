@@ -90,6 +90,10 @@ class sveawebpay_creditcard {
     if ($this->display_images)
       $fields[] = array('title' => '<img src=images/SveaWebPay-Kort-100px.png />', 'field' => '');
 
+    if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_creditcard') { // is set in before_process() on failed payment
+        $fields[] = array('title' => '<span style="color:red">' . $_SESSION['SWP_ERROR'] . '</span>', 'field' => '');
+    }
+      
     // handling fee
     if (isset($this->handling_fee) && $this->handling_fee > 0) {
       $paymentfee_cost = $this->handling_fee;
@@ -329,10 +333,8 @@ class sveawebpay_creditcard {
         else {
             
             // handle failed payments
-            if ($swp_response->accepted != '1'){           
+            if ( !$swp_response->accepted === true ){           
                 
-                $payment_error_return = 'payment_error=' . $swp_response->response->resultcode;
-    
                 switch ($swp_response->resultcode) {
                     case 100:
                       $_SESSION['SWP_ERROR'] = ERROR_CODE_100;
@@ -351,73 +353,48 @@ class sveawebpay_creditcard {
                       break;
                     case 109:
                       $_SESSION['SWP_ERROR'] = ERROR_CODE_109;
-                      break;
-                  
-                      // 110,113 not in opencart
-//                    case 110:
-//                      $_SESSION['SWP_ERROR'] = ERROR_CODE_110;
-//                      break;
-//                    case 113:
-//                      $_SESSION['SWP_ERROR'] = ERROR_CODE_113;
-//                      break;
+                      break;                 
                     case 114:
                       $_SESSION['SWP_ERROR'] = ERROR_CODE_114;
                       break;
                     case 121:
                       $_SESSION['SWP_ERROR'] = ERROR_CODE_121;
                       break;
-                    // TODO +122 +123 -124 +127 +129 -143 wrt/opencart
                     case 122:
                         $_SESSION['SWP_ERROR'] = ERROR_CODE_122;
                         break;
                     case 123:
                         $_SESSION['SWP_ERROR'] = ERROR_CODE_123;
                         break;
-//                    case 124:
-//                      $_SESSION['SWP_ERROR'] = ERROR_CODE_124;
-//                      break;
                     case 127:
-                        $_SESSION['SWP_ERROR'] = ERROR_CODE_123;
+                        $_SESSION['SWP_ERROR'] = ERROR_CODE_127;
                         break;
                     case 129:
-                        $_SESSION['SWP_ERROR'] = ERROR_CODE_123;
-                        break;                    
-//                    case 143:
-//                      $_SESSION['SWP_ERROR'] = ERROR_CODE_143;
-//                      break;           
+                        $_SESSION['SWP_ERROR'] = ERROR_CODE_129;
+                        break;                              
                     default:
                       $_SESSION['SWP_ERROR'] = 
-                            ERROR_CODE_DEFAULT . $swp_response->resultcode;   // TODO use ->response->errorcode instead, + in languagefiles?
+                            ERROR_CODE_DEFAULT . $swp_response->resultcode;
                       break;
                 }
                 
-                if (isset($_SESSION['payment_attempt'])) {  // TODO still needed?
+                if (isset($_SESSION['payment_attempt'])) {  // prevents repeated payment attempts interpreted by zencart as slam attack
                     unset($_SESSION['payment_attempt']);
                 }
                 
+                $payment_error_return = 'payment_error=sveawebpay_creditcard'; // used in conjunction w/SWP_ERROR to avoid reason showing up in url
                 zen_redirect( zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return) );
             }
 
             // handle successful payments
             else{
-                
-                $table = array (
-                        //TODO update language files!
-                        'KORTABSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                        'KORTINDK'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                        'KORTINFI'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                        'KORTINNO'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                        'KORTINSE'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                        'NETELLER'      => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE,
-                        'PAYSON'        => MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE);
-
-                if(array_key_exists($_GET['PaymentMethod'], $table)) {          // TODO still needed?
-                    $order->info['payment_method'] = 
-                        $table[$_GET['PaymentMethod']] . ' - ' . $_GET['PaymentMethod'];
-                }
-                
+                                
                 // payment request succeded, store response in session
-                if ($swp_response->accepted == true) {
+                if ($swp_response->accepted === true) {
+                    
+                    if (isset($_SESSION['SWP_ERROR'])) {
+                        unset($_SESSION['SWP_ERROR']);
+                    }
 
                     // (with creditcard payments, shipping and billing addresses are unchanged from customer entries)
 

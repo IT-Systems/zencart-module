@@ -82,7 +82,7 @@ class sveawebpay_internetbank {
 
   // sets information displayed when choosing between payment options
   function selection() {
-    global $order, $currencies, $messageStack;
+    global $order, $currencies;
 
     $fields = array();
 
@@ -90,7 +90,7 @@ class sveawebpay_internetbank {
     if ($this->display_images)
       $fields[] = array('title' => '<img src=images/SveaWebPay-Direktbank-100px.png />', 'field' => '');
 
-    if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_internetbank') { // set in before_process() on failed payment
+    if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_internetbank') { // is set in before_process() on failed payment
         $fields[] = array('title' => '<span style="color:red">' . $_SESSION['SWP_ERROR'] . '</span>', 'field' => '');
     }
   
@@ -335,7 +335,7 @@ class sveawebpay_internetbank {
     }
 
   function before_process() {
-    global $order, $messageStack;    
+    global $order;    
 
     if ($_REQUEST['response']){
 
@@ -387,11 +387,11 @@ class sveawebpay_internetbank {
                     break;                           
                 default:
                     $_SESSION['SWP_ERROR'] = 
-                          ERROR_CODE_DEFAULT . $swp_response->resultcode;   // TODO use ->response->errorcode instead, + in languagefiles?
+                          ERROR_CODE_DEFAULT . $swp_response->resultcode;
                     break;
                 }
            
-                if (isset($_SESSION['payment_attempt'])) {  // TODO still needed? -- use to prevent payment attempt interpreted by zc as slam attack
+                if (isset($_SESSION['payment_attempt'])) {  // prevents repeated payment attempts interpreted by zencart as slam attack
                     unset($_SESSION['payment_attempt']);
                 }
                 
