@@ -40,7 +40,7 @@ define('ERROR_CODE_40002','Invalid Customer information');
 define('ERROR_CODE_40004','Could not find any addresses for this customer');
 
 define('ERROR_CODE_40000','Client is not authorized for this method');
-define('ERROR_CODE_error','Error: ');
+define('ERROR_CODE_DEFAULT','Error: ');
 
 
 // used in payment credentials form
