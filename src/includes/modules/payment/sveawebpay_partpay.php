@@ -107,10 +107,9 @@ class sveawebpay_partpay {
 
         // catch and display error messages raised when i.e. payment request from before_process() below turns out not accepted 
         if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_partpay') {
-            $fields[] = array(  'title' => '<span style="color:red">' . $this->responseCodes($_REQUEST['payment_errno']) . '</span>', 
-                                'field' => '');
+            $fields[] = array('title' => '<span style="color:red">' . $_SESSION['SWP_ERROR'] . '</span>', 'field' => '');
         }
-
+                
        // insert svea js
         $sveaJs = '<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
                 <script type="text/javascript" src="' . $this->web_root . 'includes/modules/payment/svea.js"></script>';
@@ -528,15 +527,12 @@ class sveawebpay_partpay {
         // send payment request to svea, receive response
         $swp_response = $swp_order->usePaymentPlanPayment($_SESSION['sveaPaymentOptionsPP'])->doRequest();
         
-        //
         // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {
-//            $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->CreateOrderEuResult->ResultCode);
+            
+            $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->resultcode);
 
-            // TODO no errno for certain errors gives strange error message
-            $payment_error_return = 'payment_error=sveawebpay_invoice&payment_errno=' .
-                                    $swp_response->resultcode;
-
+            $payment_error_return = 'payment_error=sveawebpay_partpay';
             zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return)); // error handled in selection() above
         }
 
@@ -544,7 +540,10 @@ class sveawebpay_partpay {
         // payment request succeded, store response in session
         if ($swp_response->accepted == true) {
             
-            //
+            if (isset($_SESSION['SWP_ERROR'])) {
+                unset($_SESSION['SWP_ERROR']);
+            }
+            
             // set zencart billing address to invoice address from payment request response
 
             // is private individual?
@@ -686,47 +685,31 @@ class sveawebpay_partpay {
             'MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER');
     }
 
-    function convert_to_currency($value, $currency) {
+  /**
+   * 
+   * @global type $currencies
+   * @param float $value amount to convert
+   * @param string $currency as three-letter $iso3166 country code
+   * @param boolean $no_number_format if true, don't convert the to i.e. Swedish decimal indicator (",")
+   *    Having a non-standard decimal may cause i.e. number conversion with floatval() to truncate fractions.
+   * @return type
+   */
+    function convert_to_currency($value, $currency, $no_number_format = true) {
         global $currencies;
+
         // item price is ALWAYS given in internal price from the products DB, so just multiply by currency rate from currency table
-        return number_format(zen_round($value * $currencies->currencies[$currency]['value'], $decimal_places), 2, $decimal_symbol, '');
+        $rounded_value = zen_round($value * $currencies->currencies[$currency]['value'], $currencies->currencies[$currency]['decimal_places']);
+
+        return $no_number_format ? $rounded_value : number_format(  $rounded_value, 
+                                                                    $currencies->currencies[$currency]['decimal_places'], 
+                                                                    $currencies->currencies[$currency]['decimal_point'], 
+                                                                    $currencies->currencies[$currency]['thousands_point']);   
     }
 
     //Error Responses
     function responseCodes($err) {
         switch ($err) {
-            
-            // TODO can these be removed?
-            /*
-            case "CustomerCreditRejected" :
-                return ERROR_CODE_1;
-                break;
-            case "CustomerOverCreditLimit" :
-                return ERROR_CODE_2;
-                break;
-            case "CustomerAbuseBlock" :
-                return ERROR_CODE_3;
-                break;
-            case "OrderExpired" :
-                return ERROR_CODE_4;
-                break;
-            case "ClientOverCreditLimit" :
-                return ERROR_CODE_5;
-                break;
-            case "OrderOverSveaLimit" :
-                return ERROR_CODE_6;
-                break;
-            case "OrderOverClientLimit" :
-                return ERROR_CODE_7;
-                break;
-            case "CustomerSveaRejected" :
-                return ERROR_CODE_8;
-                break;
-            case "CustomerCreditNoSuchEntity" :
-                return ERROR_CODE_9;
-                break;
-            */
-            
+                      
             // EU error codes
             case "20000" :
                 return ERROR_CODE_20000;
