@@ -82,7 +82,7 @@ class sveawebpay_internetbank {
 
   // sets information displayed when choosing between payment options
   function selection() {
-    global $order, $currencies;
+    global $order, $currencies, $messageStack;
 
     $fields = array();
 
@@ -90,6 +90,10 @@ class sveawebpay_internetbank {
     if ($this->display_images)
       $fields[] = array('title' => '<img src=images/SveaWebPay-Direktbank-100px.png />', 'field' => '');
 
+    if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_internetbank') { // set in before_process() on failed payment
+        $fields[] = array('title' => '<span style="color:red">' . $_SESSION['SWP_ERROR'] . '</span>', 'field' => '');
+    }
+  
     // handling fee
     if (isset($this->handling_fee) && $this->handling_fee > 0) {
       $paymentfee_cost = $this->handling_fee;
@@ -331,7 +335,7 @@ class sveawebpay_internetbank {
     }
 
   function before_process() {
-    global $order;    
+    global $order, $messageStack;    
 
     if ($_REQUEST['response']){
 
@@ -343,22 +347,20 @@ class sveawebpay_internetbank {
 
         // put response into responsehandler
         // TODO use config as third parameter in this
-        $swp_response = (new SveaResponse( $_REQUEST, $user_country ))->response; // returns HostedPaymentResponse 
+        $swp_response = (new SveaResponse( $_REQUEST, $user_country ))->response; // returns HostedPaymentResponse
 
         // check for bad response
-        if( $swp_response->resultcode == '0' ) {     
+        if( $swp_response->resultcode === '0' ) {     
             die('Response failed authorization. AC not valid or 
                 Response is not recognized');  // TODO don't die()            
         }
-
+        
         // response ok, check if payment accepted
         else {
              // handle failed payments
-            if ($swp_response->accepted != '1'){       
+            if ( !$swp_response->accepted === true){       
                 
-                $payment_error_return = 'payment_error=' . $swp_response->response->resultcode;
-                // TODO check codes w/opencart_module
-                switch ($swp_response->resultcode) {
+                switch( $swp_response->resultcode ) { // will autoconvert from string, matching initial numeric part
                 case 100:
                     $_SESSION['SWP_ERROR'] = ERROR_CODE_100;
                     break;
@@ -389,43 +391,26 @@ class sveawebpay_internetbank {
                     break;
                 }
            
-                if (isset($_SESSION['payment_attempt'])) {  // TODO still needed?
+                if (isset($_SESSION['payment_attempt'])) {  // TODO still needed? -- use to prevent payment attempt interpreted by zc as slam attack
                     unset($_SESSION['payment_attempt']);
                 }
                 
+                $payment_error_return = 'payment_error=sveawebpay_internetbank'; // used in conjunction w/SWP_ERROR to avoid reason showing up in url
                 zen_redirect( zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return) );
             }
                 
             // handle successful payments
             else{
-
-                // not present in current opencart module, and $order->info['payment_method'] is already set to same value as MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE, so will remove this
-//                $table = array (
-//                    //TODO update language files!
-//                    'EKOP'          => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-//                    'AKTIA'         => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-//                    'BANKAXNO'      => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-//                    'FSPA'          => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-//                    'GIROPAY'       => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-//                    'NORDEADK'      => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-//                    'NORDEAFI'      => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-//                    'NORDEASE'      => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-//                    'OP'            => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-//                    'SAMPO'         => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-//                    'SEBFTG'        => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-//                    'SEBPRV'        => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE,
-//                    'SHB'           => MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE);
-//                
-//                if(array_key_exists($_GET['PaymentMethod'], $table)) {          // TODO still needed?
-//                    $order->info['payment_method'] = 
-//                        $table[$_GET['PaymentMethod']] . ' - ' . $_GET['PaymentMethod'];
-//                }
                 
                 // payment request succeded, store response in session
-                if ($swp_response->accepted == true) {
+                if ($swp_response->accepted === true) {
 
+                    if (isset($_SESSION['SWP_ERROR'])) {
+                        unset($_SESSION['SWP_ERROR']);
+                    }
+                    
                     // (with direct bank payments, shipping and billing addresses are unchanged from customer entries)
-
+                    
                     // save the response object 
                     $_SESSION["swp_response"] = serialize($swp_response);
                 }                
