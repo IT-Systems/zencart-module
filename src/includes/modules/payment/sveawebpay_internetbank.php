@@ -84,6 +84,12 @@ class sveawebpay_internetbank {
   function selection() {
     global $order, $currencies;
 
+    // get & store country code
+    if( isset($order) ) {
+        $_SESSION['sveaAjaxOrderTotal'] = $order->info['total'];
+        $_SESSION['sveaAjaxCountryCode'] = $order->customer['country']['iso_code_2'];
+    }
+   
     $fields = array();
 
     // image
@@ -93,7 +99,25 @@ class sveawebpay_internetbank {
     if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_internetbank') { // is set in before_process() on failed payment
         $fields[] = array('title' => '<span style="color:red">' . $_SESSION['SWP_ERROR'] . '</span>', 'field' => '');
     }
-  
+
+    // insert svea js
+    $sveaJs = '<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+            <script type="text/javascript" src="' . $this->web_root . 'includes/modules/payment/svea.js"></script>';
+    $fields[] = array('title' => '', 'field' => $sveaJs);
+    
+    // customer country is taken from customer settings
+    $customer_country = $order->customer['country']['iso_code_2'];
+
+    // fill in all fields as required to show available bank payment methods for selection
+    $sveaBankPaymentOptions = '<div name="sveaBankPaymentOptions" id="sveaBankPaymentOptions" "></div>'; 
+       
+    // create and add the field to be shown by our js when we select SveaInvoice payment method
+    $sveaField =    '<div id="sveaInternetbankField" >' . //style="display:none">' .                        
+                        $sveaBankPaymentOptions .
+                    '</div>';
+
+    $fields[] = array('title' => '', 'field' => '<br />' . $sveaField);
+    
     // handling fee
     if (isset($this->handling_fee) && $this->handling_fee > 0) {
       $paymentfee_cost = $this->handling_fee;

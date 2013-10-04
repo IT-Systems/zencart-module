@@ -14,16 +14,17 @@ if( isset($_POST['SveaAjaxGetCustomerCountry']) ) {
 /**
  * perform getPaymentPlanParams, paymentPlanPricePerMonth, return dropdown widget
  */
-if( isset($_POST['SveaAjaxGetPaymentOptions']) ) {
+if( isset($_POST['SveaAjaxGetPartPaymentOptions']) ) {
 
     $price = isset( $_SESSION['sveaAjaxOrderTotal'] ) ? $_SESSION['sveaAjaxOrderTotal'] : "swp_not_set";
     $country = isset( $_SESSION['sveaAjaxCountryCode'] ) ? $_SESSION['sveaAjaxCountryCode'] : "swp_not_set";
 
-    sveaAjaxGetPaymentOptions( $price, $country );
+    sveaAjaxGetPartPaymentOptions( $price, $country );
     exit();
 }
 
-function sveaAjaxGetPaymentOptions( $price, $country ) {
+function sveaAjaxGetPartPaymentOptions( $price, $country ) {
+    
     // Include Svea php integration package files    
     require('includes/modules/payment/svea_v4/Includes.php'); 
     
@@ -31,12 +32,46 @@ function sveaAjaxGetPaymentOptions( $price, $country ) {
     $priceResponse = WebPay::paymentPlanPricePerMonth( $price, $plansResponse );
     
     if( sizeof( $priceResponse->values ) == 0 ) {
-        return "NO APPLICABLE PAYMENT PLAN FOR THIS ORDER AMOUNT"; //TODO cleanup
+        return "NO APPLICABLE PAYMENT PLAN FOR THIS ORDER AMOUNT"; //TODO fail gracefully
     }
-    else
+    else {
         foreach( $priceResponse->values as $cc) {
             echo sprintf( '<option value="%s">%s (%.2f)</option>', $cc['campaignCode'], $cc['description'], $cc['pricePerMonth'] );
         }
+    }
+}
+
+/**
+ * Present the banks for the user in a friendly fashion, so that we can go directly there instead of landing on paypage
+ */
+if( isset($_POST['SveaAjaxGetBankPaymentOptions']) ) {
+    $country = isset( $_SESSION['sveaAjaxCountryCode'] ) ? $_SESSION['sveaAjaxCountryCode'] : "swp_not_set";
+
+    sveaAjaxGetBankPaymentOptions( $country );
+    exit();
+}
+
+function sveaAjaxGetBankPaymentOptions( $country ) {
+
+    // Include Svea php integration package files    
+    require('includes/modules/payment/svea_v4/Includes.php'); 
+
+    $banksResponse =
+        WebPay::getPaymentMethods()
+            ->setContryCode( $country )
+            ->doRequest();
+
+    if( sizeof( $banksResponse ) == 0 ) {
+        return "NO APPLICABLE BANKS FOR THIS PAYMENT METHOD"; //TODO fail gracefully
+    }
+    else {
+        $logosPath = "images/logos/";
+        $counter = 0;
+        foreach( $banksResponse as $bank) {
+            echo sprintf( '<input type="radio" name="BankPaymentOptions" id="%s" %s/>', $bank, $counter++==0 ? "checked" : "" ); //pre-check first
+            echo sprintf( '<label for="%s"> <img src="%s%s.png" alt="bank %s" /> </label>', $bank, $logosPath, $bank, $bank);
+        }
+    }
 }
 
 /**

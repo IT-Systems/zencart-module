@@ -5,13 +5,13 @@
  * Version 4.0 - Zen Cart
  * Kristian Grossman-Madsen, Shaho Ghobadi
  */
-var isReady; //undefined
-    
+var isReady; //global, undefined on first file inclusion
+
 jQuery(document).ready(function (){
       
-    if( !isReady ) { isReady = true;  // as svea.js is included w/both payplan & invoice, only hook functions once.
+    if( !isReady ) { isReady = true;  // as svea.js is included w/both payplan & invoice, internetbank, only hook functions once.
 
-    // store customerCountry in attribute
+    // store customerCountry as attribute in payment method selection radiobutton
     jQuery.ajax({
         type: "POST",
         url: "sveaAjax.php",
@@ -22,6 +22,7 @@ jQuery(document).ready(function (){
     }).done( function( msg ) {
         jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry",msg);
         jQuery('#pmt-sveawebpay_partpay').attr("sveaCustomerCountry",msg);       
+        jQuery('#pmt-sveawebpay_internetbank').attr("sveaCustomerCountry",msg);       
     });
 
     // first, uncheck all payment buttons
@@ -43,6 +44,7 @@ jQuery(document).ready(function (){
                 hideBillingAndInvoiceAddress( customerCountry );
 
                 // show input fields
+                jQuery('#sveaInternetbankField').hide();                
                 jQuery('#sveaPartPayField').hide();
                 jQuery('#sveaInvoiceField').show();
 
@@ -80,11 +82,12 @@ jQuery(document).ready(function (){
                 hideBillingAndInvoiceAddress( customerCountry );
 
                 // show input fields
+                jQuery('#sveaInternetbankField').hide();
                 jQuery('#sveaPartPayField').show();
                 jQuery('#sveaInvoiceField').hide();
 
                 // get & show getPaymentOptions 
-                getPaymentOptions( customerCountry );
+                getPartPaymentOptions( customerCountry );
 
                 // force getAddresses & show part payment options on ssn input 
                 jQuery("#sveaSSNPP").change( function(){
@@ -108,7 +111,24 @@ jQuery(document).ready(function (){
                     });
                 });
             break; //case 'sveawebpay_partpay':
-        
+
+            //
+            // Svea internetbank payment method selected
+            case 'sveawebpay_internetbank':
+
+                // get customerCountry
+                var customerCountry = jQuery('#pmt-sveawebpay_internetbank').attr("sveaCustomerCountry");
+
+                // show input fields
+                jQuery('#sveaInternetbankField').show();
+                jQuery('#sveaPartPayField').hide();
+                jQuery('#sveaInvoiceField').hide();
+
+                // get & show getBankPaymentOptions 
+                getBankPaymentOptions( customerCountry );
+         
+            break; //case 'sveawebpay_internetbank':
+                 
             //If other payment methods are selected, hide all svea related    
             default:
                 
@@ -116,6 +136,7 @@ jQuery(document).ready(function (){
                 showBillingAndInvoiceAddress();
 
                 // hide svea payment methods
+                jQuery('#sveaInternetbankField').hide();
                 jQuery('#sveaInvoiceField').hide();
                 jQuery('#sveaPartPayField').hide();
             break; //default:
@@ -195,20 +216,39 @@ function getAddresses( ssn, isCompany, countryCode, addressSelectorName ) {
     });
 }
 
-function getPaymentOptions( countryCode ) {
+
+function getPartPaymentOptions( countryCode ) {
     
     jQuery.ajax({
         type: "POST",
         url: "sveaAjax.php",
         data: {
-            SveaAjaxGetPaymentOptions: true,
+            SveaAjaxGetPartPaymentOptions: true,
             sveaCountryCode: countryCode
         },
         success: function(msg){
-            jQuery( "#sveaPaymentOptionsPP").empty();
+            jQuery( "#sveaPaymentOptionsPP" ).empty();
             jQuery( "#sveaPaymentOptionsPP" ).append(msg);
             jQuery( 'label[for="sveaPaymentOptionsPP"]' ).show();
             jQuery( "#sveaPaymentOptionsPP" ).show();
+        }
+    });
+}
+
+function getBankPaymentOptions( countryCode ) {
+    
+    // getBankPaymentOptions to display as radio buttons, w/preselected default
+    jQuery.ajax({
+        type: "POST",
+        url: "sveaAjax.php",
+        data: { 
+            SveaAjaxGetBankPaymentOptions: true,
+            sveaAjaxCountryCode : countryCode                        
+        },
+        success: function( msg ){
+            jQuery( "#sveaBankPaymentOptions" ).empty();
+            jQuery( "#sveaBankPaymentOptions" ).append(msg);
+            jQuery( "#sveaBankPaymentOptions" ).show();
         }
     });
 }
