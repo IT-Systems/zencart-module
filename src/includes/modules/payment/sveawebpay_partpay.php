@@ -92,8 +92,8 @@ class sveawebpay_partpay {
 
         //
         // we need the order total and customer country in ajax functions. as
-        // the shop order object is unavailable, store these in session when
-        // we enter checkout_payment page (i.e. $order is set
+        // the shop order object is unavailable in sveaAjax.php, store these in 
+        // session when we enter checkout_payment page (where $order is set)
         if( isset($order) ) {
             $_SESSION['sveaAjaxOrderTotal'] = $order->info['total'];
             $_SESSION['sveaAjaxCountryCode'] = $order->customer['country']['iso_code_2'];
@@ -251,7 +251,7 @@ class sveawebpay_partpay {
 
         global $db, $order, $order_totals, $language;
 
-        require('includes/modules/payment/svea/svea.php');
+        //require('includes/modules/payment/svea/svea.php');
 
         //
         // handle postback of payment method info fields, if present

@@ -68,8 +68,10 @@ function sveaAjaxGetBankPaymentOptions( $country ) {
         $logosPath = "images/logos/";
         $counter = 0;
         foreach( $banksResponse as $bank) {
-            echo sprintf( '<input type="radio" name="BankPaymentOptions" id="%s" %s/>', $bank, $counter++==0 ? "checked" : "" ); //pre-check first
-            echo sprintf( '<label for="%s"> <img src="%s%s.png" alt="bank %s" /> </label>', $bank, $logosPath, $bank, $bank);
+            if( preg_match( "/^DB/", substr( $bank,0,2 ) ) === 1 ) { // bank payment methods all start with "DB"
+                echo sprintf( '<input type="radio" name="BankPaymentOptions" id="%s" value="%s" %s/>', $bank, $bank, $counter++==0 ? "checked=true" : "" ); //selects 1st bank
+                echo sprintf( '<label for="%s"> <img src="%s%s.png" alt="bank %s" /> </label>', $bank, $logosPath, $bank, $bank);
+            }
         }
     }
 }

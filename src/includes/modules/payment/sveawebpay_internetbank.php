@@ -153,7 +153,7 @@ class sveawebpay_internetbank {
     $new_order_field = $new_order_rs->fields;
     $client_order_number = ($new_order_field['orders_id'] + 1) . '-' . time();
     
-// localization parameters
+    // localization parameters
     $user_country = $order->billing['country']['iso_code_2'];
 
     $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
@@ -168,6 +168,7 @@ class sveawebpay_internetbank {
     //
     // Include Svea php integration package files    
     require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+
     // Create and initialize order object, using either test or production configuration
     $swp_order = WebPay::createOrder() // TODO uses default testmode config for now
         ->setCountryCode( $user_country )
@@ -176,7 +177,6 @@ class sveawebpay_internetbank {
         ->setOrderDate(date('c'))                      //Required for synchronous payments
     ;
     
-        //
         // for each item in cart, create WebPayItem::orderRow objects and add to order
         foreach ($order->products as $productId => $product) {
 
@@ -268,9 +268,6 @@ class sveawebpay_internetbank {
 
                 case 'ot_coupon':
                     
-                    // TODO for now, we only support fixed amount coupons. 
-                    // Investigate how zencart calculates %-rebates if shop set to display prices inc.tax i.e. 69.99*1.25 => 8.12 if 10% off?!
-                    
                     // as the ot_coupon module doesn't seem to honor "show prices with/without tax" setting in zencart, we assume that
                     // coupons of a fixed amount are meant to be made out in an amount _including_ tax iff the shop displays prices incl. tax
                     if (DISPLAY_PRICE_WITH_TAX == 'false') { 
@@ -285,11 +282,6 @@ class sveawebpay_internetbank {
                     // add WebPayItem::fixedDiscount to swp_order object 
                     $swp_order->addDiscount(
                             WebPayItem::fixedDiscount()
-//                                        ->setAmountIncVat(100.00)               //Required
-//                                        ->setDiscountId("1")                    //Optional
-//                                        ->setUnit("st")                         //Optional
-//                                        ->setDescription("FixedDiscount")       //Optional
-//                                        ->setName("Fixed")                      //Optional
                                     ->setAmountIncVat( $amountIncVat )
                                     ->setDescription( $order_total['title'] )
                     );                
@@ -344,11 +336,11 @@ class sveawebpay_internetbank {
             $payPageLanguage = "en";
             break; 
         }
-        
-        $swp_form = $swp_order->usePayPageDirectBankOnly()
+            
+        // go directly to selected bank
+        $swp_form = $swp_order->usePaymentMethod( $_REQUEST['BankPaymentOptions'] )
             ->setCancelUrl( zen_href_link(FILENAME_CHECKOUT_PAYMENT, '', 'SSL', true) ) // todo test this
             ->setReturnUrl( zen_href_link(FILENAME_CHECKOUT_PROCESS, '', 'SSL') )
-            ->setPayPageLanguage($payPageLanguage)
             ->getPaymentForm();
 
         //return $process_button_string;
