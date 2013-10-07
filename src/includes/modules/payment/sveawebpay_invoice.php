@@ -8,6 +8,70 @@
   Kristian Grossman-Madsen, Shaho Ghobadi
  */
 
+// Include Svea php integration package files    
+require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+
+class sveaZenCartConfig implements ConfigurationProvider {
+
+    /**
+    * Constants for the endpoint url found in the class SveaConfig.php
+    * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
+    */
+    
+    //TODO
+    public function getEndPoint($type) {
+        if ($type == ConfigurationProvider::HOSTED_TYPE) {
+            return   SveaConfig::SWP_TEST_URL;;
+        } elseif ($type == ConfigurationProvider::INVOICE_TYPE || $type == ConfigurationProvider::PAYMENTPLAN_TYPE) {
+            return SveaConfig::SWP_TEST_WS_URL;
+        } else {
+           throw new Exception('Invalid type. Accepted values: INVOICE, PAYMENTPLAN or HOSTED');
+        }
+    }
+    /**
+    * get the return value from your database or likewise
+    * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
+    * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
+    */
+    public function getMerchantId($type, $country) {
+        //if you have different countries or types the parameters are a help to put up conditions
+        return $myMerchantId;
+    }
+     /**
+    * get the return value from your database or likewise
+    * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
+    * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
+    */
+    public function getPassword($type, $country) {
+        return $myPassword;
+    }
+    /**
+    * get the return value from your database or likewise
+    * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
+    * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
+    */
+    public function getSecret($type, $country) {
+        return $mySecret;
+    }
+    /**
+    * get the return value from your database or likewise
+    * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
+    * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
+    */
+    public function getUsername($type, $country) {
+        return $myUsername;
+    }
+    /**
+    * get the return value from your database or likewise
+    * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
+    * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
+    */
+    public function getClientNumber($type, $country) {
+        return $myClientNumber;
+    }    
+}
+
+
 class sveawebpay_invoice {
 
     function sveawebpay_invoice() {
@@ -307,6 +371,10 @@ class sveawebpay_invoice {
         // Include Svea php integration package files    
         require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
+        // get current config from admin settings
+        
+        
+        
         // Create and initialize order object, using either test or production configuration
         $swp_order = WebPay::createOrder() // TODO uses default testmode config for now
             ->setCountryCode( $user_country )
