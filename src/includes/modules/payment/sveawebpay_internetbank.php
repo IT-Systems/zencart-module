@@ -186,14 +186,9 @@ class sveawebpay_internetbank {
                     WebPayItem::orderRow()
                             ->setQuantity($product['qty'])          //Required
                             ->setAmountExVat($amount_ex_vat)          //Optional, see info above
-                            //->setAmountIncVat(125.00)               //Optional, see info above
                             ->setVatPercent(intval($product['tax']))  //Optional, see info above
-                            //->setArticleNumber()                    //Optional
                             ->setDescription($product['name'])        //Optional
-                            //->setName($product['model'])             //Optional
-                            //->setUnit("st")                           //Optional  //TODO hardcoded?
-                            //->setDiscountPercent(0)                   //Optional  //TODO hardcoded
-            );
+           );
         }
 
         //        
@@ -266,8 +261,7 @@ class sveawebpay_internetbank {
                     }
                     break;
 
-                case 'ot_coupon':
-                    
+                case 'ot_coupon':                   
                     // as the ot_coupon module doesn't seem to honor "show prices with/without tax" setting in zencart, we assume that
                     // coupons of a fixed amount are meant to be made out in an amount _including_ tax iff the shop displays prices incl. tax
                     if (DISPLAY_PRICE_WITH_TAX == 'false') { 

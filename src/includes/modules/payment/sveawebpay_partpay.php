@@ -306,13 +306,8 @@ class sveawebpay_partpay {
                     WebPayItem::orderRow()
                             ->setQuantity($product['qty'])          //Required
                             ->setAmountExVat($amount_ex_vat)          //Optional, see info above
-                            //->setAmountIncVat(125.00)               //Optional, see info above
                             ->setVatPercent(intval($product['tax']))  //Optional, see info above
-                            //->setArticleNumber()                    //Optional
                             ->setDescription($product['name'])        //Optional
-                            //->setName($product['model'])             //Optional
-                            //->setUnit("st")                           //Optional  //TODO hardcoded?
-                            //->setDiscountPercent(0)                   //Optional  //TODO hardcoded
             );
         }
        
@@ -387,10 +382,6 @@ class sveawebpay_partpay {
                     break;
 
                 case 'ot_coupon':
-                    
-                    // TODO for now, we only support fixed amount coupons. 
-                    // Investigate how zencart calculates %-rebates if shop set to display prices inc.tax i.e. 69.99*1.25 => 8.12 if 10% off?!
-                    
                     // as the ot_coupon module doesn't seem to honor "show prices with/without tax" setting in zencart, we assume that
                     // coupons of a fixed amount are meant to be made out in an amount _including_ tax iff the shop displays prices incl. tax
                     if (DISPLAY_PRICE_WITH_TAX == 'false') { 
@@ -405,11 +396,6 @@ class sveawebpay_partpay {
                     // add WebPayItem::fixedDiscount to swp_order object 
                     $swp_order->addDiscount(
                             WebPayItem::fixedDiscount()
-//                                        ->setAmountIncVat(100.00)               //Required
-//                                        ->setDiscountId("1")                    //Optional
-//                                        ->setUnit("st")                         //Optional
-//                                        ->setDescription("FixedDiscount")       //Optional
-//                                        ->setName("Fixed")                      //Optional
                                     ->setAmountIncVat( $amountIncVat )
                                     ->setDescription( $order_total['title'] )
                     );                
@@ -601,7 +587,6 @@ class sveawebpay_partpay {
         unset($_SESSION['swp_order']);
         unset($_SESSION['swp_response']);
         
-        // TODO: why false?
         return false;
     }
 

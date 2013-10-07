@@ -11,38 +11,103 @@
 // Include Svea php integration package files    
 require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
-class sveaZenCartConfig implements ConfigurationProvider {
-
+/**
+ * functions common to both test, prod classes
+ */
+class ZenCartSveaConfigBase {
     /**
-    * Constants for the endpoint url found in the class SveaConfig.php
-    * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
-    */
-    
-    //TODO
-    public function getEndPoint($type) {
-        if ($type == ConfigurationProvider::HOSTED_TYPE) {
-            return   SveaConfig::SWP_TEST_URL;;
-        } elseif ($type == ConfigurationProvider::INVOICE_TYPE || $type == ConfigurationProvider::PAYMENTPLAN_TYPE) {
-            return SveaConfig::SWP_TEST_WS_URL;
+     * get a zencart configuration value from zencart db
+     */
+    protected function getZenCartConfigValue( $key ) { 
+        global $db;
+
+        // see install() below for config table schema:
+        // "insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added";
+        // $db->Execute($common . ") values ('SveaWebPay Client no SV', 'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_SV', '75021', '', '6', '0', now())");
+        
+        $sql = "select configuration_value from " . TABLE_CONFIGURATION . " where configuration_key = :key:";
+        $sql = $db->bindVars($sql, ':key:', $key, 'string');  
+
+        $result = $db->Execute($sql);                
+        if ($result->RecordCount() > 0) {
+          $value = $result->fields['configuration_value'];
         } else {
-           throw new Exception('Invalid type. Accepted values: INVOICE, PAYMENTPLAN or HOSTED');
+          $value = 'swp_error_record_not_found';
         }
+        
+        return $value;
     }
+    
+    /**
+     * Converts "SE" to "SV" (sic!), as well as checks for unsupported countries.
+     * 
+     * @param string $country, iso3166 country code (two letter, i.e. SE,NO,DK et al
+     * @return string $country, or false if unsupported country
+     */
+    protected function validateCountry( $country ) {
+        $country = strtoupper($country);
+
+        switch( $country ) {    
+        case "SE": // for compatibility w/module 3.0 db entries fix
+            $country = "SV";
+            break;
+
+        case "NO":
+        case "DK":
+        case "FI":
+        case "DE":
+        case "NL":
+            break;
+
+        default: // unrecognised country
+            $country = false;
+        }
+
+        return $country;
+    }
+    
+   /**
+    * not implemented for invoice
+    */
+    public function getSecret($type, $country) {
+        return null;
+    }
+   /**
+    * not implemented for invoice
+    */
+    public function getClientNumber($type, $country) {
+        return null;
+    }    
+}
+
+class ZenCartSveaConfigProd extends ZenCartSveaConfigBase implements ConfigurationProvider {
+    
     /**
     * get the return value from your database or likewise
     * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
     * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
     */
     public function getMerchantId($type, $country) {
-        //if you have different countries or types the parameters are a help to put up conditions
+        // validate also handles SE => SV
+        $country = $this->validateCountry( $country );     
+        if( !$country ) throw new Exception('Invalid country for payment method.');
+     
+        $key = "MODULE_PAYMENT_SWPINVOICE_CLIENTNO_" . strtoupper ( $country );
+        $myMerchantId = $this->getZenCartConfigValue( $key );       
         return $myMerchantId;
     }
-     /**
+   /**
     * get the return value from your database or likewise
     * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
     * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
     */
     public function getPassword($type, $country) {
+        // validate also handles SE => SV
+        $country = $this->validateCountry( $country );     
+        if( !$country ) throw new Exception('Invalid country for payment method.');
+        
+        $key = "MODULE_PAYMENT_SWPINVOICE_PASSWORD_" . strtoupper ( $country );
+        $myPassword = $this->getZenCartConfigValue( $key );       
         return $myPassword;
     }
     /**
@@ -50,8 +115,58 @@ class sveaZenCartConfig implements ConfigurationProvider {
     * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
     * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
     */
-    public function getSecret($type, $country) {
-        return $mySecret;
+    public function getUsername($type, $country) {
+ 
+        // validate also handles SE => SV
+        $country = $this->validateCountry( $country );     
+        if( !$country ) throw new Exception('Invalid country for payment method.');
+        
+        $key = "MODULE_PAYMENT_SWPINVOICE_USERNAME_" . strtoupper ( $country );
+        $myUsername = $this->getZenCartConfigValue( $key );       
+        return $myUsername;
+    }
+    
+    public function getEndPoint($type) {
+        $type = strtoupper($type);
+          if($type == "HOSTED"){
+            return   Svea\SveaConfig::SWP_PROD_URL;
+        }elseif($type == "INVOICE" || $type == "PAYMENTPLAN"){
+             return Svea\SveaConfig::SWP_PROD_WS_URL;
+        }  else {
+           throw new Exception('Invalid type. Accepted values: INVOICE, PAYMENTPLAN or HOSTED');
+        }
+    }
+}
+
+class ZenCartSveaConfigTest extends ZenCartSveaConfigBase implements ConfigurationProvider {
+
+    /**
+    * get the return value from your database or likewise
+    * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
+    * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
+    */
+    public function getMerchantId($type, $country) {
+        // validate also handles SE => SV
+        $country = $this->validateCountry( $country );     
+        if( !$country ) throw new Exception('Invalid country for payment method.');
+        
+        $key = "MODULE_PAYMENT_SWPINVOICE_TEST_CLIENTNO_" . strtoupper ( $country );
+        $myMerchantId = $this->getZenCartConfigValue( $key );       
+        return $myMerchantId;
+    }
+   /**
+    * get the return value from your database or likewise
+    * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
+    * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
+    */
+    public function getPassword($type, $country) {
+        // validate also handles SE => SV
+        $country = $this->validateCountry( $country );     
+        if( !$country ) throw new Exception('Invalid country for payment method.');
+        
+        $key = "MODULE_PAYMENT_SWPINVOICE_TEST_PASSWORD_" . strtoupper ( $country );
+        $myPassword = $this->getZenCartConfigValue( $key );       
+        return $myPassword;
     }
     /**
     * get the return value from your database or likewise
@@ -59,28 +174,39 @@ class sveaZenCartConfig implements ConfigurationProvider {
     * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
     */
     public function getUsername($type, $country) {
+ 
+        // validate also handles SE => SV
+        $country = $this->validateCountry( $country );     
+        if( !$country ) throw new Exception('Invalid country for payment method.');
+        
+        $key = "MODULE_PAYMENT_SWPINVOICE_TEST_USERNAME_" . strtoupper ( $country );
+        $myUsername = $this->getZenCartConfigValue( $key );       
         return $myUsername;
     }
-    /**
-    * get the return value from your database or likewise
-    * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
-    * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
-    */
-    public function getClientNumber($type, $country) {
-        return $myClientNumber;
+
+    public function getEndPoint($type) {
+        $type = strtoupper($type);
+        
+        if($type == "HOSTED"){
+            return   Svea\SveaConfig::SWP_TEST_URL;;
+        }elseif($type == "INVOICE" || $type == "PAYMENTPLAN"){
+             return Svea\SveaConfig::SWP_TEST_WS_URL;
+        }  else {
+           throw new Exception('Invalid type. Accepted values: INVOICE, PAYMENTPLAN or HOSTED');
+        }
     }    
 }
 
-
 class sveawebpay_invoice {
-
+      
     function sveawebpay_invoice() {
         global $order;
 
         $this->code = 'sveawebpay_invoice';
-        $this->version = 4;                         // TODO version of what?
+        $this->version = 4;
 
         $_SESSION['SWP_CODE'] = $this->code;
+        $_SESSION['SWP_CODE'] = MODULE_PAYMENT_SWPINVOICE_MODE;
 
         $this->title = MODULE_PAYMENT_SWPINVOICE_TEXT_TITLE;
         $this->description = MODULE_PAYMENT_SWPINVOICE_TEXT_DESCRIPTION;
@@ -154,6 +280,10 @@ class sveawebpay_invoice {
     function selection() {
         global $order, $currencies;
 
+        // TODO debug
+        $myConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new sveaZenCartTestConfig() : new sveaZenCartProdConfig();
+        print_r($myConfig->getMerchantID( "INVOICE", "SE" )); die();
+     
         $fields = array();
 
         // add svea invoice image file
@@ -371,10 +501,6 @@ class sveawebpay_invoice {
         // Include Svea php integration package files    
         require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
-        // get current config from admin settings
-        
-        
-        
         // Create and initialize order object, using either test or production configuration
         $swp_order = WebPay::createOrder() // TODO uses default testmode config for now
             ->setCountryCode( $user_country )
@@ -393,14 +519,9 @@ class sveawebpay_invoice {
                     WebPayItem::orderRow()
                             ->setQuantity($product['qty'])          //Required
                             ->setAmountExVat($amount_ex_vat)          //Optional, see info above
-                            //->setAmountIncVat(125.00)               //Optional, see info above
                             ->setVatPercent(intval($product['tax']))  //Optional, see info above
-                            //->setArticleNumber()                    //Optional
                             ->setDescription($product['name'])        //Optional
-                            //->setName($product['model'])             //Optional
-                            //->setUnit("st")                           //Optional  //TODO hardcoded?
-                            //->setDiscountPercent(0)                   //Optional  //TODO hardcoded
-            );
+           );
         }
 
         //        
@@ -474,10 +595,6 @@ class sveawebpay_invoice {
                     break;
 
                 case 'ot_coupon':
-                    
-                    // TODO for now, we only support fixed amount coupons. 
-                    // Investigate how zencart calculates %-rebates if shop set to display prices inc.tax i.e. 69.99*1.25 => 8.12 if 10% off?!
-                    
                     // as the ot_coupon module doesn't seem to honor "show prices with/without tax" setting in zencart, we assume that
                     // coupons of a fixed amount are meant to be made out in an amount _including_ tax iff the shop displays prices incl. tax
                     if (DISPLAY_PRICE_WITH_TAX == 'false') { 
@@ -492,15 +609,9 @@ class sveawebpay_invoice {
                     // add WebPayItem::fixedDiscount to swp_order object 
                     $swp_order->addDiscount(
                             WebPayItem::fixedDiscount()
-//                                        ->setAmountIncVat(100.00)               //Required
-//                                        ->setDiscountId("1")                    //Optional
-//                                        ->setUnit("st")                         //Optional
-//                                        ->setDescription("FixedDiscount")       //Optional
-//                                        ->setName("Fixed")                      //Optional
                                     ->setAmountIncVat( $amountIncVat )
                                     ->setDescription( $order_total['title'] )
-                    );                
-                               
+                    );                                            
                 break;
 
                 // TODO default case not tested, lack of test case/data. ported from 3.0 zencart module
@@ -810,6 +921,25 @@ class sveawebpay_invoice {
         $db->Execute($common . ") values ('SveaWebPay Client no FI', 'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_FI', '29995', '', '6', '0', now())");
         $db->Execute($common . ") values ('SveaWebPay Client no DK', 'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_DK', '60006', '', '6', '0', now())");
         $db->Execute($common . ") values ('SveaWebPay Client no NL', 'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_NL', '85997', '', '6', '0', now())");
+
+        // TODO use only for i.e. card, directbank payment methods...
+        $db->Execute($common . ") values ('SveaWebPay Username SV', 'MODULE_PAYMENT_SWPINVOICE_TEST_USERNAME_SV', '', 'Username for SveaWebPay Invoice Sweden Test', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Password SV', 'MODULE_PAYMENT_SWPINVOICE_TEST_PASSWORD_SV', '', 'Password for SveaWebPay Invoice Sweden Test', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Username NO', 'MODULE_PAYMENT_SWPINVOICE_TEST_USERNAME_NO', '', 'Username for SveaWebPay Invoice Norway Test', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Password NO', 'MODULE_PAYMENT_SWPINVOICE_TEST_PASSWORD_NO', '', 'Password for SveaWebPay Invoice Norway Test', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Username FI', 'MODULE_PAYMENT_SWPINVOICE_TEST_USERNAME_FI', '', 'Username for SveaWebPay Invoice Finland Test', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Password FI', 'MODULE_PAYMENT_SWPINVOICE_TEST_PASSWORD_FI', '', 'Password for SveaWebPay Invoice Finland Test', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Username DK', 'MODULE_PAYMENT_SWPINVOICE_TEST_USERNAME_DK', '', 'Username for SveaWebPay Invoice Denmark Test', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Password DK', 'MODULE_PAYMENT_SWPINVOICE_TEST_PASSWORD_DK', '', 'Password for SveaWebPay Invoice Denmark Test', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Username NL', 'MODULE_PAYMENT_SWPINVOICE_TEST_USERNAME_NL', '', 'Username for SveaWebPay Invoice Netherlands Test', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Password NL', 'MODULE_PAYMENT_SWPINVOICE_TEST_PASSWORD_NL', '', 'Password for SveaWebPay Invoice Netherlands Test', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Client no SV', 'MODULE_PAYMENT_SWPINVOICE_TEST_CLIENTNO_SV', '75021', '', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Client no NO', 'MODULE_PAYMENT_SWPINVOICE_TEST_CLIENTNO_NO', '32666', '', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Client no FI', 'MODULE_PAYMENT_SWPINVOICE_TEST_CLIENTNO_FI', '29995', '', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Client no DK', 'MODULE_PAYMENT_SWPINVOICE_TEST_CLIENTNO_DK', '60006', '', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Client no NL', 'MODULE_PAYMENT_SWPINVOICE_TEST_CLIENTNO_NL', '85997', '', '6', '0', now())");
+
+        
         $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPINVOICE_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
         $db->Execute($common . ") values ('Handling Fee', 'MODULE_PAYMENT_SWPINVOICE_HANDLING_FEE', '', 'This handling fee will be applied to all orders using this payment method.  The figure can either be set to a specific amount eg <b>5.00</b>, or set to a percentage of the order total, by ensuring the last character is a \'%\' eg <b>5.00%</b>.', '6', '0', now())");
         $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPINVOICE_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
@@ -845,6 +975,23 @@ class sveawebpay_invoice {
             'MODULE_PAYMENT_SWPINVOICE_USERNAME_NL',
             'MODULE_PAYMENT_SWPINVOICE_PASSWORD_NL',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_NL',
+            
+            'MODULE_PAYMENT_SWPINVOICE_TEST_USERNAME_SV',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_PASSWORD_SV',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_CLIENTNO_SV',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_USERNAME_NO',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_PASSWORD_NO',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_CLIENTNO_NO',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_USERNAME_FI',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_PASSWORD_FI',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_CLIENTNO_FI',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_USERNAME_DK',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_PASSWORD_DK',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_CLIENTNO_DK',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_USERNAME_NL',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_PASSWORD_NL',
+            'MODULE_PAYMENT_SWPINVOICE_TEST_CLIENTNO_NL',
+            
             'MODULE_PAYMENT_SWPINVOICE_MODE',
             'MODULE_PAYMENT_SWPINVOICE_HANDLING_FEE',
             'MODULE_PAYMENT_SWPINVOICE_ALLOWED_CURRENCIES',
@@ -855,7 +1002,6 @@ class sveawebpay_invoice {
             'MODULE_PAYMENT_SWPINVOICE_ZONE',
             'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER');
     }
-
   /**
    * 
    * @global type $currencies
@@ -1204,5 +1350,6 @@ class sveawebpay_invoice {
     
         return( array_key_exists( $iso3166, $countrynames) ? $countrynames[$iso3166] : $iso3166 );
     }
+ 
 }
 ?>
