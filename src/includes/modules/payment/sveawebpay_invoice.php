@@ -9,8 +9,8 @@
  */
 
 // Include Svea php integration package files    
-require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
-require(DIR_FS_CATALOG . 'sveawebpay_invoice_config.php');                  // sveaConfig inplementation
+require_once(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+require_once(DIR_FS_CATALOG . 'sveawebpay_invoice_config.php');                  // sveaConfig inplementation
 
 class sveawebpay_invoice {
       
@@ -21,7 +21,6 @@ class sveawebpay_invoice {
         $this->version = 4;
 
         $_SESSION['SWP_CODE'] = $this->code;
-        $_SESSION['SWP_CODE'] = MODULE_PAYMENT_SWPINVOICE_MODE;
 
         $this->title = MODULE_PAYMENT_SWPINVOICE_TEXT_TITLE;
         $this->description = MODULE_PAYMENT_SWPINVOICE_TEXT_DESCRIPTION;
@@ -94,11 +93,7 @@ class sveawebpay_invoice {
      */
     function selection() {
         global $order, $currencies;
-
-        // TODO debug
-//        $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
-//        print_r($sveaConfig->getMerchantID( "INVOICE", "SE" )); die();
-//     
+  
         $fields = array();
 
         // add svea invoice image file
@@ -314,7 +309,7 @@ class sveawebpay_invoice {
         }
         
         // Include Svea php integration package files    
-        require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+       // require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
         // Create and initialize order object, using either test or production configuration
         $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
@@ -615,13 +610,15 @@ class sveawebpay_invoice {
         global $order;
 
         // Include Svea php integration package files
-        require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+      //  require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
         // retrieve order object set in process_button()
         $swp_order = unserialize($_SESSION["swp_order"]);
 
         // send payment request to svea, receive response
-        $swp_response = $swp_order->useInvoicePayment()->doRequest();
+        $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+        
+        $swp_response = $swp_order->useInvoicePayment()->doRequest($sveaConfig);
         
         // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {
@@ -676,7 +673,7 @@ class sveawebpay_invoice {
 
         //
         // retrieve response object from before_process()
-        require('includes/modules/payment/svea_v4/Includes.php');
+      //  require('includes/modules/payment/svea_v4/Includes.php');
         $swp_response = unserialize($_SESSION["swp_response"]);
 
         // set zencart order info using data from response object

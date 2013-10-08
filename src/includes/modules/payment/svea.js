@@ -51,6 +51,7 @@ jQuery(document).ready(function (){
                 // force getAddresses on ssn input
                 jQuery("#sveaSSN").change( function(){
                     getAddresses(   jQuery('#sveaSSN').val(), 
+                                    "invoice",
                                     jQuery('#sveaInvoiceField input[type="radio"]:checked').val(), 
                                     jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry"),
                                     "sveaAddressSelector"
@@ -91,7 +92,8 @@ jQuery(document).ready(function (){
 
                 // force getAddresses & show part payment options on ssn input 
                 jQuery("#sveaSSNPP").change( function(){
-                    getAddresses(   jQuery('#sveaSSNPP').val(), 
+                    getAddresses(   jQuery('#sveaSSNPP').val(),
+                                    "paymentplan",
                                     "false", // partpay not available to companies
                                     jQuery('#pmt-sveawebpay_partpay').attr("sveaCustomerCountry"),
                                     "sveaAddressSelectorPP"
@@ -180,7 +182,7 @@ function showBillingAndInvoiceAddress() {
 
 //
 // new getAddresses() that uses the integration package
-function getAddresses( ssn, isCompany, countryCode, addressSelectorName ) {
+function getAddresses( ssn, paymentType, isCompany, countryCode, addressSelectorName ) {
 
     // Show loader
     jQuery('#sveaSSN').after('<img src="images/svea_indicator.gif" id="SveaInvoiceLoader" />');
@@ -191,6 +193,7 @@ function getAddresses( ssn, isCompany, countryCode, addressSelectorName ) {
         url: "sveaAjax.php",
         data: { SveaAjaxGetAddresses: true, 
                 sveaSSN: ssn,
+                paymentType: paymentType,
                 sveaIsCompany: isCompany,
                 sveaCountryCode: countryCode
         },

@@ -77,11 +77,21 @@ class ZenCartSveaConfigBase {
     public function getClientNumber($type, $country) {
         // validate also handles SE => SV
         $country = $this->validateCountry( $country );     
-        if( !$country ) throw new Exception('Invalid country for payment method.');
+        if( !$country ) throw new Exception('Invalid country. Accepted countries: SE, NO, DK, FI, NL'); // TODO +DE
      
-        $key = "MODULE_PAYMENT_SWPINVOICE_CLIENTNO_" . strtoupper ( $country );
-        $myMerchantId = $this->getZenCartConfigValue( $key );       
-        return $myMerchantId;
+        $type = strtoupper($type);
+        if($type == "INVOICE" ) {
+            $key = "MODULE_PAYMENT_SWPINVOICE_CLIENTNO_";
+        }
+        if($type == "PAYMENTPLAN") {
+           $key = "MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_";
+        }  else {
+           throw new Exception('Invalid type. Accepted values: INVOICE, PAYMENTPLAN');
+        }
+        $key .= strtoupper ( $country );
+
+        $myClientNumber = $this->getZenCartConfigValue( $key );       
+        return $myClientNumber;
     }  
  
    /**

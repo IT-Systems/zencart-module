@@ -2,8 +2,8 @@
 //
 require('includes/application_top.php');
 
-require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php'); 
-require(DIR_FS_CATALOG . 'sveawebpay_invoice_config.php');                  // sveaConfig inplementation
+require_once(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php'); 
+require_once(DIR_FS_CATALOG . 'sveawebpay_invoice_config.php');                  // sveaConfig implementation
 
 /**
  *  get iso 3166 customerCountry from zencart customer settings
@@ -28,52 +28,29 @@ if( isset($_POST['SveaAjaxGetPartPaymentOptions']) ) {
 
 function sveaAjaxGetPartPaymentOptions( $price, $country ) {
     
-    $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+    $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test' ||
+                   MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test' ) ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
    
     $plansResponse = WebPay::getPaymentPlanParams( $sveaConfig )->setCountryCode($country)->doRequest();
     
     // TODO change to use zencart error message stack instead, or svea errors?
     // error?
-//    if( $response->accepted == false) {
-//        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $response->errormessage) ); 
-//    }
-//    // if not, show addresses and store response in session
-//    else {
-//        // $getAddressResponse has type Svea\getAddressIdentity 
-//        foreach( $response->customerIdentity as $key => $getAddressIdentity ) {
-//
-//            $addressSelector = $getAddressIdentity->addressSelector;
-//            $fullName = $getAddressIdentity->fullName;  // also used for company name
-//            $street = $getAddressIdentity->street;
-//            $coAddress = $getAddressIdentity->coAddress;
-//            $zipCode = $getAddressIdentity->zipCode;
-//            $locality = $getAddressIdentity->locality;
-//
-//            //Send back to user
-//            echo(   '<option id="address_' . $key .
-//                        '" value="' . $addressSelector . 
-//                        '">' . $fullName . 
-//                        ', ' . $street . 
-//                        ', ' . $coAddress .
-//                        ', ' . $zipCode . 
-//                        ' ' . $locality . 
-//                    '</option>'
-//            );    
-//        }
-//        $_SESSION['sveaGetAddressesResponse'] = serialize( $response );
-//    }    
-//    
-    
-    $priceResponse = WebPay::paymentPlanPricePerMonth( $price, $plansResponse );
-    
-    if( sizeof( $priceResponse->values ) == 0 ) {
-        return "NO APPLICABLE PAYMENT PLAN FOR THIS ORDER AMOUNT"; //TODO fail gracefully
+    if( $plansResponse->accepted == false) {
+        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $plansResponse->errormessage) ); 
     }
+    // if not, show addresses and store response in session
     else {
-        foreach( $priceResponse->values as $cc) {
-            echo sprintf( '<option value="%s">%s (%.2f)</option>', $cc['campaignCode'], $cc['description'], $cc['pricePerMonth'] );
+       $priceResponse = WebPay::paymentPlanPricePerMonth( $price, $plansResponse );
+       
+        if( sizeof( $priceResponse->values ) == 0 ) {
+            return "NO APPLICABLE PAYMENT PLAN FOR THIS ORDER AMOUNT"; //TODO fail gracefully
         }
-    }
+        else {
+            foreach( $priceResponse->values as $cc) {
+                echo sprintf( '<option value="%s">%s (%.2f)</option>', $cc['campaignCode'], $cc['description'], $cc['pricePerMonth'] );
+            }
+        }
+    }    
 }
 
 /**
@@ -88,8 +65,8 @@ if( isset($_POST['SveaAjaxGetBankPaymentOptions']) ) {
 
 function sveaAjaxGetBankPaymentOptions( $country) {
 
-    $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
-    
+    $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test' ||
+                   MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test' ) ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();   
     $banksResponse =
         WebPay::getPaymentMethods( $sveaConfig )
             ->setContryCode( $country )
@@ -149,33 +126,38 @@ if( isset($_POST['SveaAjaxGetAddresses']) ) {
     $ssn = isset( $_POST['sveaSSN'] ) ? $_POST['sveaSSN'] : "swp_not_set";
     $country = isset( $_POST['sveaCountryCode'] ) ? $_POST['sveaCountryCode'] : "swp_not_set";
     $isCompany = isset( $_POST['sveaIsCompany'] ) ? $_POST['sveaIsCompany'] : "swp_not_set";
-    
-    sveaAjaxGetAddresses($ssn, $country, $isCompany );
+    $paymentType = isset( $_POST['paymentType'] ) ? $_POST['paymentType'] : "swp_not_set";
+        
+    sveaAjaxGetAddresses($ssn, $country, $isCompany, $paymentType );
     exit();
 }    
 
-function sveaAjaxGetAddresses( $ssn, $country, $isCompany ) {
+function sveaAjaxGetAddresses( $ssn, $country, $isCompany, $paymentType ) {
 
-    $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+    $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test' ||
+                   MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test' ) ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
     
+    $response = WebPay::getAddresses( $sveaConfig );
     // private individual
-    if( $isCompany === 'false' ) {
-        $response = WebPay::getAddresses( $sveaConfig )
-            ->setOrderTypeInvoice()
-            ->setCountryCode( $country )              
-            ->setIndividual( $ssn )
-            ->doRequest();
-    }
-
-    // company/organisation
     if(  $isCompany === 'true' ) {
-        $response = WebPay::getAddresses( $sveaConfig )
-            ->setOrderTypeInvoice()
-            ->setCountryCode( $country )
-            ->setCompany( $ssn )
-            ->doRequest();    
+        $response = $response->setCompany( $ssn );
     }
-    
+    if( $isCompany === 'false' ) {
+        $response = $response->setIndividual( $ssn );
+    }        
+    // paymenttype
+    switch( strtoupper($paymentType) ) {
+        case "INVOICE":
+            $response = $response->setOrderTypeInvoice();
+            break;
+        case "PAYMENTPLAN":
+            $response = $response->setOrderTypePaymentPlan();
+            break;
+    }
+    $response = $response->setCountryCode( $country )              
+                    ->setIndividual( $ssn )
+                    ->doRequest();    
+
     // TODO change to use zencart error message stack instead, or svea errors?
     // error?
     if( $response->accepted == false) {

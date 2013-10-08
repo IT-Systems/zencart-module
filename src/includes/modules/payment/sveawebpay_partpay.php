@@ -8,6 +8,10 @@
   Kristian Grossman-Madsen, Shaho Ghobadi
  */
 
+// Include Svea php integration package files    
+require_once(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+require_once(DIR_FS_CATALOG . 'sveawebpay_invoice_config.php');                  // sveaConfig inplementation
+
 class sveawebpay_partpay {
 
     function sveawebpay_partpay() {
@@ -28,7 +32,7 @@ class sveawebpay_partpay {
         $this->allowed_currencies = explode(',', MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES);
         $this->display_images = ((MODULE_PAYMENT_SWPPARTPAY_IMAGES == 'True') ? true : false);
         $this->ignore_list = explode(',', MODULE_PAYMENT_SWPPARTPAY_IGNORE);
-        if ((int) MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID > 0)
+        if ((int)MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID > 0)
             $this->order_status = MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID;
         if (is_object($order))
             $this->update_status();
@@ -90,10 +94,9 @@ class sveawebpay_partpay {
     function selection() {
         global $order, $currencies;
 
-        //
-        // we need the order total and customer country in ajax functions. as
+        // We need the order total and customer country in ajax functions. As
         // the shop order object is unavailable in sveaAjax.php, store these in 
-        // session when we enter checkout_payment page (where $order is set)
+        // session when we enter checkout_payment page (where $order is set).
         if( isset($order) ) {
             $_SESSION['sveaAjaxOrderTotal'] = $order->info['total'];
             $_SESSION['sveaAjaxCountryCode'] = $order->customer['country']['iso_code_2'];
@@ -251,8 +254,6 @@ class sveawebpay_partpay {
 
         global $db, $order, $order_totals, $language;
 
-        //require('includes/modules/payment/svea/svea.php');
-
         //
         // handle postback of payment method info fields, if present
         $post_sveaSSN = isset($_POST['sveaSSNPP']) ? $_POST['sveaSSNPP'] : "swp_not_set" ;
@@ -286,7 +287,7 @@ class sveawebpay_partpay {
         }
         
         // Include Svea php integration package files    
-        require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+        //require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
         // Create and initialize order object, using either test or production configuration
         $swp_order = WebPay::createOrder() // TODO uses default testmode config for now
@@ -494,7 +495,7 @@ class sveawebpay_partpay {
         global $order, $order_totals, $language, $billto, $sendto;
 
         // Include Svea php integration package files
-        require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+       // require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
         // retrieve order object set in process_button()
         $swp_order = unserialize($_SESSION["swp_order"]);
@@ -511,7 +512,9 @@ class sveawebpay_partpay {
 
         //
         // send payment request to svea, receive response
-        $swp_response = $swp_order->usePaymentPlanPayment($_SESSION['sveaPaymentOptionsPP'])->doRequest();
+        $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+
+        $swp_response = $swp_order->usePaymentPlanPayment($_SESSION['sveaPaymentOptionsPP'])->doRequest( $sveaConfig );
         
         // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {
@@ -563,7 +566,7 @@ class sveawebpay_partpay {
 
         //
         // retrieve response object from before_process()
-        require('includes/modules/payment/svea_v4/Includes.php');
+        //require('includes/modules/payment/svea_v4/Includes.php');
         $swp_response = unserialize($_SESSION["swp_response"]);
 
         // set zencart order info using data from response object
@@ -611,21 +614,22 @@ class sveawebpay_partpay {
         global $db;
         $common = "insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added";
         $db->Execute($common . ", set_function) values ('Enable SveaWebPay PartPay Module', 'MODULE_PAYMENT_SWPPARTPAY_STATUS', 'True', 'Do you want to accept SveaWebPay payments?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
-        $db->Execute($common . ") values ('SveaWebPay Username SV', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_SV', 'Testinstallation', 'Username for SveaWebPay Part Payment Sweden', '6', '0', now())");
-        $db->Execute($common . ") values ('SveaWebPay Password SV', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_SV', 'Testinstallation', 'Password for SveaWebPay Part Payment Sweden', '6', '0', now())");
-        $db->Execute($common . ") values ('SveaWebPay Username NO', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_NO', 'webpay_test_no', 'Username for SveaWebPay Part Payment Norway', '6', '0', now())");
-        $db->Execute($common . ") values ('SveaWebPay Password NO', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_NO', 'dvn349hvs9+29hvs', 'Password for SveaWebPay Part Payment Norway', '6', '0', now())");
-        $db->Execute($common . ") values ('SveaWebPay Username FI', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_FI', 'finlandtest', 'Username for SveaWebPay Part Payment Finland', '6', '0', now())");
-        $db->Execute($common . ") values ('SveaWebPay Password FI', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_FI', 'finlandtest', 'Password for SveaWebPay Part Payment Finland', '6', '0', now())");
-        $db->Execute($common . ") values ('SveaWebPay Username DK', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_DK', 'danmarktest', 'Username for SveaWebPay Part Payment Denmark', '6', '0', now())");
-        $db->Execute($common . ") values ('SveaWebPay Password DK', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_DK', 'danmarktest', 'Password for SveaWebPay Part Payment Denmark', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Username SV', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_SV', 'sverigetest', 'Username for SveaWebPay Part Payment Sweden', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Password SV', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_SV', 'sverigetest', 'Password for SveaWebPay Part Payment Sweden', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Username NO', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_NO', 'norgetest2', 'Username for SveaWebPay Part Payment Norway', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Password NO', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_NO', 'norgetest2', 'Password for SveaWebPay Part Payment Norway', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Username FI', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_FI', 'finlandtest2', 'Username for SveaWebPay Part Payment Finland', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Password FI', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_FI', 'finlandtest2', 'Password for SveaWebPay Part Payment Finland', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Username DK', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_DK', 'danmarktest2', 'Username for SveaWebPay Part Payment Denmark', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Password DK', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_DK', 'danmarktest2', 'Password for SveaWebPay Part Payment Denmark', '6', '0', now())");
         $db->Execute($common . ") values ('SveaWebPay Username NL', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_NL', 'hollandtest', 'Username for SveaWebPay Part Payment Netherlands', '6', '0', now())");
         $db->Execute($common . ") values ('SveaWebPay Password NL', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_NL', 'hollandtest', 'Password for SveaWebPay Part Payment Netherlands', '6', '0', now())");
-        $db->Execute($common . ") values ('SveaWebPay Client no SV', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_SV', '59012', '', '6', '0', now())");
-        $db->Execute($common . ") values ('SveaWebPay Client no NO', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NO', '36000', '', '6', '0', now())");
-        $db->Execute($common . ") values ('SveaWebPay Client no FI', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_FI', '29992', '', '6', '0', now())");
-        $db->Execute($common . ") values ('SveaWebPay Client no DK', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DK', '60004', '', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Client no SV', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_SV', '59999', '', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Client no NO', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NO', '32503', '', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Client no FI', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_FI', '27136', '', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Client no DK', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DK', '64008', '', '6', '0', now())");
         $db->Execute($common . ") values ('SveaWebPay Client no NL', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NL', '86997', '', '6', '0', now())");
+        //TODO add DE
         $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPPARTPAY_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
         $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
         $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
