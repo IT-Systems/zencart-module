@@ -2,6 +2,9 @@
 //
 require('includes/application_top.php');
 
+require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php'); 
+require(DIR_FS_CATALOG . 'sveawebpay_invoice_config.php');                  // sveaConfig inplementation
+
 /**
  *  get iso 3166 customerCountry from zencart customer settings
  */
@@ -25,10 +28,42 @@ if( isset($_POST['SveaAjaxGetPartPaymentOptions']) ) {
 
 function sveaAjaxGetPartPaymentOptions( $price, $country ) {
     
-    // Include Svea php integration package files    
-    require('includes/modules/payment/svea_v4/Includes.php'); 
+    $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+   
+    $plansResponse = WebPay::getPaymentPlanParams( $sveaConfig )->setCountryCode($country)->doRequest();
     
-    $plansResponse = WebPay::getPaymentPlanParams()->setCountryCode($country)->doRequest();
+    // TODO change to use zencart error message stack instead, or svea errors?
+    // error?
+//    if( $response->accepted == false) {
+//        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $response->errormessage) ); 
+//    }
+//    // if not, show addresses and store response in session
+//    else {
+//        // $getAddressResponse has type Svea\getAddressIdentity 
+//        foreach( $response->customerIdentity as $key => $getAddressIdentity ) {
+//
+//            $addressSelector = $getAddressIdentity->addressSelector;
+//            $fullName = $getAddressIdentity->fullName;  // also used for company name
+//            $street = $getAddressIdentity->street;
+//            $coAddress = $getAddressIdentity->coAddress;
+//            $zipCode = $getAddressIdentity->zipCode;
+//            $locality = $getAddressIdentity->locality;
+//
+//            //Send back to user
+//            echo(   '<option id="address_' . $key .
+//                        '" value="' . $addressSelector . 
+//                        '">' . $fullName . 
+//                        ', ' . $street . 
+//                        ', ' . $coAddress .
+//                        ', ' . $zipCode . 
+//                        ' ' . $locality . 
+//                    '</option>'
+//            );    
+//        }
+//        $_SESSION['sveaGetAddressesResponse'] = serialize( $response );
+//    }    
+//    
+    
     $priceResponse = WebPay::paymentPlanPricePerMonth( $price, $plansResponse );
     
     if( sizeof( $priceResponse->values ) == 0 ) {
@@ -51,16 +86,46 @@ if( isset($_POST['SveaAjaxGetBankPaymentOptions']) ) {
     exit();
 }
 
-function sveaAjaxGetBankPaymentOptions( $country ) {
+function sveaAjaxGetBankPaymentOptions( $country) {
 
-    // Include Svea php integration package files    
-    require('includes/modules/payment/svea_v4/Includes.php'); 
-
+    $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+    
     $banksResponse =
-        WebPay::getPaymentMethods()
+        WebPay::getPaymentMethods( $sveaConfig )
             ->setContryCode( $country )
             ->doRequest();
 
+    // TODO change to use zencart error message stack instead, or svea errors?
+    // error?
+//    if( $response->accepted == false) {
+//        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $response->errormessage) ); 
+//    }
+//    // if not, show addresses and store response in session
+//    else {
+//        // $getAddressResponse has type Svea\getAddressIdentity 
+//        foreach( $response->customerIdentity as $key => $getAddressIdentity ) {
+//
+//            $addressSelector = $getAddressIdentity->addressSelector;
+//            $fullName = $getAddressIdentity->fullName;  // also used for company name
+//            $street = $getAddressIdentity->street;
+//            $coAddress = $getAddressIdentity->coAddress;
+//            $zipCode = $getAddressIdentity->zipCode;
+//            $locality = $getAddressIdentity->locality;
+//
+//            //Send back to user
+//            echo(   '<option id="address_' . $key .
+//                        '" value="' . $addressSelector . 
+//                        '">' . $fullName . 
+//                        ', ' . $street . 
+//                        ', ' . $coAddress .
+//                        ', ' . $zipCode . 
+//                        ' ' . $locality . 
+//                    '</option>'
+//            );    
+//        }
+//        $_SESSION['sveaGetAddressesResponse'] = serialize( $response );
+//    }    
+//    
     if( sizeof( $banksResponse ) == 0 ) {
         return "NO APPLICABLE BANKS FOR THIS PAYMENT METHOD"; //TODO fail gracefully
     }
@@ -91,12 +156,11 @@ if( isset($_POST['SveaAjaxGetAddresses']) ) {
 
 function sveaAjaxGetAddresses( $ssn, $country, $isCompany ) {
 
-    // Include Svea php integration package files    
-    require('includes/modules/payment/svea_v4/Includes.php'); 
-
+    $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+    
     // private individual
     if( $isCompany === 'false' ) {
-        $response = WebPay::getAddresses()
+        $response = WebPay::getAddresses( $sveaConfig )
             ->setOrderTypeInvoice()
             ->setCountryCode( $country )              
             ->setIndividual( $ssn )
@@ -105,36 +169,43 @@ function sveaAjaxGetAddresses( $ssn, $country, $isCompany ) {
 
     // company/organisation
     if(  $isCompany === 'true' ) {
-        $response = WebPay::getAddresses()
+        $response = WebPay::getAddresses( $sveaConfig )
             ->setOrderTypeInvoice()
             ->setCountryCode( $country )
             ->setCompany( $ssn )
             ->doRequest();    
     }
     
-    // $getAddressResponse has type Svea\getAddressIdentity 
-    foreach( $response->customerIdentity as $key => $getAddressIdentity ) {
-    
-        $addressSelector = $getAddressIdentity->addressSelector;
-        $fullName = $getAddressIdentity->fullName;  // also used for company name
-        $street = $getAddressIdentity->street;
-        $coAddress = $getAddressIdentity->coAddress;
-        $zipCode = $getAddressIdentity->zipCode;
-        $locality = $getAddressIdentity->locality;
-            
-        //Send back to user
-        echo(   '<option id="address_' . $key .
-                    '" value="' . $addressSelector . 
-                    '">' . $fullName . 
-                    ', ' . $street . 
-                    ', ' . $coAddress .
-                    ', ' . $zipCode . 
-                    ' ' . $locality . 
-                '</option>'
-        );    
+    // TODO change to use zencart error message stack instead, or svea errors?
+    // error?
+    if( $response->accepted == false) {
+        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $response->errormessage) ); 
     }
-    
-    $_SESSION['sveaGetAddressesResponse'] = serialize( $response );
+    // if not, show addresses and store response in session
+    else {
+        // $getAddressResponse has type Svea\getAddressIdentity 
+        foreach( $response->customerIdentity as $key => $getAddressIdentity ) {
+
+            $addressSelector = $getAddressIdentity->addressSelector;
+            $fullName = $getAddressIdentity->fullName;  // also used for company name
+            $street = $getAddressIdentity->street;
+            $coAddress = $getAddressIdentity->coAddress;
+            $zipCode = $getAddressIdentity->zipCode;
+            $locality = $getAddressIdentity->locality;
+
+            //Send back to user
+            echo(   '<option id="address_' . $key .
+                        '" value="' . $addressSelector . 
+                        '">' . $fullName . 
+                        ', ' . $street . 
+                        ', ' . $coAddress .
+                        ', ' . $zipCode . 
+                        ' ' . $locality . 
+                    '</option>'
+            );    
+        }
+        $_SESSION['sveaGetAddressesResponse'] = serialize( $response );
+    }    
 }
 
 /**
@@ -153,8 +224,6 @@ function sveaAjaxSetCustomerInvoiceAddress() {
     
         $addressSelector = $_POST['SveaAjaxAddressSelectorValue'];
 
-        // Include Svea php integration package files
-        require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
         $response = unserialize( $_SESSION['sveaGetAddressesResponse'] );
 
         // find the address corresponding to chosen addressSelector
