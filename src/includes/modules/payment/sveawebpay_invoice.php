@@ -313,8 +313,7 @@ class sveawebpay_invoice {
 
         // Create and initialize order object, using either test or production configuration
         $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
-
-        
+      
         $swp_order = WebPay::createOrder( $sveaConfig )
             ->setCountryCode( $user_country )
             ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
@@ -618,7 +617,7 @@ class sveawebpay_invoice {
         // send payment request to svea, receive response
         $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
         
-        $swp_response = $swp_order->useInvoicePayment()->doRequest($sveaConfig);
+        $swp_response = $swp_order->useInvoicePayment()->doRequest();
         
         // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {

@@ -286,11 +286,10 @@ class sveawebpay_partpay {
             $currency = $this->default_currency;
         }
         
-        // Include Svea php integration package files    
-        //require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+        $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
         // Create and initialize order object, using either test or production configuration
-        $swp_order = WebPay::createOrder() // TODO uses default testmode config for now
+        $swp_order = WebPay::createOrder( $sveaConfig ) // TODO uses default testmode config for now
             ->setCountryCode( $user_country )
             ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
             ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
@@ -514,7 +513,7 @@ class sveawebpay_partpay {
         // send payment request to svea, receive response
         $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
-        $swp_response = $swp_order->usePaymentPlanPayment($_SESSION['sveaPaymentOptionsPP'])->doRequest( $sveaConfig );
+        $swp_response = $swp_order->usePaymentPlanPayment($_SESSION['sveaPaymentOptionsPP'])->doRequest();
         
         // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {
