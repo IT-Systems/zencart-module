@@ -55,26 +55,8 @@ class ZenCartSveaConfigBase {
         return $country;
     }
     
-   /**
-    * not implemented for invoice
-    */
-    public function getSecret($type, $country) {
-        return null;
-    }
-       /**
-    * not implemented for invoice
-    */
-    public function getMerchantId($type, $country) {
-        // validate also handles SE => SV  
-        return null;
-    }
- 
-    /**
-    * get the return value from your database or likewise
-    * @param $type eg. HOSTED, INVOICE or PAYMENTPLAN
-    * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
-    */
     public function getClientNumber($type, $country) {
+        
         // validate also handles SE => SV
         $country = $this->validateCountry( $country );     
         if( !$country ) throw new Exception('Invalid country. Accepted countries: SE, NO, DK, FI, NL'); // TODO +DE
@@ -104,6 +86,7 @@ class ZenCartSveaConfigBase {
         $country = $this->validateCountry( $country );     
         if( !$country ) throw new Exception('Invalid country for payment method.');
         
+        // TODO make explicit -- same for INVOICE & PARTPAY
         $key = "MODULE_PAYMENT_SWPINVOICE_PASSWORD_" . strtoupper ( $country );
         $myPassword = $this->getZenCartConfigValue( $key );       
         return $myPassword;
@@ -120,6 +103,7 @@ class ZenCartSveaConfigBase {
         $country = $this->validateCountry( $country );     
         if( !$country ) throw new Exception('Invalid country for payment method.');
         
+        // TODO make explicit -- same for INVOICE & PARTPAY
         $key = "MODULE_PAYMENT_SWPINVOICE_USERNAME_" . strtoupper ( $country );
         $myUsername = $this->getZenCartConfigValue( $key );       
         return $myUsername;
@@ -138,6 +122,27 @@ class ZenCartSveaConfigProd extends ZenCartSveaConfigBase implements Configurati
            throw new Exception('Invalid type. Accepted values: INVOICE, PAYMENTPLAN or HOSTED');
         }
     }
+    
+    public function getSecret($type, $country) {
+        $type = strtoupper($type);
+        if($type == "HOSTED"){
+            return MODULE_PAYMENT_SWPCREDITCARD_SW;
+        }  
+        else {
+            throw new Exception('Invalid type. Accepted values: HOSTED');
+        }
+    }
+
+    public function getMerchantId($type, $country) {
+        $type = strtoupper($type);
+        if($type == "HOSTED"){
+            return MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID;
+        } 
+        else {
+            throw new Exception('Invalid type. Accepted values: HOSTED');
+        }
+    }
+ 
 }
 
 class ZenCartSveaConfigTest extends ZenCartSveaConfigBase implements ConfigurationProvider {
@@ -146,12 +151,34 @@ class ZenCartSveaConfigTest extends ZenCartSveaConfigBase implements Configurati
         $type = strtoupper($type);
         
         if($type == "HOSTED"){
-            return   Svea\SveaConfig::SWP_TEST_URL;;
+            return   Svea\SveaConfig::SWP_TEST_URL;
         }elseif($type == "INVOICE" || $type == "PAYMENTPLAN"){
              return Svea\SveaConfig::SWP_TEST_WS_URL;
         }  else {
            throw new Exception('Invalid type. Accepted values: INVOICE, PAYMENTPLAN or HOSTED');
         }
     }    
+    
+    public function getSecret($type, $country) {
+        $type = strtoupper($type);
+        if($type == "HOSTED"){
+            return MODULE_PAYMENT_SWPCREDITCARD_SW_TEST;
+        }  
+        else {
+            throw new Exception('Invalid type. Accepted values: HOSTED');
+       }
+    }
+
+    public function getMerchantId($type, $country) {
+        $type = strtoupper($type);
+        if($type == "HOSTED"){
+            return MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID_TEST;
+        }  
+        else {
+            throw new Exception('Invalid type. Accepted values: HOSTED');
+        }
+    }
+ 
+    
 }
 ?>
