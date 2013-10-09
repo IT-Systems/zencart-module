@@ -59,7 +59,7 @@ class ZenCartSveaConfigBase {
         
         // validate also handles SE => SV
         $country = $this->validateCountry( $country );     
-        if( !$country ) throw new Exception('Invalid country. Accepted countries: SE, NO, DK, FI, NL'); // TODO +DE
+        if( !$country ) throw new Svea\InvalidCountryException('Invalid country. Accepted countries: SE, NO, DK, FI, NL'); // TODO +DE
      
         $type = strtoupper($type);
         if($type == "INVOICE" ) {
@@ -68,7 +68,7 @@ class ZenCartSveaConfigBase {
         if($type == "PAYMENTPLAN") {
            $key = "MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_";
         }  else {
-           throw new Exception('Invalid type. Accepted values: INVOICE, PAYMENTPLAN');
+           throw new Svea\InvalidTypeException('Invalid type. Accepted values: INVOICE, PAYMENTPLAN');
         }
         $key .= strtoupper ( $country );
 
@@ -113,13 +113,23 @@ class ZenCartSveaConfigBase {
 class ZenCartSveaConfigProd extends ZenCartSveaConfigBase implements ConfigurationProvider {
      
     public function getEndPoint($type) {
-        $type = strtoupper($type);
-          if($type == "HOSTED"){
-            return   Svea\SveaConfig::SWP_PROD_URL;
-        }elseif($type == "INVOICE" || $type == "PAYMENTPLAN"){
-             return Svea\SveaConfig::SWP_PROD_WS_URL;
-        }  else {
-           throw new Exception('Invalid type. Accepted values: INVOICE, PAYMENTPLAN or HOSTED');
+        switch( strtoupper($type) ) {
+        case "HOSTED":
+            return Svea\SveaConfig::SWP_PROD_URL;
+            break;
+            
+        case "INVOICE":
+        case "PAYMENTPLAN":
+            return Svea\SveaConfig::SWP_PROD_WS_URL;
+            break;
+        
+        case "HOSTED_ADMIN":
+        return Svea\SveaConfig::SWP_PROD_HOSTED_ADMIN_URL;
+            break;
+        
+        default:
+            throw new Exception('Invalid type. Accepted values: INVOICE, PAYMENTPLAN, HOSTED, HOSTED_ADMIN');
+            break;
         }
     }
     
@@ -148,15 +158,24 @@ class ZenCartSveaConfigProd extends ZenCartSveaConfigBase implements Configurati
 class ZenCartSveaConfigTest extends ZenCartSveaConfigBase implements ConfigurationProvider {
 
     public function getEndPoint($type) {
-        $type = strtoupper($type);
+        switch( strtoupper($type) ) {
+        case "HOSTED":
+            return Svea\SveaConfig::SWP_TEST_URL;
+            break;
+            
+        case "INVOICE":
+        case "PAYMENTPLAN":
+            return Svea\SveaConfig::SWP_TEST_WS_URL;
+            break;
         
-        if($type == "HOSTED"){
-            return   Svea\SveaConfig::SWP_TEST_URL;
-        }elseif($type == "INVOICE" || $type == "PAYMENTPLAN"){
-             return Svea\SveaConfig::SWP_TEST_WS_URL;
-        }  else {
-           throw new Exception('Invalid type. Accepted values: INVOICE, PAYMENTPLAN or HOSTED');
-        }
+        case "HOSTED_ADMIN":
+        return Svea\SveaConfig::SWP_TEST_HOSTED_ADMIN_URL;
+            break;
+        
+        default:
+            throw new Exception('Invalid type. Accepted values: INVOICE, PAYMENTPLAN, HOSTED, HOSTED_ADMIN');
+            break;
+        }        
     }    
     
     public function getSecret($type, $country) {
@@ -177,8 +196,6 @@ class ZenCartSveaConfigTest extends ZenCartSveaConfigBase implements Configurati
         else {
             throw new Exception('Invalid type. Accepted values: HOSTED');
         }
-    }
- 
-    
+    } 
 }
 ?>

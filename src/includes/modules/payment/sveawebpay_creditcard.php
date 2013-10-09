@@ -8,7 +8,7 @@ Kristian Grossman-Madsen, Shaho Ghobadi
 
 // Include Svea php integration package files    
 require_once(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
-require_once(DIR_FS_CATALOG . 'sveawebpay_invoice_config.php');                  // sveaConfig inplementation
+require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');                  // sveaConfig inplementation
 
 class sveawebpay_creditcard {
 
@@ -141,12 +141,11 @@ class sveawebpay_creditcard {
     if (!in_array($currency, $this->allowed_currencies)) {
         $currency = $this->default_currency;
     }
-
-        
+      
     $sveaConfig = (MODULE_PAYMENT_SWPCREDITCARD_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
     // Create and initialize order object, using either test or production configuration
-    $swp_order = WebPay::createOrder( $sveaConfig ) // TODO uses default testmode config for now
+    $swp_order = WebPay::createOrder( $sveaConfig )
         ->setCountryCode( $user_country )
         ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
         ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
@@ -305,8 +304,10 @@ class sveawebpay_creditcard {
         $user_country = $order->billing['country']['iso_code_2'];
         
         // put response into responsehandler
-        // TODO use config as third parameter in this
-        $swp_response = (new SveaResponse( $_REQUEST, $user_country ))->response; // returns HostedPaymentResponse 
+
+        $sveaConfig = (MODULE_PAYMENT_SWPCREDITCARD_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+
+        $swp_response = (new SveaResponse( $_REQUEST, $user_country, $sveaConfig ))->response; // returns HostedPaymentResponse 
 
         // check for bad response
         if( $swp_response->resultcode == '0' ) {     
@@ -442,8 +443,8 @@ class sveawebpay_creditcard {
     $db->Execute($common . ", set_function) values ('Enable SveaWebPay Card Payment Module', 'MODULE_PAYMENT_SWPCREDITCARD_STATUS', 'True', 'Do you want to accept SveaWebPay payments?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
     $db->Execute($common . ") values ('SveaWebPay Merchant ID', 'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID', '1130', 'The Merchant ID', '6', '0', now())");
     $db->Execute($common . ") values ('SveaWebPay Secret Word', 'MODULE_PAYMENT_SWPCREDITCARD_SW', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
-    $db->Execute($common . ") values ('SveaWebPay Merchant ID', 'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID_TEST', '1130', 'The Merchant ID', '6', '0', now())");
-    $db->Execute($common . ") values ('SveaWebPay Secret Word', 'MODULE_PAYMENT_SWPCREDITCARD_SW_TEST', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
+    $db->Execute($common . ") values ('SveaWebPay Test Merchant ID', 'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID_TEST', '1130', 'The Merchant ID', '6', '0', now())");
+    $db->Execute($common . ") values ('SveaWebPay Test Secret Word', 'MODULE_PAYMENT_SWPCREDITCARD_SW_TEST', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
     $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPCREDITCARD_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
     $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPCREDITCARD_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
     $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPCREDITCARD_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");

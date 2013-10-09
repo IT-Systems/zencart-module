@@ -6,6 +6,10 @@ Version 4.0 - Zen Cart
 Kristian Grossman-Madsen, Shaho Ghobadi
 */
 
+// Include Svea php integration package files    
+require_once(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');                  // sveaConfig inplementation
+
 class sveawebpay_internetbank {
 
   function sveawebpay_internetbank() {
@@ -109,7 +113,7 @@ class sveawebpay_internetbank {
     $customer_country = $order->customer['country']['iso_code_2'];
 
     // fill in all fields as required to show available bank payment methods for selection
-    $sveaBankPaymentOptions = '<div name="sveaBankPaymentOptions" id="sveaBankPaymentOptions" "></div>'; 
+    $sveaBankPaymentOptions = '<div name="sveaBankPaymentOptions" id="sveaBankPaymentOptions"></div>'; 
        
     // create and add the field to be shown by our js when we select SveaInvoice payment method
     $sveaField =    '<div id="sveaInternetbankField" >' . //style="display:none">' .                        
@@ -165,12 +169,10 @@ class sveawebpay_internetbank {
         $currency = $this->default_currency;
     }
     
-    //
-    // Include Svea php integration package files    
-    require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+    $sveaConfig = (MODULE_PAYMENT_SWPINTERNETBANK_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
     // Create and initialize order object, using either test or production configuration
-    $swp_order = WebPay::createOrder() // TODO uses default testmode config for now
+    $swp_order = WebPay::createOrder( $sveaConfig )
         ->setCountryCode( $user_country )
         ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
         ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
@@ -356,8 +358,9 @@ class sveawebpay_internetbank {
         $user_country = $order->billing['country']['iso_code_2'];
 
         // put response into responsehandler
-        // TODO use config as third parameter in this
-        $swp_response = (new SveaResponse( $_REQUEST, $user_country ))->response; // returns HostedPaymentResponse
+        $sveaConfig = (MODULE_PAYMENT_SWPINTERNETBANK_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+
+        $swp_response = (new SveaResponse( $_REQUEST, $user_country, $sveaConfig ))->response; // returns HostedPaymentResponse
 
         // check for bad response
         if( $swp_response->resultcode === '0' ) {     
@@ -480,6 +483,8 @@ class sveawebpay_internetbank {
     $db->Execute($common . ", set_function) values ('Enable SveaWebPay Direct Bank Payment Module', 'MODULE_PAYMENT_SWPINTERNETBANK_STATUS', 'True', 'Do you want to accept SveaWebPay payments?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
     $db->Execute($common . ") values ('SveaWebPay Merchant ID', 'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID', '', 'The Merchant ID', '6', '0', now())");
     $db->Execute($common . ") values ('SveaWebPay Secret Word', 'MODULE_PAYMENT_SWPINTERNETBANK_SW', '', 'The Secret word', '6', '0', now())");
+    $db->Execute($common . ") values ('SveaWebPay Test Merchant ID', 'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID_TEST', '1130', 'The Merchant ID', '6', '0', now())");
+    $db->Execute($common . ") values ('SveaWebPay Test Secret Word', 'MODULE_PAYMENT_SWPINTERNETBANK_SW_TEST', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");  
     $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPINTERNETBANK_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
     $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPINTERNETBANK_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
     $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPINTERNETBANK_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
@@ -502,6 +507,8 @@ class sveawebpay_internetbank {
                   'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID',
                   'MODULE_PAYMENT_SWPINTERNETBANK_SW',
                   'MODULE_PAYMENT_SWPINTERNETBANK_MODE',
+                  'MODULE_PAYMENT_SWPINTERNETBANK_SW_TEST',
+                  'MODULE_PAYMENT_SWPINTERNETBANK_MODE_TEST',
                   'MODULE_PAYMENT_SWPINTERNETBANK_ALLOWED_CURRENCIES',
                   'MODULE_PAYMENT_SWPINTERNETBANK_DEFAULT_CURRENCY',
                   'MODULE_PAYMENT_SWPINTERNETBANK_ORDER_STATUS_ID',

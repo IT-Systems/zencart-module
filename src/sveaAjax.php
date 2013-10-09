@@ -3,7 +3,7 @@
 require('includes/application_top.php');
 
 require_once(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php'); 
-require_once(DIR_FS_CATALOG . 'sveawebpay_invoice_config.php');                  // sveaConfig implementation
+require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');                  // sveaConfig implementation
 
 /**
  *  get iso 3166 customerCountry from zencart customer settings
@@ -28,9 +28,8 @@ if( isset($_POST['SveaAjaxGetPartPaymentOptions']) ) {
 
 function sveaAjaxGetPartPaymentOptions( $price, $country ) {
     
-    $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test' ||
-                   MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test' ) ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
-   
+    $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test' ) ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+    
     $plansResponse = WebPay::getPaymentPlanParams( $sveaConfig )->setCountryCode($country)->doRequest();
     
     // TODO change to use zencart error message stack instead, or svea errors?
@@ -63,46 +62,12 @@ if( isset($_POST['SveaAjaxGetBankPaymentOptions']) ) {
     exit();
 }
 
-function sveaAjaxGetBankPaymentOptions( $country) {
+function sveaAjaxGetBankPaymentOptions( $country ) {
 
-    $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test' ||
-                   MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test' ) ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();   
-    $banksResponse =
-        WebPay::getPaymentMethods( $sveaConfig )
-            ->setContryCode( $country )
-            ->doRequest();
-
-    // TODO change to use zencart error message stack instead, or svea errors?
-    // error?
-//    if( $response->accepted == false) {
-//        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $response->errormessage) ); 
-//    }
-//    // if not, show addresses and store response in session
-//    else {
-//        // $getAddressResponse has type Svea\getAddressIdentity 
-//        foreach( $response->customerIdentity as $key => $getAddressIdentity ) {
-//
-//            $addressSelector = $getAddressIdentity->addressSelector;
-//            $fullName = $getAddressIdentity->fullName;  // also used for company name
-//            $street = $getAddressIdentity->street;
-//            $coAddress = $getAddressIdentity->coAddress;
-//            $zipCode = $getAddressIdentity->zipCode;
-//            $locality = $getAddressIdentity->locality;
-//
-//            //Send back to user
-//            echo(   '<option id="address_' . $key .
-//                        '" value="' . $addressSelector . 
-//                        '">' . $fullName . 
-//                        ', ' . $street . 
-//                        ', ' . $coAddress .
-//                        ', ' . $zipCode . 
-//                        ' ' . $locality . 
-//                    '</option>'
-//            );    
-//        }
-//        $_SESSION['sveaGetAddressesResponse'] = serialize( $response );
-//    }    
-//    
+    $sveaConfig = (MODULE_PAYMENT_SWPINTERNETBANK_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();   
+    
+    $banksResponse = WebPay::getPaymentMethods( $sveaConfig )->setContryCode( $country )->doRequest();
+    
     if( sizeof( $banksResponse ) == 0 ) {
         return "NO APPLICABLE BANKS FOR THIS PAYMENT METHOD"; //TODO fail gracefully
     }
@@ -115,7 +80,7 @@ function sveaAjaxGetBankPaymentOptions( $country) {
                 echo sprintf( '<label for="%s"> <img src="%s%s.png" alt="bank %s" /> </label>', $bank, $logosPath, $bank, $bank);
             }
         }
-    }
+    }    
 }
 
 /**
