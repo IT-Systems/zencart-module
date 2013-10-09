@@ -42,7 +42,7 @@ function sveaAjaxGetPartPaymentOptions( $price, $country ) {
        $priceResponse = WebPay::paymentPlanPricePerMonth( $price, $plansResponse );
        
         if( sizeof( $priceResponse->values ) == 0 ) {
-            return "NO APPLICABLE PAYMENT PLAN FOR THIS ORDER AMOUNT"; //TODO fail gracefully
+            echo sprintf('<option value="0">%s</option>', "NO APPLICABLE PAYMENT PLAN FOR THIS ORDER AMOUNT");
         }
         else {
             foreach( $priceResponse->values as $cc) {
