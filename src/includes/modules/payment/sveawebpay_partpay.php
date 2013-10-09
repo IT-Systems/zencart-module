@@ -623,12 +623,14 @@ class sveawebpay_partpay {
         $db->Execute($common . ") values ('SveaWebPay Password DK', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_DK', 'danmarktest2', 'Password for SveaWebPay Part Payment Denmark', '6', '0', now())");
         $db->Execute($common . ") values ('SveaWebPay Username NL', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_NL', 'hollandtest', 'Username for SveaWebPay Part Payment Netherlands', '6', '0', now())");
         $db->Execute($common . ") values ('SveaWebPay Password NL', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_NL', 'hollandtest', 'Password for SveaWebPay Part Payment Netherlands', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Username DE', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_DE', 'germanytest', 'Username for SveaWebPay Part Payment Germany', '6', '0', now())");
+        $db->Execute($common . ") values ('SveaWebPay Password DE', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_DE', 'germanytest', 'Password for SveaWebPay Part Payment Germany', '6', '0', now())");        
         $db->Execute($common . ") values ('SveaWebPay Client no SV', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_SV', '59999', '', '6', '0', now())");
         $db->Execute($common . ") values ('SveaWebPay Client no NO', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NO', '32503', '', '6', '0', now())");
         $db->Execute($common . ") values ('SveaWebPay Client no FI', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_FI', '27136', '', '6', '0', now())");
         $db->Execute($common . ") values ('SveaWebPay Client no DK', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DK', '64008', '', '6', '0', now())");
         $db->Execute($common . ") values ('SveaWebPay Client no NL', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NL', '86997', '', '6', '0', now())");
-        //TODO add DE
+        $db->Execute($common . ") values ('SveaWebPay Client no DE', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DE', '16997', '', '6', '0', now())");
         $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPPARTPAY_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
         $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
         $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
@@ -663,6 +665,9 @@ class sveawebpay_partpay {
             'MODULE_PAYMENT_SWPPARTPAY_USERNAME_NL',
             'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_NL',
             'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NL',
+            'MODULE_PAYMENT_SWPPARTPAY_USERNAME_DE',
+            'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_DE',
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DE',
             'MODULE_PAYMENT_SWPPARTPAY_MODE',
             'MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES',
             'MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY',
