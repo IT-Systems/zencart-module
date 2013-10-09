@@ -61,20 +61,20 @@ class ZenCartSveaConfigBase {
         $country = $this->validateCountry( $country );     
         if( !$country ) throw new Svea\InvalidCountryException('Invalid country. Accepted countries: SE, NO, DK, FI, NL'); // TODO +DE
      
-        $type = strtoupper($type);
-        if($type == "INVOICE" ) {
-            $key = "MODULE_PAYMENT_SWPINVOICE_CLIENTNO_";
+        switch( strtoupper($type) ) {
+        case "INVOICE":
+            $key = "MODULE_PAYMENT_SWPINVOICE_CLIENTNO_" . strtoupper($country);
+            break;
+        case "PAYMENTPLAN":
+            $key = "MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_"  . strtoupper($country);
+            break;
+        default:
+            throw new Svea\InvalidTypeException('Invalid type. Accepted values: INVOICE, PAYMENTPLAN');        
         }
-        if($type == "PAYMENTPLAN") {
-           $key = "MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_";
-        }  else {
-           throw new Svea\InvalidTypeException('Invalid type. Accepted values: INVOICE, PAYMENTPLAN');
-        }
-        $key .= strtoupper ( $country );
 
-        $myClientNumber = $this->getZenCartConfigValue( $key );       
+        $myClientNumber = $this->getZenCartConfigValue( $key );
         return $myClientNumber;
-    }  
+    }
  
    /**
     * get the return value from your database or likewise
@@ -98,7 +98,7 @@ class ZenCartSveaConfigBase {
     * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
     */
     public function getUsername($type, $country) {
- 
+
         // validate also handles SE => SV
         $country = $this->validateCountry( $country );     
         if( !$country ) throw new Exception('Invalid country for payment method.');
