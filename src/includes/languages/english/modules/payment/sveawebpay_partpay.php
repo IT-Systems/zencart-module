@@ -38,14 +38,21 @@ define('ERROR_CODE_30000','The credit report was rejected');
 define('ERROR_CODE_30001','This customer is blocked or has shown strange/unusual behavior');
 define('ERROR_CODE_30002','The order would cause the client to exceed Sveas credit limit');
 
-//Form on checkout
-define('FORM_TEXT_SS_NO','SSN:');
-define('FORM_TEXT_GET_ADDRESS','Get Address and Payments options');
-define('FORM_TEXT_INVOICE_ADDRESS','Invoice Address:');
-define('FORM_TEXT_GET_PAYPLAN','Payment options:');
-
 define('DD_PARTPAY_IN','Partpay in ');
 define('DD_PAY_IN_THREE','Pay within 3 months');
 define('DD_MONTHS',' months');
 define('DD_CURRENY_PER_MONTH',' kr/month');
+
+// used in payment credentials form
+define('FORM_TEXT_COMPANY_OR_PRIVATE','Are you a private individual, or do you represent a company or organisation:');
+define('FORM_TEXT_COMPANY','Company');
+define('FORM_TEXT_PRIVATE','Private');
+define('FORM_TEXT_SS_NO','Enter your Social Security Number (SSN):');
+define('FORM_TEXT_GET_ADDRESS','Show and select invoice address.');
+define('FORM_TEXT_INITIALS','Initials');                                // TODO translate/add to other language files
+define('FORM_TEXT_BIRTHDATE','Date of Birth (YYYYMMDD)');               // TODO translate/add to other language files
+define('FORM_TEXT_VATNO','Vat Number (NL2345234)');                     // TODO translate/add to other language files
+define('FORM_TEXT_PARTPAY_ADDRESS','Select billing address to be used.');
+define('FORM_TEXT_PARTPAY_FEE','Payment Plan Fee:');
+define('FORM_TEXT_GET_PAYPLAN','Payment options:');
 ?>

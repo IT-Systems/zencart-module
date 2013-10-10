@@ -148,7 +148,7 @@ class sveawebpay_partpay {
             ($customer_country == 'NO') || 
             ($customer_country == 'DK') ) 
         {       
-            $sveaAddressDDPP =  '<br /><label for ="sveaAddressSelectorPP" style="display:none">' . FORM_TEXT_INVOICE_ADDRESS . '</label><br />' .
+            $sveaAddressDDPP =  '<br /><label for ="sveaAddressSelectorPP" style="display:none">' . FORM_TEXT_PARTPAY_ADDRESS . '</label><br />' .
                                 '<select name="sveaAddressSelectorPP" id="sveaAddressSelectorPP" style="display:none"></select><br />';    
         }
 
@@ -213,7 +213,7 @@ class sveawebpay_partpay {
         
         $sveaError = '<br /><span id="sveaSSN_error_invoicePP" style="color:red"></span>';
    
-        // create and add the field to be shown by our js when we select SveaInvoice payment method
+        // create and add the field to be shown by our js when we select Payment Plan payment method
         $sveaField =    '<div id="sveaPartPayField" style="display:none">' . 
                             $sveaSSNPP .              //  SE, DK, NO        
                             $sveaSSNFIPP .            //  FI, no getAddresses     
@@ -565,9 +565,39 @@ class sveawebpay_partpay {
 
         //
         // retrieve response object from before_process()
-        //require('includes/modules/payment/svea_v4/Includes.php');
         $swp_response = unserialize($_SESSION["swp_response"]);
 
+        $deliveryAccepted = 0;  // used to indicate customer notification status in zencart, see below
+        // if autodeliver option set, deliver order
+        if( MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER == "True" ) {
+            
+            $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+
+            $swp_deliverOrder = WebPay::deliverOrder( $sveaConfig );
+
+            // this really exploits CreateOrderRow objects having public properties...
+            $swp_order = unserialize($_SESSION["swp_order"]);
+            
+            // ~hack
+            $swp_deliverOrder->countryCode = $swp_order->countryCode;
+            // /hack
+            
+            $swp_deliverOrder->setOrderId( $swp_response->sveaOrderId );
+     
+            $swp_deliveryResponse = $swp_deliverOrder->deliverPaymentPlanOrder()->doRequest();
+            
+            // all is well?
+            if($swp_deliveryResponse->accepted == 1) {
+                //update order status for delivered
+                $deliveryAccepted = 1;              // customer is now notified
+                $order->info['order_status'] = 3;   // Delivered [3]
+            }
+            // delivery failure
+            else {
+                // order will show up as if AutoDeliver set to false in shop order history, i.e. handled manually
+            } 
+        }
+            
         // set zencart order info using data from response object
         $order->info['SveaOrderId'] = $swp_response->sveaOrderId;
         $order->info['type'] = $swp_response->customerIdentity->customerType;
@@ -579,11 +609,15 @@ class sveawebpay_partpay {
         $sql_data_array = array('orders_id' => $insert_id,
             'orders_status_id' => $order->info['order_status'],
             'date_added' => 'now()',
-            'customer_notified' => 0,
-            // TODO take comments below to language files?
+            'customer_notified' => $deliveryAccepted, // 0 = unlocked icon in zc admin order view, 1 = checkmark icon.
             'comments' => 'Accepted by SveaWebPay ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);
         zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
+        // make sure order status shows up as "delivered" in admin orders list
+        $db->Execute(   "update " . TABLE_ORDERS . "
+                        set orders_status = '" . $order->info['order_status'] . "', last_modified = now()
+                        where orders_id = '" . $insert_id . "'");
+        
         //
         // clean up our session variables set during checkout   //$SESSION[swp_*
         unset($_SESSION['swp_order']);
@@ -634,8 +668,9 @@ class sveawebpay_partpay {
         $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPPARTPAY_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
         $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
         $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
-        $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
+        $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value (but see AutoDeliver option below).', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
         $db->Execute($common . ", set_function) values ('Display SveaWebPay Images', 'MODULE_PAYMENT_SWPPARTPAY_IMAGES', 'True', 'Do you want to display SveaWebPay images when choosing between payment options?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
+        $db->Execute($common . ", set_function) values ('AutoDeliver Order', 'MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER', 'False', 'Do you want to autodeliver order invoices? This will override the Set Order Status setting above.', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");        
         $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPPARTPAY_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
         $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPPARTPAY_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
         $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
@@ -673,6 +708,7 @@ class sveawebpay_partpay {
             'MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY',
             'MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID',
             'MODULE_PAYMENT_SWPPARTPAY_IMAGES',
+            'MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER',
             'MODULE_PAYMENT_SWPPARTPAY_IGNORE',
             'MODULE_PAYMENT_SWPPARTPAY_ZONE',
             'MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER');
