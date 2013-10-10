@@ -615,8 +615,6 @@ class sveawebpay_invoice {
         $swp_order = unserialize($_SESSION["swp_order"]);
 
         // send payment request to svea, receive response
-        $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
-        
         $swp_response = $swp_order->useInvoicePayment()->doRequest();
         
         // payment request failed; handle this by redirecting w/result code as error message
@@ -672,8 +670,44 @@ class sveawebpay_invoice {
 
         //
         // retrieve response object from before_process()
-      //  require('includes/modules/payment/svea_v4/Includes.php');
         $swp_response = unserialize($_SESSION["swp_response"]);
+        
+        $deliveryAccepted = 0;  // used to indicate customer notification status in zencart, see below
+        // if autodeliver option set, deliver order
+        if( MODULE_PAYMENT_SWPINVOICE_AUTODELIVER == "True" ) {
+            
+            $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+
+            $swp_deliverOrder = WebPay::deliverOrder( $sveaConfig );
+
+            // this really exploits CreateOrderRow objects having public properties...
+            $swp_order = unserialize($_SESSION["swp_order"]);
+            
+            // ~hack
+            $swp_deliverOrder->orderRows = $swp_order->orderRows;
+            $swp_deliverOrder->shippingFeeRows = $swp_order->shippingFeeRows;
+            $swp_deliverOrder->invoiceFeeRows = $swp_order->invoiceFeeRows;
+            $swp_deliverOrder->fixedDiscountRows = $swp_order->fixedDiscountRows;
+            $swp_deliverOrder->relativeDiscountRows = $swp_order->relativeDiscountRows;
+            $swp_deliverOrder->countryCode = $swp_order->countryCode;
+            // /hack
+            
+            $swp_deliverOrder->setOrderId( $swp_response->sveaOrderId );
+            $swp_deliverOrder->setInvoiceDistributionType( MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE );
+            
+            $swp_deliveryResponse = $swp_deliverOrder->deliverInvoiceOrder()->doRequest();
+            
+            // all is well?
+            if($swp_deliveryResponse->accepted == 1){
+                //update order status for delivered
+                $deliveryAccepted = 1;              // customer is now notified
+                $order->info['order_status'] = 3;   // Delivered [3]
+            }  
+            // delivery failure
+            else {
+                // order will show up as if AutoDeliver set to false in shop order history, i.e. handled manually
+            } 
+        }
 
         // set zencart order info using data from response object
         $order->info['SveaOrderId'] = $swp_response->sveaOrderId;
@@ -681,17 +715,20 @@ class sveawebpay_invoice {
 
         // set zencart order securityNumber -- if request to webservice, use sveaOrderId, if hosted use transactionId
         $order->info['securityNumber'] = isset( $swp_response->sveaOrderId ) ? $swp_response->sveaOrderId : $swp_response->transactionId; 
-           
+     
         // insert zencart order into database
         $sql_data_array = array('orders_id' => $insert_id,
-            'orders_status_id' => $order->info['order_status'],
+            'orders_status_id' => $order->info['order_status'], // set to MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID in constructor
             'date_added' => 'now()',
-            'customer_notified' => 0,
-            // TODO take comments below to language files?
-            'comments' => 'Accepted by SveaWebPay ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);
+            'customer_notified' => $deliveryAccepted, // 0 = unlocked icon in zc admin order view, 1 = checkmark icon.
+            'comments' => 'Accepted by SveaWebPay ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);   //TODO localize
         zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
-        //
+        // make sure order status shows up as "delivered" in admin orders list
+        $db->Execute(   "update " . TABLE_ORDERS . "
+                        set orders_status = '" . $order->info['order_status'] . "', last_modified = now()
+                        where orders_id = '" . $insert_id . "'");
+
         // clean up our session variables set during checkout   //$SESSION[swp_*
         unset($_SESSION['swp_order']);
         unset($_SESSION['swp_response']);
@@ -741,8 +778,10 @@ class sveawebpay_invoice {
         $db->Execute($common . ") values ('Handling Fee', 'MODULE_PAYMENT_SWPINVOICE_HANDLING_FEE', '', 'This handling fee will be applied to all orders using this payment method.  The figure can either be set to a specific amount (incl. tax), eg. <b>5.00</b>, or set to a percentage of the order total, by ensuring the last character is a \'%\' eg <b>5.00%</b>.', '6', '0', now())");
         $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPINVOICE_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
         $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPINVOICE_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
-        $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
+        $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value (but see AutoDeliver option below).', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
         $db->Execute($common . ", set_function) values ('Display SveaWebPay Images', 'MODULE_PAYMENT_SWPINVOICE_IMAGES', 'True', 'Do you want to display SveaWebPay images when choosing between payment options?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
+        $db->Execute($common . ", set_function) values ('AutoDeliver Order', 'MODULE_PAYMENT_SWPINVOICE_AUTODELIVER', 'False', 'Do you want to autodeliver order invoices? This will override the the Set Order Status setting above.', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
+        $db->Execute($common . ", set_function) values ('AutoDeliver Order', 'MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE', 'Post', 'Deliver orders per Post or Email? NOTE: This must match your Svea admin settings or invoices may be non-delivered. Ask your Svea handler if unsure.', '6', '0', now(), 'zen_cfg_select_option(array(\'Post\', \'Email\'), ')");
         $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPINVOICE_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
         $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPINVOICE_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
         $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
@@ -781,6 +820,8 @@ class sveawebpay_invoice {
             'MODULE_PAYMENT_SWPINVOICE_DEFAULT_CURRENCY',
             'MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID',
             'MODULE_PAYMENT_SWPINVOICE_IMAGES',
+            'MODULE_PAYMENT_SWPINVOICE_AUTODELIVER',
+            'MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE',
             'MODULE_PAYMENT_SWPINVOICE_IGNORE',
             'MODULE_PAYMENT_SWPINVOICE_ZONE',
             'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER');
