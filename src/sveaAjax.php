@@ -2,7 +2,7 @@
 //
 require('includes/application_top.php');
 
-require_once(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php'); 
+require_once(DIR_FS_CATALOG . 'svea/Includes.php'); 
 require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');                  // sveaConfig implementation
 
 /**

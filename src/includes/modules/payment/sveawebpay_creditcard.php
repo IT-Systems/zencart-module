@@ -7,7 +7,7 @@ Kristian Grossman-Madsen, Shaho Ghobadi
 */
 
 // Include Svea php integration package files    
-require_once(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+require_once(DIR_FS_CATALOG . 'svea/Includes.php');  // use new php integration package for v4 
 require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');                  // sveaConfig inplementation
 
 class sveawebpay_creditcard {
@@ -298,7 +298,7 @@ class sveawebpay_creditcard {
     if ($_REQUEST['response']){
         
         // Include Svea php integration package files    
-        require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');
+        require_once(DIR_FS_CATALOG . 'svea/Includes.php');
     
         // localization parameters
         $user_country = $order->billing['country']['iso_code_2'];
@@ -397,7 +397,7 @@ class sveawebpay_creditcard {
     global $insert_id, $order;
    
     // retrieve response object from before_process()
-    require('includes/modules/payment/svea_v4/Includes.php');
+    require_once(DIR_FS_CATALOG . 'svea/Includes.php');
     $swp_response = unserialize($_SESSION["swp_response"]);
 
     // set zencart order securityNumber -- if request to webservice, use sveaOrderId, if hosted use transactionId

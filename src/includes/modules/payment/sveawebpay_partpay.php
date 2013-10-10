@@ -9,7 +9,7 @@
  */
 
 // Include Svea php integration package files    
-require_once(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+require_once(DIR_FS_CATALOG . 'svea/Includes.php');  // use new php integration package for v4 
 require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');                  // sveaConfig inplementation
 
 class sveawebpay_partpay {
@@ -492,9 +492,6 @@ class sveawebpay_partpay {
      */   
     function before_process() {
         global $order, $order_totals, $language, $billto, $sendto;
-
-        // Include Svea php integration package files
-       // require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
         // retrieve order object set in process_button()
         $swp_order = unserialize($_SESSION["swp_order"]);

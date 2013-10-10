@@ -9,7 +9,7 @@
  */
 
 // Include Svea php integration package files    
-require_once(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
+require_once(DIR_FS_CATALOG . 'svea/Includes.php');  // use new php integration package for v4 
 require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');                  // sveaConfig inplementation
 
 class sveawebpay_invoice {
@@ -308,9 +308,6 @@ class sveawebpay_invoice {
             $currency = $this->default_currency;
         }
         
-        // Include Svea php integration package files    
-       // require(DIR_FS_CATALOG . 'includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
-
         // Create and initialize order object, using either test or production configuration
         $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
       
@@ -607,9 +604,6 @@ class sveawebpay_invoice {
      */   
     function before_process() {
         global $order;
-
-        // Include Svea php integration package files
-      //  require('includes/modules/payment/svea_v4/Includes.php');  // use new php integration package for v4 
 
         // retrieve order object set in process_button()
         $swp_order = unserialize($_SESSION["swp_order"]);
