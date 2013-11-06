@@ -6,8 +6,8 @@ Version 4.0 - Zen Cart
 Kristian Grossman-Madsen, Shaho Ghobadi
 */
 
-// Include Svea php integration package files    
-require_once(DIR_FS_CATALOG . 'svea/Includes.php');  // use new php integration package for v4 
+// Include Svea php integration package files
+require_once(DIR_FS_CATALOG . 'svea/Includes.php');  // use new php integration package for v4
 require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');                  // sveaConfig inplementation
 
 class sveawebpay_creditcard {
@@ -19,7 +19,7 @@ class sveawebpay_creditcard {
     $this->version = 4;
 
     $_SESSION['SWP_CODE'] = $this->code;
-    
+
     $this->form_action_url = (MODULE_PAYMENT_SWPCREDITCARD_STATUS == 'True') ? 'https://test.sveaekonomi.se/webpay/payment' : 'https://webpay.sveaekonomi.se/webpay/payment';
     $this->title = MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE;
     $this->description = MODULE_PAYMENT_SWPCREDITCARD_TEXT_DESCRIPTION;
@@ -93,7 +93,7 @@ class sveawebpay_creditcard {
     if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_creditcard') { // is set in before_process() on failed payment
         $fields[] = array('title' => '<span style="color:red">' . $_SESSION['SWP_ERROR'] . '</span>', 'field' => '');
     }
-      
+
     // handling fee
     if (isset($this->handling_fee) && $this->handling_fee > 0) {
       $paymentfee_cost = $this->handling_fee;
@@ -121,9 +121,9 @@ class sveawebpay_creditcard {
   }
 
   function process_button() {
-    
+
     global $db, $order, $order_totals, $language;
-    
+
     // calculate the order number
     $new_order_rs = $db->Execute("select orders_id from " . TABLE_ORDERS . " order by orders_id desc limit 1");
     $new_order_field = $new_order_rs->fields;
@@ -141,7 +141,7 @@ class sveawebpay_creditcard {
     if (!in_array($currency, $this->allowed_currencies)) {
         $currency = $this->default_currency;
     }
-      
+
     $sveaConfig = (MODULE_PAYMENT_SWPCREDITCARD_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
     // Create and initialize order object, using either test or production configuration
@@ -151,14 +151,14 @@ class sveawebpay_creditcard {
         ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
         ->setOrderDate(date('c'))                      //Required for synchronous payments
     ;
-    
+
 
         //
         // for each item in cart, create WebPayItem::orderRow objects and add to order
         foreach ($order->products as $productId => $product) {
 
-            // convert_to_currency 
-            $amount_ex_vat = floatval(  $this->convert_to_currency( round($product['final_price'], 2), $currency ) );         
+            // convert_to_currency
+            $amount_ex_vat = floatval(  $this->convert_to_currency( round($product['final_price'], 2), $currency ) );
             $swp_order->addOrderRow(
                     WebPayItem::orderRow()
                             ->setQuantity($product['qty'])          //Required
@@ -168,13 +168,13 @@ class sveawebpay_creditcard {
             );
         }
 
-        //        
-        // handle order total modules 
+        //
+        // handle order total modules
         // i.e shipping fee, handling fee items
         foreach ($order_totals as $ot_id => $order_total) {
-          
+
             switch ($order_total['code']) {
-                case in_array(  $order_total['code'], 
+                case in_array(  $order_total['code'],
                                 $this->ignore_list):
                 case 'ot_subtotal':
                 case 'ot_total':
@@ -185,19 +185,19 @@ class sveawebpay_creditcard {
                 //
                 // if shipping fee, create WebPayItem::shippingFee object and add to order
                 case 'ot_shipping':
-                    
+
                     // makes use of zencart $order-info[] shipping information to populate object
-                    // shop shows prices including tax, take this into accord when calculating tax 
+                    // shop shows prices including tax, take this into accord when calculating tax
                     if (DISPLAY_PRICE_WITH_TAX == 'false') {
                         $amountExVat = $order->info['shipping_cost'];
-                        $amountIncVat = $order->info['shipping_cost'] + $order->info['shipping_tax'];  
+                        $amountIncVat = $order->info['shipping_cost'] + $order->info['shipping_tax'];
                     }
                     else {
                         $amountExVat = $order->info['shipping_cost'] - $order->info['shipping_tax'];
-                        $amountIncVat = $order->info['shipping_cost'] ;                     
+                        $amountIncVat = $order->info['shipping_cost'] ;
                     }
-                    
-                    // add WebPayItem::shippingFee to swp_order object 
+
+                    // add WebPayItem::shippingFee to swp_order object
                     $swp_order->addFee(
                             WebPayItem::shippingFee()
                                     ->setDescription($order->info['shipping_method'])
@@ -215,7 +215,7 @@ class sveawebpay_creditcard {
 
                         // handlingfee expressed as percentage?
                         if (substr($this->handling_fee, -1) == '%') {
-                        
+
                             // sum of products + shipping * handling_fee as percentage
                             $hf_percentage = floatval(substr($this->handling_fee, 0, -1));
 
@@ -225,10 +225,10 @@ class sveawebpay_creditcard {
                         else {
                             $hf_price = $this->convert_to_currency(floatval($this->handling_fee), $currency);
                         }
-                        $hf_taxrate =   zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS, 
+                        $hf_taxrate =   zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS,
                                         $order->delivery['country']['id'], $order->delivery['zone_id']);
 
-                        // add WebPayItem::invoiceFee to swp_order object 
+                        // add WebPayItem::invoiceFee to swp_order object
                         $swp_order->addFee(
                                 WebPayItem::invoiceFee()
                                         ->setDescription()
@@ -241,34 +241,34 @@ class sveawebpay_creditcard {
                 case 'ot_coupon':
                     // as the ot_coupon module doesn't seem to honor "show prices with/without tax" setting in zencart, we assume that
                     // coupons of a fixed amount are meant to be made out in an amount _including_ tax iff the shop displays prices incl. tax
-                    if (DISPLAY_PRICE_WITH_TAX == 'false') { 
+                    if (DISPLAY_PRICE_WITH_TAX == 'false') {
                        $amountExVat = $order_total['value'];
                         //calculate price incl. tax
-                        $amountIncVat = $amountExVat * ( (100 + $order->products[0]['tax']) / 100);     //Shao's magic way to get shop tax  
+                        $amountIncVat = $amountExVat * ( (100 + $order->products[0]['tax']) / 100);     //Shao's magic way to get shop tax
                     }
                     else {
-                        $amountIncVat = $order_total['value'];                   
+                        $amountIncVat = $order_total['value'];
                     }
-             
-                    // add WebPayItem::fixedDiscount to swp_order object 
+
+                    // add WebPayItem::fixedDiscount to swp_order object
                     $swp_order->addDiscount(
                             WebPayItem::fixedDiscount()
                                     ->setAmountIncVat( $amountIncVat )
                                     ->setDescription( $order_total['title'] )
-                    );                
-                               
+                    );
+
                 break;
 
                 // TODO default case not tested, lack of test case/data. ported from 3.0 zencart module
                 default:
-                // default case handles 'unknown' items from other plugins. Might cause problems.   
+                // default case handles 'unknown' items from other plugins. Might cause problems.
                     $order_total_obj = $GLOBALS[$order_total['code']];
                     $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
                     // if displayed WITH tax, REDUCE the value since it includes tax
                     if (DISPLAY_PRICE_WITH_TAX == 'true') {
                         $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
                     }
-                    
+
                     $swp_order->addOrderRow(
                         WebPayItem::orderRow()
                             ->setQuantity(1)          //Required
@@ -279,7 +279,7 @@ class sveawebpay_creditcard {
                 break;
             }
         }
-    
+
         $swp_form =  $swp_order->usePaymentMethod(PaymentMethod::KORTCERT)
            ->setCancelUrl( zen_href_link(FILENAME_CHECKOUT_PAYMENT, '', 'SSL', true) )      // todo test this
            ->setReturnUrl( zen_href_link(FILENAME_CHECKOUT_PROCESS, '', 'SSL') )
@@ -291,36 +291,36 @@ class sveawebpay_creditcard {
                 $swp_form->htmlFormFieldsAsArray['input_mac'];
 
     }
-  
+
  function before_process() {
-    global $order;    
-    
+    global $order;
+
     if ($_REQUEST['response']){
-        
-        // Include Svea php integration package files    
+
+        // Include Svea php integration package files
         require_once(DIR_FS_CATALOG . 'svea/Includes.php');
-    
+
         // localization parameters
         $user_country = $order->billing['country']['iso_code_2'];
-        
+
         // put response into responsehandler
 
         $sveaConfig = (MODULE_PAYMENT_SWPCREDITCARD_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
-        $swp_response = (new SveaResponse( $_REQUEST, $user_country, $sveaConfig ))->response; // returns HostedPaymentResponse 
+        $swp_response = (new SveaResponse( $_REQUEST, $user_country, $sveaConfig ))->response; // returns HostedPaymentResponse
 
         // check for bad response
-        if( $swp_response->resultcode == '0' ) {     
-            die('Response failed authorization. AC not valid or 
-                Response is not recognized');  // TODO don't die()            
+        if( $swp_response->resultcode == '0' ) {
+            die('Response failed authorization. AC not valid or
+                Response is not recognized');  // TODO don't die()
         }
-        
+
         // response ok, check if payment accepted
         else {
-            
+
             // handle failed payments
-            if ( !$swp_response->accepted === true ){           
-                
+            if ( !$swp_response->accepted === true ){
+
                 switch ($swp_response->resultcode) {
                     case 100:
                       $_SESSION['SWP_ERROR'] = ERROR_CODE_100;
@@ -339,7 +339,7 @@ class sveawebpay_creditcard {
                       break;
                     case 109:
                       $_SESSION['SWP_ERROR'] = ERROR_CODE_109;
-                      break;                 
+                      break;
                     case 114:
                       $_SESSION['SWP_ERROR'] = ERROR_CODE_114;
                       break;
@@ -357,51 +357,51 @@ class sveawebpay_creditcard {
                         break;
                     case 129:
                         $_SESSION['SWP_ERROR'] = ERROR_CODE_129;
-                        break;                              
+                        break;
                     default:
-                      $_SESSION['SWP_ERROR'] = 
+                      $_SESSION['SWP_ERROR'] =
                             ERROR_CODE_DEFAULT . $swp_response->resultcode;
                       break;
                 }
-                
+
                 if (isset($_SESSION['payment_attempt'])) {  // prevents repeated payment attempts interpreted by zencart as slam attack
                     unset($_SESSION['payment_attempt']);
                 }
-                
+
                 $payment_error_return = 'payment_error=sveawebpay_creditcard'; // used in conjunction w/SWP_ERROR to avoid reason showing up in url
                 zen_redirect( zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return) );
             }
 
             // handle successful payments
             else{
-                                
+
                 // payment request succeded, store response in session
                 if ($swp_response->accepted === true) {
-                    
+
                     if (isset($_SESSION['SWP_ERROR'])) {
                         unset($_SESSION['SWP_ERROR']);
                     }
 
                     // (with creditcard payments, shipping and billing addresses are unchanged from customer entries)
 
-                    // save the response object 
+                    // save the response object
                     $_SESSION["swp_response"] = serialize($swp_response);
-                }                
+                }
             }
-        } 
+        }
     }
   }
 
   // if payment accepted, insert order into database
   function after_process() {
     global $insert_id, $order;
-   
+
     // retrieve response object from before_process()
     require_once(DIR_FS_CATALOG . 'svea/Includes.php');
     $swp_response = unserialize($_SESSION["swp_response"]);
 
     // set zencart order securityNumber -- if request to webservice, use sveaOrderId, if hosted use transactionId
-    $order->info['securityNumber'] = isset( $swp_response->sveaOrderId ) ? $swp_response->sveaOrderId : $swp_response->transactionId; 
+    $order->info['securityNumber'] = isset( $swp_response->sveaOrderId ) ? $swp_response->sveaOrderId : $swp_response->transactionId;
 
     // insert zencart order into database
     $sql_data_array = array('orders_id' => $insert_id,
@@ -409,7 +409,7 @@ class sveawebpay_creditcard {
         'date_added' => 'now()',
         'customer_notified' => 0,
         // TODO take comments below to language files?
-        'comments' => 'Accepted by SveaWebPay ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);
+        'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);
     zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
     //
@@ -440,16 +440,16 @@ class sveawebpay_creditcard {
   function install() {
     global $db;
     $common = "insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added";
-    $db->Execute($common . ", set_function) values ('Enable SveaWebPay Card Payment Module', 'MODULE_PAYMENT_SWPCREDITCARD_STATUS', 'True', 'Do you want to accept SveaWebPay payments?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
-    $db->Execute($common . ") values ('SveaWebPay Merchant ID', 'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID', '1130', 'The Merchant ID', '6', '0', now())");
-    $db->Execute($common . ") values ('SveaWebPay Secret Word', 'MODULE_PAYMENT_SWPCREDITCARD_SW', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
-    $db->Execute($common . ") values ('SveaWebPay Test Merchant ID', 'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID_TEST', '1130', 'The Merchant ID', '6', '0', now())");
-    $db->Execute($common . ") values ('SveaWebPay Test Secret Word', 'MODULE_PAYMENT_SWPCREDITCARD_SW_TEST', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
+    $db->Execute($common . ", set_function) values ('Enable Svea Card Payment Module', 'MODULE_PAYMENT_SWPCREDITCARD_STATUS', 'True', 'Do you want to accept Svea payments?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
+    $db->Execute($common . ") values ('Svea Merchant ID', 'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID', '1130', 'The Merchant ID', '6', '0', now())");
+    $db->Execute($common . ") values ('Svea Secret Word', 'MODULE_PAYMENT_SWPCREDITCARD_SW', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
+    $db->Execute($common . ") values ('Svea Test Merchant ID', 'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID_TEST', '1130', 'The Merchant ID', '6', '0', now())");
+    $db->Execute($common . ") values ('Svea Test Secret Word', 'MODULE_PAYMENT_SWPCREDITCARD_SW_TEST', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
     $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPCREDITCARD_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
     $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPCREDITCARD_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
     $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPCREDITCARD_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
     $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPCREDITCARD_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
-    $db->Execute($common . ", set_function) values ('Display SveaWebPay Images', 'MODULE_PAYMENT_SWPCREDITCARD_IMAGES', 'True', 'Do you want to display SveaWebPay images when choosing between payment options?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
+    $db->Execute($common . ", set_function) values ('Display Svea Images', 'MODULE_PAYMENT_SWPCREDITCARD_IMAGES', 'True', 'Do you want to display Svea images when choosing between payment options?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
     $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPCREDITCARD_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
     $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPCREDITCARD_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
     $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPCREDITCARD_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
@@ -467,7 +467,7 @@ class sveawebpay_creditcard {
                   'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID',
                   'MODULE_PAYMENT_SWPCREDITCARD_SW',
                   'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID_TEST',
-                  'MODULE_PAYMENT_SWPCREDITCARD_SW_TEST',        
+                  'MODULE_PAYMENT_SWPCREDITCARD_SW_TEST',
                   'MODULE_PAYMENT_SWPCREDITCARD_MODE',
                   'MODULE_PAYMENT_SWPCREDITCARD_ALLOWED_CURRENCIES',
                   'MODULE_PAYMENT_SWPCREDITCARD_DEFAULT_CURRENCY',
@@ -479,7 +479,7 @@ class sveawebpay_creditcard {
   }
 
   /**
-   * 
+   *
    * @global type $currencies
    * @param float $value amount to convert
    * @param string $currency as three-letter $iso3166 country code
@@ -493,14 +493,14 @@ class sveawebpay_creditcard {
         // item price is ALWAYS given in internal price from the products DB, so just multiply by currency rate from currency table
         $rounded_value = zen_round($value * $currencies->currencies[$currency]['value'], $currencies->currencies[$currency]['decimal_places']);
 
-        return $no_number_format ? $rounded_value : number_format(  $rounded_value, 
-                                                                    $currencies->currencies[$currency]['decimal_places'], 
-                                                                    $currencies->currencies[$currency]['decimal_point'], 
-                                                                    $currencies->currencies[$currency]['thousands_point']);   
+        return $no_number_format ? $rounded_value : number_format(  $rounded_value,
+                                                                    $currencies->currencies[$currency]['decimal_places'],
+                                                                    $currencies->currencies[$currency]['decimal_point'],
+                                                                    $currencies->currencies[$currency]['thousands_point']);
     }
-  
+
     function getCountryName( $iso3166 ) {
-        
+
         // countrynames from https://github.com/johannesl/Internationalization, thanks!
         $countrynames = array(
             "AF"=>"Afghanistan",
@@ -753,7 +753,7 @@ class sveawebpay_creditcard {
             "ZM"=>"Zambia",
             "ZW"=>"Zimbabwe"
         );
-    
+
         return( array_key_exists( $iso3166, $countrynames) ? $countrynames[$iso3166] : $iso3166 );
     }
 }

@@ -1,11 +1,11 @@
 <?php
 /*
-SVEAWEBPAY PAYMENT MODULE FOR ZenCart
+SVEA PAYMENT MODULE FOR ZenCart
 -----------------------------------------------
 Version 3.0
 */
-define('MODULE_PAYMENT_SWPPARTPAY_TEXT_TITLE','SVEA Osamaksu');
-define('MODULE_PAYMENT_SWPPARTPAY_TEXT_DESCRIPTION','SveaWebpay osamaksu Webservice - versio 3.0');
+define('MODULE_PAYMENT_SWPPARTPAY_TEXT_TITLE','Svea Osamaksu');
+define('MODULE_PAYMENT_SWPPARTPAY_TEXT_DESCRIPTION','Svea osamaksu - versio 4.0');
 define('MODULE_PAYMENT_SWPPARTPAY_HANDLING_APPLIES','Tilaukseen lisätään %s palvelumaksusta');
 define('ERROR_ALLOWED_CURRENCIES_NOT_DEFINED','Yksi tai useampi sallituista valuutoista ei ole määritelty. Nämä on määriteltävä käyttämään SveaWebPay hosted solutionia. Kirjaudu admin paneeliin ja varmista että.');
 define('ERROR_DEFAULT_CURRENCY_NOT_ALLOWED','Standardivaluuta ei ole sallitussa luettelossa. Kirjaudu admin paneeliin ja varmista että oletusvaluutta kuuluu niihin sallituihin maksu-moduulissa.');  
@@ -33,4 +33,5 @@ define('DD_PARTPAY_IN','Maksa ');
 define('DD_PAY_IN_THREE','Pay within 3 months');
 define('DD_MONTHS',' Kuukausia');
 define('DD_CURRENY_PER_MONTH',' eur/kuukausi');
+define('DD_NO_CAMPAIGN_ON_AMOUNT','Sopivaa kampanjakoodia ei löydy annetulle summalle.');
 ?>

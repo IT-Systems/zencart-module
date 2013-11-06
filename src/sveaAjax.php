@@ -2,15 +2,15 @@
 //
 require('includes/application_top.php');
 
-require_once(DIR_FS_CATALOG . 'svea/Includes.php'); 
+require_once(DIR_FS_CATALOG . 'svea/Includes.php');
 require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');                  // sveaConfig implementation
 
 /**
  *  get iso 3166 customerCountry from zencart customer settings
  */
 if( isset($_POST['SveaAjaxGetCustomerCountry']) ) {
-    
-    $country = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );    
+
+    $country = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );
     echo $country['countries_iso_code_2'];
 }
 
@@ -27,29 +27,24 @@ if( isset($_POST['SveaAjaxGetPartPaymentOptions']) ) {
 }
 
 function sveaAjaxGetPartPaymentOptions( $price, $country ) {
-    
+
     $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test' ) ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
-    
+
     $plansResponse = WebPay::getPaymentPlanParams( $sveaConfig )->setCountryCode($country)->doRequest();
-    
+
     // TODO change to use zencart error message stack instead, or svea errors?
     // error?
     if( $plansResponse->accepted == false) {
-        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $plansResponse->errormessage) ); 
+        echo( sprintf('<div><input type="radio" id="address_0" value="swp_not_set">%s</div>', $plansResponse->errormessage) );
     }
     // if not, show addresses and store response in session
     else {
        $priceResponse = WebPay::paymentPlanPricePerMonth( $price, $plansResponse );
-       
-        if( sizeof( $priceResponse->values ) == 0 ) {
-            echo sprintf('<option value="0">%s</option>', "NO APPLICABLE PAYMENT PLAN FOR THIS ORDER AMOUNT");
-        }
-        else {
             foreach( $priceResponse->values as $cc) {
-                echo sprintf( '<option value="%s">%s (%.2f)</option>', $cc['campaignCode'], $cc['description'], $cc['pricePerMonth'] );
-            }
+                echo sprintf( '<div><input type="radio" name="sveaPaymentOptionsPP" value="%s">%s (%.2f)</div>', $cc['campaignCode'], $cc['description'], $cc['pricePerMonth'] );
+
         }
-    }    
+    }
 }
 
 /**
@@ -64,10 +59,10 @@ if( isset($_POST['SveaAjaxGetBankPaymentOptions']) ) {
 
 function sveaAjaxGetBankPaymentOptions( $country ) {
 
-    $sveaConfig = (MODULE_PAYMENT_SWPINTERNETBANK_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();   
-    
+    $sveaConfig = (MODULE_PAYMENT_SWPINTERNETBANK_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+
     $banksResponse = WebPay::getPaymentMethods( $sveaConfig )->setContryCode( $country )->doRequest();
-    
+
     if( sizeof( $banksResponse ) == 0 ) {
         return "NO APPLICABLE BANKS FOR THIS PAYMENT METHOD"; //TODO fail gracefully
     }
@@ -80,7 +75,7 @@ function sveaAjaxGetBankPaymentOptions( $country ) {
                 echo sprintf( '<label for="%s"> <img src="%s%s.png" alt="bank %s" /> </label>', $bank, $logosPath, $bank, $bank);
             }
         }
-    }    
+    }
 }
 
 /**
@@ -92,16 +87,16 @@ if( isset($_POST['SveaAjaxGetAddresses']) ) {
     $country = isset( $_POST['sveaCountryCode'] ) ? $_POST['sveaCountryCode'] : "swp_not_set";
     $isCompany = isset( $_POST['sveaIsCompany'] ) ? $_POST['sveaIsCompany'] : "swp_not_set";
     $paymentType = isset( $_POST['paymentType'] ) ? $_POST['paymentType'] : "swp_not_set";
-        
+
     sveaAjaxGetAddresses($ssn, $country, $isCompany, $paymentType );
     exit();
-}    
+}
 
 function sveaAjaxGetAddresses( $ssn, $country, $isCompany, $paymentType ) {
 
     $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test' ||
                    MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test' ) ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
-    
+
     $response = WebPay::getAddresses( $sveaConfig );
     // private individual
     if(  $isCompany === 'true' ) {
@@ -109,7 +104,7 @@ function sveaAjaxGetAddresses( $ssn, $country, $isCompany, $paymentType ) {
     }
     if( $isCompany === 'false' ) {
         $response = $response->setIndividual( $ssn );
-    }        
+    }
     // paymenttype
     switch( strtoupper($paymentType) ) {
         case "INVOICE":
@@ -119,18 +114,18 @@ function sveaAjaxGetAddresses( $ssn, $country, $isCompany, $paymentType ) {
             $response = $response->setOrderTypePaymentPlan();
             break;
     }
-    $response = $response->setCountryCode( $country )              
+    $response = $response->setCountryCode( $country )
                     ->setIndividual( $ssn )
-                    ->doRequest();    
+                    ->doRequest();
 
     // TODO change to use zencart error message stack instead, or svea errors?
     // error?
     if( $response->accepted == false) {
-        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $response->errormessage) ); 
+        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $response->errormessage) );
     }
     // if not, show addresses and store response in session
     else {
-        // $getAddressResponse has type Svea\getAddressIdentity 
+        // $getAddressResponse has type Svea\getAddressIdentity
         foreach( $response->customerIdentity as $key => $getAddressIdentity ) {
 
             $addressSelector = $getAddressIdentity->addressSelector;
@@ -142,17 +137,17 @@ function sveaAjaxGetAddresses( $ssn, $country, $isCompany, $paymentType ) {
 
             //Send back to user
             echo(   '<option id="address_' . $key .
-                        '" value="' . $addressSelector . 
-                        '">' . $fullName . 
-                        ', ' . $street . 
+                        '" value="' . $addressSelector .
+                        '">' . $fullName .
+                        ', ' . $street .
                         ', ' . $coAddress .
-                        ', ' . $zipCode . 
-                        ' ' . $locality . 
+                        ', ' . $zipCode .
+                        ' ' . $locality .
                     '</option>'
-            );    
+            );
         }
         $_SESSION['sveaGetAddressesResponse'] = serialize( $response );
-    }    
+    }
 }
 
 /**
@@ -168,7 +163,7 @@ function sveaAjaxSetCustomerInvoiceAddress() {
 
     // have we got an address selector (i.e. a getAddresses country)?
     if( isset($_POST['SveaAjaxAddressSelectorValue']) ) {
-    
+
         $addressSelector = $_POST['SveaAjaxAddressSelectorValue'];
 
         $response = unserialize( $_SESSION['sveaGetAddressesResponse'] );
@@ -180,7 +175,7 @@ function sveaAjaxSetCustomerInvoiceAddress() {
                 // does the customer already have the invoice address in her address book?
                 $sqlGetInvoiceAddressBookId =
                      "SELECT address_book_id FROM " . TABLE_ADDRESS_BOOK . " " .
-                     "WHERE customers_id = '" . intval($_SESSION['customer_id']) . "' " . 
+                     "WHERE customers_id = '" . intval($_SESSION['customer_id']) . "' " .
                      "AND entry_firstname = '" . $getAddressIdentity->firstName . "' " .
                      "AND entry_lastname = '" . $getAddressIdentity->lastName . "' " .
                      "AND entry_company = '" . $getAddressIdentity->fullName . "' " .
@@ -194,7 +189,7 @@ function sveaAjaxSetCustomerInvoiceAddress() {
                 // invoice address not present, add it to address book for this customer
                 $foundInvoiceAddress = $queryFactoryResult->recordCount();
 
-                if( $foundInvoiceAddress == 0) {    
+                if( $foundInvoiceAddress == 0) {
                     $sqlAddInvoiceAddress = array();
                     $sqlAddInvoiceAddress['customers_id'] = intval($_SESSION['customer_id']);
                     $sqlAddInvoiceAddress['entry_firstname'] = $getAddressIdentity->firstName;
@@ -210,7 +205,7 @@ function sveaAjaxSetCustomerInvoiceAddress() {
                     // needed as zen_db_perform doesn't provide insert_id
                     if( $sqlInsertInvoiceAddressResult ) {
                         $queryFactoryResult = $db->execute($sqlGetInvoiceAddressBookId);
-                    }   
+                    }
                 }
 
                 // get latest address book entry for this customer, use as billing address
@@ -221,7 +216,7 @@ function sveaAjaxSetCustomerInvoiceAddress() {
             }
         }
     }
-    
+
     // no addressSelector, so we respect the shipping/billing addresses for now.
     else {
         echo $_SESSION['billto'];
