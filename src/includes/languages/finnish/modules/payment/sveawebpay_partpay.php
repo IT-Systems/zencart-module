@@ -33,4 +33,5 @@ define('DD_PARTPAY_IN','Maksa ');
 define('DD_PAY_IN_THREE','Pay within 3 months');
 define('DD_MONTHS',' Kuukausia');
 define('DD_CURRENY_PER_MONTH',' eur/kuukausi');
+define('DD_NO_CAMPAIGN_ON_AMOUNT','Sopivaa kampanjakoodia ei löydy annetulle summalle.');
 ?>

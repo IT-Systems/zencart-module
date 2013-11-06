@@ -40,14 +40,9 @@ function sveaAjaxGetPartPaymentOptions( $price, $country ) {
     // if not, show addresses and store response in session
     else {
        $priceResponse = WebPay::paymentPlanPricePerMonth( $price, $plansResponse );
-
-        if( sizeof( $priceResponse->values ) == 0 ) {
-            echo sprintf('<div>%s</div>', "NO APPLICABLE PAYMENT PLAN FOR THIS ORDER AMOUNT");
-        }
-        else {
             foreach( $priceResponse->values as $cc) {
                 echo sprintf( '<div><input type="radio" name="sveaPaymentOptionsPP" value="%s">%s (%.2f)</div>', $cc['campaignCode'], $cc['description'], $cc['pricePerMonth'] );
-            }
+
         }
     }
 }

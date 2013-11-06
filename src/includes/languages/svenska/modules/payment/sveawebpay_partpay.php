@@ -33,4 +33,5 @@ define('DD_PARTPAY_IN','Betala på ');
 define('DD_PAY_IN_THREE','Betala om 3 mån');
 define('DD_MONTHS',' månader');
 define('DD_CURRENY_PER_MONTH',' kr/mån');
+define('DD_NO_CAMPAIGN_ON_AMOUNT','Det går ej att hitta en passande kampanjkod för den angivna summan');
 ?>

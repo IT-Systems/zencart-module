@@ -55,4 +55,5 @@ define('FORM_TEXT_VATNO','Vat Number (NL2345234)');                     // TODO 
 define('FORM_TEXT_PARTPAY_ADDRESS','Select billing address to be used.');
 define('FORM_TEXT_PARTPAY_FEE','Payment Plan Fee:');
 define('FORM_TEXT_GET_PAYPLAN','Payment options:');
+define('DD_NO_CAMPAIGN_ON_AMOUNT','Can not find a suitable CampaignCode for the given amount');
 ?>
