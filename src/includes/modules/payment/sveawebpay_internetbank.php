@@ -480,11 +480,11 @@ class sveawebpay_internetbank {
   function install() {
     global $db;
     $common = "insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added";
-    $db->Execute($common . ", set_function) values ('Enable Svea Direct Bank Payment Module', 'MODULE_PAYMENT_SWPINTERNETBANK_STATUS', 'True', 'Do you want to accept Svea payments?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
-    $db->Execute($common . ") values ('Svea Merchant ID', 'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID', '', 'The Merchant ID', '6', '0', now())");
-    $db->Execute($common . ") values ('Svea Secret Word', 'MODULE_PAYMENT_SWPINTERNETBANK_SW', '', 'The Secret word', '6', '0', now())");
-    $db->Execute($common . ") values ('Svea Test Merchant ID', 'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID_TEST', '1130', 'The Merchant ID', '6', '0', now())");
-    $db->Execute($common . ") values ('Svea Test Secret Word', 'MODULE_PAYMENT_SWPINTERNETBANK_SW_TEST', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
+    $db->Execute($common . ", set_function) values ('Enable Svea Direct Bank Payment Module', 'MODULE_PAYMENT_SWPINTERNETBANK_STATUS', 'True', '', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
+    $db->Execute($common . ") values ('Svea Direct Bank Merchant ID', 'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID', '', 'The Merchant ID', '6', '0', now())");
+    $db->Execute($common . ") values ('Svea Direct Bank Secret Word', 'MODULE_PAYMENT_SWPINTERNETBANK_SW', '', 'The Secret word', '6', '0', now())");
+    $db->Execute($common . ") values ('Svea Direct Bank Test Merchant ID', 'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID_TEST', '1130', 'The Merchant ID', '6', '0', now())");
+    $db->Execute($common . ") values ('Svea Direct Bank Test Secret Word', 'MODULE_PAYMENT_SWPINTERNETBANK_SW_TEST', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
     $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPINTERNETBANK_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
     $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPINTERNETBANK_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
     $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPINTERNETBANK_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
@@ -506,9 +506,9 @@ class sveawebpay_internetbank {
     return array( 'MODULE_PAYMENT_SWPINTERNETBANK_STATUS',
                   'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID',
                   'MODULE_PAYMENT_SWPINTERNETBANK_SW',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_MODE',
+                  'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID_TEST',
                   'MODULE_PAYMENT_SWPINTERNETBANK_SW_TEST',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_MODE_TEST',
+                  'MODULE_PAYMENT_SWPINTERNETBANK_MODE',
                   'MODULE_PAYMENT_SWPINTERNETBANK_ALLOWED_CURRENCIES',
                   'MODULE_PAYMENT_SWPINTERNETBANK_DEFAULT_CURRENCY',
                   'MODULE_PAYMENT_SWPINTERNETBANK_ORDER_STATUS_ID',
