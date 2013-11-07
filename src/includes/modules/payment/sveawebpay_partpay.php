@@ -209,7 +209,7 @@ class sveawebpay_partpay {
         }
 
         $sveaPaymentOptionsPP =
-            FORM_TEXT_GET_PAYPLAN . '<br /><div id="sveaPaymentOptionsPP" style="display:none">';
+            FORM_TEXT_PAYMENT_OPTIONS . '<br /><div id="sveaPaymentOptionsPP" style="display:none">';
 
         $sveaError = '<br /><span id="sveaSSN_error_invoicePP" style="color:red"></span>';
 
@@ -250,10 +250,12 @@ class sveawebpay_partpay {
         if(($minValue != '' && $order->info['total'] < $minValue) || ($maxValue != '' && $order->info['total'] > $maxValue)){
             $fields[] = array('title' => '<div id="sveaPartPayField" style="display:none">'.DD_NO_CAMPAIGN_ON_AMOUNT.'</div>', 'field' => '');
         }  else {
+         $sveaSubmitPaymentOptions = '<button id="sveaSubmitPaymentOptions" type="button">'.FORM_TEXT_GET_PAYPLAN.'</button><br />';
              // create and add the field to be shown by our js when we select Payment Plan payment method
         $sveaField =    '<div id="sveaPartPayField" style="display:none">' .
                             $sveaSSNPP .              //  SE, DK, NO
                             $sveaSSNFIPP .            //  FI, no getAddresses
+                            $sveaSubmitPaymentOptions.
                             $sveaAddressDDPP .        //  SE, Dk, NO
                             $sveaInitialsDivPP .      //  NL
                             $sveaBirthDateDivPP .     //  NL, DE
