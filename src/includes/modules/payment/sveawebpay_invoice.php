@@ -135,7 +135,7 @@ class sveawebpay_invoice {
         }
 
         // radiobutton for choosing individual or organization
-        $sveaIsCompanyField = FORM_TEXT_COMPANY_OR_PRIVATE . ' <br />' .
+        $sveaIsCompanyField =
                             '<label><input type="radio" name="sveaIsCompany" value="false" checked>' . FORM_TEXT_PRIVATE . '</label>' .
                             '<label><input type="radio" name="sveaIsCompany" value="true">' . FORM_TEXT_COMPANY . '</label><br />';
 
@@ -840,6 +840,7 @@ class sveawebpay_invoice {
                                                                     $currencies->currencies[$currency]['decimal_point'],
                                                                     $currencies->currencies[$currency]['thousands_point']);
     }
+
 
     //Error Responses
     function responseCodes($err) {

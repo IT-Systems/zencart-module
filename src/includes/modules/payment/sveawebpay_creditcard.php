@@ -323,42 +323,42 @@ class sveawebpay_creditcard {
 
                 switch ($swp_response->resultcode) {
                     case 100:
-                      $_SESSION['SWP_ERROR'] = ERROR_CODE_100;
-                      break;
-                    case 105:
-                      $_SESSION['SWP_ERROR'] = ERROR_CODE_105;
-                      break;
-                    case 106:
-                      $_SESSION['SWP_ERROR'] = ERROR_CODE_106;
-                      break;
-                    case 107:
-                      $_SESSION['SWP_ERROR'] = ERROR_CODE_107;
-                      break;
-                    case 108:
-                      $_SESSION['SWP_ERROR'] = ERROR_CODE_108;
-                      break;
-                    case 109:
-                      $_SESSION['SWP_ERROR'] = ERROR_CODE_109;
-                      break;
-                    case 114:
-                      $_SESSION['SWP_ERROR'] = ERROR_CODE_114;
-                      break;
-                    case 121:
-                      $_SESSION['SWP_ERROR'] = ERROR_CODE_121;
-                      break;
-                    case 122:
-                        $_SESSION['SWP_ERROR'] = ERROR_CODE_122;
-                        break;
-                    case 123:
-                        $_SESSION['SWP_ERROR'] = ERROR_CODE_123;
-                        break;
-                    case 127:
-                        $_SESSION['SWP_ERROR'] = ERROR_CODE_127;
-                        break;
-                    case 129:
-                        $_SESSION['SWP_ERROR'] = ERROR_CODE_129;
-                        break;
-                    default:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_100;
+                    break;
+                case 105:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_105;
+                    break;
+                case 106:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_106;
+                    break;
+                case 107:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_107;
+                    break;
+                case 108:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_108;
+                    break;
+                case 109:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_109;
+                    break;
+                case 110:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_110;
+                    break;
+                case 113:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_113;
+                    break;
+                case 114:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_114;
+                    break;
+                case 121:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_121;
+                    break;
+                case 124:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_124;
+                    break;
+                case 143:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_143;
+                    break;
+                default:
                       $_SESSION['SWP_ERROR'] =
                             ERROR_CODE_DEFAULT . $swp_response->resultcode;
                       break;
@@ -441,10 +441,10 @@ class sveawebpay_creditcard {
     global $db;
     $common = "insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added";
     $db->Execute($common . ", set_function) values ('Enable Svea Card Payment Module', 'MODULE_PAYMENT_SWPCREDITCARD_STATUS', 'True', 'Do you want to accept Svea payments?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
-    $db->Execute($common . ") values ('Svea Merchant ID', 'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID', '1130', 'The Merchant ID', '6', '0', now())");
-    $db->Execute($common . ") values ('Svea Secret Word', 'MODULE_PAYMENT_SWPCREDITCARD_SW', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
-    $db->Execute($common . ") values ('Svea Test Merchant ID', 'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID_TEST', '1130', 'The Merchant ID', '6', '0', now())");
-    $db->Execute($common . ") values ('Svea Test Secret Word', 'MODULE_PAYMENT_SWPCREDITCARD_SW_TEST', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
+    $db->Execute($common . ") values ('Svea Card Merchant ID', 'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID', '1130', 'The Merchant ID', '6', '0', now())");
+    $db->Execute($common . ") values ('Svea Card Secret Word', 'MODULE_PAYMENT_SWPCREDITCARD_SW', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
+    $db->Execute($common . ") values ('Svea Card Test Merchant ID', 'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID_TEST', '1130', 'The Merchant ID', '6', '0', now())");
+    $db->Execute($common . ") values ('Svea Card Test Secret Word', 'MODULE_PAYMENT_SWPCREDITCARD_SW_TEST', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
     $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPCREDITCARD_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
     $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPCREDITCARD_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
     $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPCREDITCARD_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");

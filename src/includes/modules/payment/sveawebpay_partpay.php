@@ -832,11 +832,21 @@ class sveawebpay_partpay {
             case "20013" :
                 return ERROR_CODE_20013;
                 break;
-
-            case "24000" :
-                return ERROR_CODE_24000;
+            case "27000" :
+                return ERROR_CODE_27000;
                 break;
-
+            case "27001" :
+                return ERROR_CODE_27001;
+                break;
+            case "27002" :
+                return ERROR_CODE_27002;
+                break;
+            case "27003" :
+                return ERROR_CODE_27003;
+                break;
+            case "27004" :
+                return ERROR_CODE_27004;
+                break;
             case "30000" :
                 return ERROR_CODE_30000;
                 break;

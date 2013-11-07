@@ -11,23 +11,43 @@ define('ERROR_ALLOWED_CURRENCIES_NOT_DEFINED','En eller flera av de tillåtna val
 define('ERROR_DEFAULT_CURRENCY_NOT_ALLOWED','Standardvalutan är ej med i listan av de tillåtna. Logga in till your admin-panel, och säkerställ att standardvalutan finns med bland de tillåtna i payment-modulen.');  
 define('ERROR_MESSAGE_PAYMENT_FAILED','Betalningen misslyckades.');  
 
-define('ERROR_CODE_1','Kreditinformation kan inte hämtas');
-define('ERROR_CODE_2','Butikens eller Sveas kreditgräns överskriden');
-define('ERROR_CODE_3','Kund blockerad eller har uppvisat ovanligt beteende hos kreditupplysare');
-define('ERROR_CODE_4','Order utgången');
-define('ERROR_CODE_5','Denna order skulle orsaka att kreditgränsen överskrids');
-define('ERROR_CODE_6','Ordern överstiger högsta tillåtna beloppet hos SVEA');
-define('ERROR_CODE_7','Orderbeloppet överstiger högsta totala ordervärde tillåtet');
-define('ERROR_CODE_8','Kunden har dålig kredithistoria hos SVEA');
-define('ERROR_CODE_9','Kund ej listad');
-define('ERROR_CODE_DEFAULT', 'Fel vid betalning, intern error');
+//Eu error codes
+define('ERROR_CODE_20000','Ordern är stängd');
+define('ERROR_CODE_20001','Ordern är nekad');
+define('ERROR_CODE_20002','Något gick fel med ordern');
+define('ERROR_CODE_20003','Ordern har gått ut');
+define('ERROR_CODE_20004','Ordern existerar ej');
+define('ERROR_CODE_20005','Ordertyperna matchar ej');
+define('ERROR_CODE_20006','Summan av orderraderna kan ej vara noll eller negativ');
+define('ERROR_CODE_20013','Ordern väntar');
 
-//Form on checkout
-define('FORM_TEXT_COMPANY_OR_PRIVATE','Välj Företag/Privat:');
+define('ERROR_CODE_30000','Krediteringen nekades');
+define('ERROR_CODE_30001','Kunden är blockerad eller har uppvisat udda köpbeteende.');
+define('ERROR_CODE_30002','Ordern nekades baserat på kreditupplysningen.');
+define('ERROR_CODE_30003','Det går ej att hitta kunden i kreditupplysningen.');
+
+define('ERROR_CODE_40000','Det går ej att hitta kunden');
+define('ERROR_CODE_40001','Landskoden stöds ej');
+define('ERROR_CODE_40002','Ogiltiga kunduppgifter');
+define('ERROR_CODE_40004','Det gick ej att hitta några adresser för den här kunden');
+
+define('ERROR_CODE_50000','Kunden är ej godkänd för denna metod');
+
+//invoice specific
+define('ERROR_CODE_24000','Fakturabeloppet överstiger tillåtet orderbelopp.');
+
+// used in payment credentials form
+define('FORM_TEXT_INVOICE_ADDRESS','Välj fakturaadress');
+define('FORM_TEXT_INVOICE_FEE','Fakturaavgift:');
 define('FORM_TEXT_COMPANY','Företag');
 define('FORM_TEXT_PRIVATE','Privat');
-define('FORM_TEXT_SS_NO','Personnr/Orgnr:');
 define('FORM_TEXT_GET_ADDRESS','Hämta adress');
-define('FORM_TEXT_INVOICE_ADDRESS','Faktureringsadress:');
-define('FORM_TEXT_INVOICE_FEE','Faktureringsavgift:');
+
+define('FORM_TEXT_SS_NO','Personnummer:');
+define('FORM_TEXT_INITIALS','Initialer');                                
+define('FORM_TEXT_BIRTHDATE','Födelsedatum (YYYYMMDD)');              
+define('FORM_TEXT_VATNO','Organisationsnummer');
+
+define('ERROR_CODE_DEFAULT','Svea Error: ');
+
 ?>
