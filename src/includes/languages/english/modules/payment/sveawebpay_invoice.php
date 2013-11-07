@@ -19,8 +19,8 @@ define('ERROR_CODE_20002','Something is wrong with the order  ');
 define('ERROR_CODE_20003','Order has expired  ');
 define('ERROR_CODE_20004','Order does not exist  ');
 define('ERROR_CODE_20005','Wrong Order Type  ');
-define('ERROR_CODE_20006','InvalidAmount ');
-define('ERROR_CODE_20013',' ');
+define('ERROR_CODE_20006','The sum of all order rows cannot be zero or negative ');
+define('ERROR_CODE_20013','Order is pending');
 
 define('ERROR_CODE_30000','The credit report was rejected');
 define('ERROR_CODE_30001','This customer is blocked or has shown strange/unusual behavior');
