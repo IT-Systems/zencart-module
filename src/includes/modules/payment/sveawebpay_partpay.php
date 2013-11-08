@@ -27,7 +27,6 @@ class sveawebpay_partpay {
         $this->enabled = ((MODULE_PAYMENT_SWPPARTPAY_STATUS == 'True') ? true : false);
         $this->sort_order = MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER;
         $this->sveawebpay_url = MODULE_PAYMENT_SWPPARTPAY_URL;
-        $this->handling_fee = MODULE_PAYMENT_SWPPARTPAY_HANDLING_FEE;
         $this->default_currency = MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY;
         $this->allowed_currencies = explode(',', MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES);
         $this->display_images = ((MODULE_PAYMENT_SWPPARTPAY_IMAGES == 'True') ? true : false);
@@ -105,8 +104,7 @@ class sveawebpay_partpay {
         $fields = array();
 
         // image
-        if ($this->display_images)
-            $fields[] = array('title' => '<img src=images/SveaWebPay-Delbetala-100px.png />', 'field' => '');
+            $fields[] = array('title' => '<img src=images/Svea/SVEASPLITEU_'.$order->customer['country']['iso_code_2'].'.png />', 'field' => '');
 
         // catch and display error messages raised when i.e. payment request from before_process() below turns out not accepted
         if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_partpay') {
@@ -250,7 +248,11 @@ class sveawebpay_partpay {
         if(($minValue != '' && $order->info['total'] < $minValue) || ($maxValue != '' && $order->info['total'] > $maxValue)){
             $fields[] = array('title' => '<div id="sveaPartPayField" style="display:none">'.DD_NO_CAMPAIGN_ON_AMOUNT.'</div>', 'field' => '');
         }  else {
-         $sveaSubmitPaymentOptions = '<button id="sveaSubmitPaymentOptions" type="button">'.FORM_TEXT_GET_PAYPLAN.'</button><br />';
+         $sveaInitialFee =
+                '<br /><div>' . sprintf( FORM_TEXT_PARTPAY_FEE).'</div>';
+         if($order->billing['country']['iso_code_2'] == "SE" || $order->billing['country']['iso_code_2'] == "DK"){
+               $sveaSubmitPaymentOptions = '<button id="sveaSubmitPaymentOptions" type="button">'.FORM_TEXT_GET_PAYPLAN.'</button><br />';
+         }
              // create and add the field to be shown by our js when we select Payment Plan payment method
         $sveaField =    '<div id="sveaPartPayField" style="display:none">' .
                             $sveaSSNPP .              //  SE, DK, NO
@@ -262,12 +264,13 @@ class sveawebpay_partpay {
                             $sveaVatNoDivPP .         //  NL, DE
                             $sveaPaymentOptionsPP .
                             // FI, NL, DE also uses customer address data from zencart
-                        '</div>';
+                        '</div>'.
+                        $sveaInitialFee;
             $fields[] = array('title' => '', 'field' => '<br />' . $sveaField . $sveaError);
         }
 
         $_SESSION["swp_order_info_pre_coupon"]  = serialize($order->info);  // store order info needed to reconstruct amount pre coupon later
-        
+
         // return module fields to zencart
         return array(   'id' => $this->code,
                         'module' => $this->title,
@@ -422,24 +425,24 @@ class sveawebpay_partpay {
                     }
                     break;
 
-                case 'ot_coupon': 
-                   // zencart coupons are made out as either amount x.xx or a percentage y%. 
-                    // Both of these are calculated by zencart via the order total module ot_coupon.php and show up in the 
-                    // corresponding $order_totals[...]['value'] field. 
-                    // 
-                    // Depending on the module settings the value may differ, Svea assumes that the (zc 1.5.1) default settings 
+                case 'ot_coupon':
+                   // zencart coupons are made out as either amount x.xx or a percentage y%.
+                    // Both of these are calculated by zencart via the order total module ot_coupon.php and show up in the
+                    // corresponding $order_totals[...]['value'] field.
+                    //
+                    // Depending on the module settings the value may differ, Svea assumes that the (zc 1.5.1) default settings
                     // are being used:
                     //
                     // admin/ot_coupon module setting -- include shipping: false, include tax: false, re-calculate tax: standard
-                    // 
+                    //
                     // The value contains the total discount amount including tax iff configuration display prices with tax is set to true:
-                    // 
+                    //
                     // admin/configuration setting -- display prices with tax: true => ot_coupon['value'] includes vat, if false, excludes vat
-                    // 
+                    //
                     // Example:
-                    // zc adds an ot_coupon with value of 20 for i.e. a 10% discount on an order of 100 +(25%) + 100 (+6%). 
+                    // zc adds an ot_coupon with value of 20 for i.e. a 10% discount on an order of 100 +(25%) + 100 (+6%).
                     // This discount seems to be split in equal parts over the two order item vat rates:
-                    // 90*1,25 + 90*1,06 = 112,5 + 95,4 = 207,90, to which the shipping fee of 4 (+25%) is added. The total is 212,90 
+                    // 90*1,25 + 90*1,06 = 112,5 + 95,4 = 207,90, to which the shipping fee of 4 (+25%) is added. The total is 212,90
                     // ot_coupon['value'] is 23,10 iff display prices incuding tax = true, else ot_coupon['value'] = 20
                     //
                     // We handle the coupons by adding a FixedDiscountRow for the amount, specified ex vat. The package
@@ -516,7 +519,7 @@ class sveawebpay_partpay {
                 default:
                     $order_total_obj = $GLOBALS[$order_total['code']];
                     $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
-                    
+
                     // if displayed WITH tax, REDUCE the value since it includes tax
                     if (DISPLAY_PRICE_WITH_TAX == 'true') {
                         $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
@@ -634,9 +637,7 @@ class sveawebpay_partpay {
 
         // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {
-
-            $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->resultcode);
-
+            $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->resultcode,$swp_response->errormessage);
             $payment_error_return = 'payment_error=sveawebpay_partpay';
             zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return)); // error handled in selection() above
         }
@@ -809,7 +810,6 @@ class sveawebpay_partpay {
         $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
         $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
         $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value (but see AutoDeliver option below).', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
-        $db->Execute($common . ", set_function) values ('Display Svea Images', 'MODULE_PAYMENT_SWPPARTPAY_IMAGES', 'True', 'Do you want to display Svea images when choosing between payment options?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
         $db->Execute($common . ", set_function) values ('AutoDeliver Order', 'MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER', 'False', 'Do you want to autodeliver order invoices? This will override the Set Order Status setting above.', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
         $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPPARTPAY_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
         $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPPARTPAY_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
@@ -859,7 +859,6 @@ class sveawebpay_partpay {
             'MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES',
             'MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY',
             'MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID',
-            'MODULE_PAYMENT_SWPPARTPAY_IMAGES',
             'MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER',
             'MODULE_PAYMENT_SWPPARTPAY_IGNORE',
             'MODULE_PAYMENT_SWPPARTPAY_ZONE',
@@ -888,7 +887,7 @@ class sveawebpay_partpay {
     }
 
     //Error Responses
-    function responseCodes($err) {
+    function responseCodes($err,$msg = NULL) {
         switch ($err) {
 
             // EU error codes
@@ -962,7 +961,7 @@ class sveawebpay_partpay {
                 break;
 
             default :
-                return ERROR_CODE_DEFAULT;
+                 return ERROR_CODE_DEFAULT . " " . $err . " - " . $msg;     // $err here is the response->resultcode
                 break;
         }
     }
@@ -1225,7 +1224,7 @@ class sveawebpay_partpay {
         return( array_key_exists( $iso3166, $countrynames) ? $countrynames[$iso3166] : $iso3166 );
     }
     
-        /**
+    /**
      * TODO replace these with the one in php integration package Helper class in next release
      *
      * Takes a total discount value ex. vat, a mean tax rate & an array of allowed tax rates.
@@ -1234,7 +1233,8 @@ class sveawebpay_partpay {
      *
      * Note: only supports two allowed tax rates for now.
      */
-    private function splitMeanToTwoTaxRates( $discountAmountExVat, $discountMeanVat, $discountName, $discountDescription, $allowedTaxRates ) {
+    private function splitMeanToTwoTaxRates( $discountAmountExVat, $discountMeanVat, $discountName, $discountDescription, $allowedTaxRates )
+    {
 
         $fixedDiscounts = array();
 

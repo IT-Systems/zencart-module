@@ -39,19 +39,19 @@ define('ERROR_CODE_40004','Keiner Adresse geltene dieser Kunde gefunden');
 
 define('ERROR_CODE_50000','Die Kunde ist nicht für dieser Verfahren zugelassen');
 
-define('DD_NO_CAMPAIGN_ON_AMOUNT','Can not find a suitable CampaignCode for the given amount');
+define('DD_NO_CAMPAIGN_ON_AMOUNT','Kein passende Kampagnen-Code für den Betrag ');
 
 // used in payment credentials form
 define('FORM_TEXT_PARTPAY_ADDRESS','Rechnungsadresse:');
-define('FORM_TEXT_PAYMENT_OPTIONS','Payment options:');
+define('FORM_TEXT_PAYMENT_OPTIONS','Zahlungsmöglichkeiten:');
 
-define('FORM_TEXT_GET_PAY_OPTIONS','Get payment options');
+define('FORM_TEXT_GET_PAY_OPTIONS','Zahlungsmöglichkeiten holen');
 define('FORM_TEXT_SS_NO','Sozialversicherungsnummer:');
 define('FORM_TEXT_INITIALS','Initialen');                                
 define('FORM_TEXT_BIRTHDATE','Geburtsdatum (YYYYMMDD)');              
 define('FORM_TEXT_VATNO','MwSt'); 
 define('FORM_TEXT_PARTPAY_FEE','Ausgangsgebühr hinzukommen');
-define('FORM_TEXT_GET_PAYPLAN','Get payment options:');
+define('FORM_TEXT_GET_PAYPLAN','Adresse bekommen');
 
 define('ERROR_CODE_DEFAULT','Svea Fehler: ');
 

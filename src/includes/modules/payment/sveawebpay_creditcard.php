@@ -86,9 +86,12 @@ class sveawebpay_creditcard {
 
     $fields = array();
 
-    // image
-    if ($this->display_images)
-      $fields[] = array('title' => '<img src=images/SveaWebPay-Kort-100px.png />', 'field' => '');
+
+     if($order->customer['country']['iso_code_2'] == "SE"){
+             $fields[] = array('title' => '<img src=images/Svea/SVEACARD_SE.png />', 'field' => '<img src=images/Svea/KORTCERT.png /><img src=images/Svea/AMEX.png /><img src=images/Svea/DINERS.png />');
+        }  else {
+            $fields[] = array('title' => '<img src=images/Svea/SVEACARD.png />', 'field' => '<img src=images/Svea/KORTCERT.png /><img src=images/Svea/AMEX.png /><img src=images/Svea/DINERS.png />');
+        }
 
     if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_creditcard') { // is set in before_process() on failed payment
         $fields[] = array('title' => '<span style="color:red">' . $_SESSION['SWP_ERROR'] . '</span>', 'field' => '');
@@ -107,9 +110,9 @@ class sveawebpay_creditcard {
         $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPCREDITCARD_HANDLING_APPLIES, $currencies->format($paymentfee_cost+$paymentfee_tax)), 'field' => '');
       }
     }
-    
+
     $_SESSION["swp_order_info_pre_coupon"]  = serialize($order->info);  // store order info needed to reconstruct amount pre coupon later
-    
+
     return array( 'id'      => $this->code,
                   'module'  => $this->title,
                   'fields'  => $fields);
@@ -241,24 +244,24 @@ class sveawebpay_creditcard {
                     }
                     break;
 
-                case 'ot_coupon': 
-                   // zencart coupons are made out as either amount x.xx or a percentage y%. 
-                    // Both of these are calculated by zencart via the order total module ot_coupon.php and show up in the 
-                    // corresponding $order_totals[...]['value'] field. 
-                    // 
-                    // Depending on the module settings the value may differ, Svea assumes that the (zc 1.5.1) default settings 
+                case 'ot_coupon':
+                   // zencart coupons are made out as either amount x.xx or a percentage y%.
+                    // Both of these are calculated by zencart via the order total module ot_coupon.php and show up in the
+                    // corresponding $order_totals[...]['value'] field.
+                    //
+                    // Depending on the module settings the value may differ, Svea assumes that the (zc 1.5.1) default settings
                     // are being used:
                     //
                     // admin/ot_coupon module setting -- include shipping: false, include tax: false, re-calculate tax: standard
-                    // 
+                    //
                     // The value contains the total discount amount including tax iff configuration display prices with tax is set to true:
-                    // 
+                    //
                     // admin/configuration setting -- display prices with tax: true => ot_coupon['value'] includes vat, if false, excludes vat
-                    // 
+                    //
                     // Example:
-                    // zc adds an ot_coupon with value of 20 for i.e. a 10% discount on an order of 100 +(25%) + 100 (+6%). 
+                    // zc adds an ot_coupon with value of 20 for i.e. a 10% discount on an order of 100 +(25%) + 100 (+6%).
                     // This discount seems to be split in equal parts over the two order item vat rates:
-                    // 90*1,25 + 90*1,06 = 112,5 + 95,4 = 207,90, to which the shipping fee of 4 (+25%) is added. The total is 212,90 
+                    // 90*1,25 + 90*1,06 = 112,5 + 95,4 = 207,90, to which the shipping fee of 4 (+25%) is added. The total is 212,90
                     // ot_coupon['value'] is 23,10 iff display prices incuding tax = true, else ot_coupon['value'] = 20
                     //
                     // We handle the coupons by adding a FixedDiscountRow for the amount, specified ex vat. The package
@@ -309,12 +312,6 @@ class sveawebpay_creditcard {
                             $zencartDiscountVatPercent = 
                                 ($order_total['value'] - $coupon->fields['coupon_amount']) / $coupon->fields['coupon_amount'] *100;
                             
-//                            $swp_order->addDiscount(
-//                                WebPayItem::fixedDiscount()
-//                                    ->setAmountIncVat( $order_total['value'] )
-//                                    ->setDescription( $order_total['title'] )  
-//                                    ->setVatPercent( round($zencartDiscountVatPercent,2,PHP_ROUND_HALF_EVEN ) )
-//                            );
                             
                             // split $zencartDiscountVatPercent into allowed values
                             $taxRates = $this->getTaxRatesInOrder($swp_order);
@@ -342,7 +339,7 @@ class sveawebpay_creditcard {
                 default:
                     $order_total_obj = $GLOBALS[$order_total['code']];
                     $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
-                    
+
                     // if displayed WITH tax, REDUCE the value since it includes tax
                     if (DISPLAY_PRICE_WITH_TAX == 'true') {
                         $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
@@ -538,8 +535,7 @@ class sveawebpay_creditcard {
     $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPCREDITCARD_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
     $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPCREDITCARD_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
     $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPCREDITCARD_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
-    $db->Execute($common . ", set_function) values ('Display Svea Images', 'MODULE_PAYMENT_SWPCREDITCARD_IMAGES', 'True', 'Do you want to display Svea images when choosing between payment options?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
-    $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPCREDITCARD_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
+     $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPCREDITCARD_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
     $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPCREDITCARD_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
     $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPCREDITCARD_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
   }
@@ -561,7 +557,6 @@ class sveawebpay_creditcard {
                   'MODULE_PAYMENT_SWPCREDITCARD_ALLOWED_CURRENCIES',
                   'MODULE_PAYMENT_SWPCREDITCARD_DEFAULT_CURRENCY',
                   'MODULE_PAYMENT_SWPCREDITCARD_ORDER_STATUS_ID',
-                  'MODULE_PAYMENT_SWPCREDITCARD_IMAGES',
                   'MODULE_PAYMENT_SWPCREDITCARD_IGNORE',
                   'MODULE_PAYMENT_SWPCREDITCARD_ZONE',
                   'MODULE_PAYMENT_SWPCREDITCARD_SORT_ORDER');
@@ -846,7 +841,7 @@ class sveawebpay_creditcard {
         return( array_key_exists( $iso3166, $countrynames) ? $countrynames[$iso3166] : $iso3166 );
     }
     
-        /**
+    /**
      * TODO replace these with the one in php integration package Helper class in next release
      *
      * Takes a total discount value ex. vat, a mean tax rate & an array of allowed tax rates.
@@ -855,7 +850,8 @@ class sveawebpay_creditcard {
      *
      * Note: only supports two allowed tax rates for now.
      */
-    private function splitMeanToTwoTaxRates( $discountAmountExVat, $discountMeanVat, $discountName, $discountDescription, $allowedTaxRates ) {
+    private function splitMeanToTwoTaxRates( $discountAmountExVat, $discountMeanVat, $discountName, $discountDescription, $allowedTaxRates )
+    {
 
         $fixedDiscounts = array();
 

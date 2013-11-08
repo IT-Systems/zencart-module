@@ -43,9 +43,9 @@ define('FORM_TEXT_COMPANY','Foretak');
 define('FORM_TEXT_PRIVATE','Privat');
 define('FORM_TEXT_GET_ADDRESS','Hent adresse');
 
-define('FORM_TEXT_SS_NO','Fødselsnummer:');
+define('FORM_TEXT_SS_NO','Fødselsnummer :');
 define('FORM_TEXT_INITIALS','Initialer');                                
-define('FORM_TEXT_BIRTHDATE','Fødselsdato (YYYYMMDD)');              
+define('FORM_TEXT_BIRTHDATE','Fødselsdato ');              
 define('FORM_TEXT_VATNO','Organisasjonsnummer');
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');

@@ -6,7 +6,7 @@ Version 4.0
 */
 define('MODULE_PAYMENT_SWPINVOICE_TEXT_TITLE','Svea Rechnung');
 define('MODULE_PAYMENT_SWPINVOICE_TEXT_DESCRIPTION','Svea Rechnung - version 4.0');
-define('MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES','%s Bearbeitungsgebühr hinzukommen');
+define('MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES','Ein Behandlungsgebühr von %s wird in beim Checkout aufgebracht.');
 
 define('ERROR_ALLOWED_CURRENCIES_NOT_DEFINED','One or more of the allowed currencies are not defined. This must be enabled in order to use the SweaWebPay Hosted Solution. Log in to your admin panel, and ensure that all currencies listed as allowed in the payment module exists, and that the correct exchange rates are set.');
 define('ERROR_DEFAULT_CURRENCY_NOT_ALLOWED','The default currency is not among those listed as allowed. Log in to your admin panel, and ensure that the default currency is in the allowed list in the payment module.');  

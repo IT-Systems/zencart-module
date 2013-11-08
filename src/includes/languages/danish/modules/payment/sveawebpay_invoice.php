@@ -45,7 +45,7 @@ define('FORM_TEXT_GET_ADDRESS','Få adresse');
 
 define('FORM_TEXT_SS_NO','Cpr.nr:');
 define('FORM_TEXT_INITIALS','Initialer');                                
-define('FORM_TEXT_BIRTHDATE','Fødselsdato (YYYYMMDD)');
+define('FORM_TEXT_BIRTHDATE','Fødselsdato');
 define('FORM_TEXT_VATNO','CVR-nummer'); 
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');

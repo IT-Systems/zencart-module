@@ -46,12 +46,12 @@ define('FORM_TEXT_PARTPAY_ADDRESS','Laskutusosoite:');
 define('FORM_TEXT_PAYMENT_OPTIONS','Maksuvaihtoehdot:');
 
 define('FORM_TEXT_GET_PAY_OPTIONS','Maksuvaihtoehdot');
-define('FORM_TEXT_SS_NO','Henkilötunnus:');
+define('FORM_TEXT_SS_NO','Y-tunnus:');
 define('FORM_TEXT_INITIALS','Tunnukset');                                
-define('FORM_TEXT_BIRTHDATE','Syntymäaika (YYYYMMDD)');               
+define('FORM_TEXT_BIRTHDATE','Syntymäaika');               
 define('FORM_TEXT_VATNO','ALV'); 
 define('FORM_TEXT_PARTPAY_FEE','Perustamiskulu lisätään');
-define('FORM_TEXT_GET_PAYPLAN','Hae maksuvaihtoehdot');
+define('FORM_TEXT_GET_PAYPLAN','Hae osoite');
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');
 
