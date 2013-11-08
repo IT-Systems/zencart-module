@@ -23,15 +23,18 @@ define('ERROR_CODE_9','Kund ej listad');
 define('ERROR_CODE_DEFAULT', 'Fel vid betalning, intern error');
 
 //Form on checkout
-define('FORM_TEXT_SS_NO','Personnr:');
-define('FORM_TEXT_GET_ADDRESS','Hämta adress och betalningsalternativ');
-define('FORM_TEXT_GET_PAY_OPTIONS','Get payment options');
-define('FORM_TEXT_INVOICE_ADDRESS','Faktureringsadress:');
+
+define('FORM_TEXT_PARTPAY_ADDRESS','Faktureringsadress:');
 define('FORM_TEXT_PAYMENT_OPTIONS','Delbetalningsalternativ:');
 
-define('DD_PARTPAY_IN','Betala på ');
-define('DD_PAY_IN_THREE','Betala om 3 mån');
-define('DD_MONTHS',' månader');
-define('DD_CURRENY_PER_MONTH',' kr/mån');
-define('DD_NO_CAMPAIGN_ON_AMOUNT','Det går ej att hitta en passande kampanjkod för den angivna summan');
+// used in payment credentials form
+define('FORM_TEXT_GET_PAY_OPTIONS','Hämta betalningsalternativ');
+define('FORM_TEXT_SS_NO','Personnr:');
+define('FORM_TEXT_INITIALS','Initialer');                                
+define('FORM_TEXT_BIRTHDATE','Födelsedatum (YYYYMMDD)');              
+define('FORM_TEXT_VATNO','Organisationsnummer'); 
+define('FORM_TEXT_PARTPAY_FEE','Uppläggningsavgift tillkommer');
+define('FORM_TEXT_GET_PAYPLAN','Hämta betalningsalternativ:');
+
+define('ERROR_CODE_DEFAULT','Svea Error: ');
 ?>

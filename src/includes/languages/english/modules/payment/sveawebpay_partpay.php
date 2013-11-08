@@ -11,49 +11,48 @@ define('ERROR_ALLOWED_CURRENCIES_NOT_DEFINED','One or more of the allowed curren
 define('ERROR_DEFAULT_CURRENCY_NOT_ALLOWED','The default currency is not among those listed as allowed. Log in to your admin panel, and ensure that the default currency is in the allowed list in the payment module.');  
 define('ERROR_MESSAGE_PAYMENT_FAILED','Payment Failed.');  
 
-//Nordic Error codes
-define('ERROR_CODE_1','Cannot get credit rating information');
-define('ERROR_CODE_2','Store or Sveas credit limit overused');
-define('ERROR_CODE_3','This customer is blocked or has shown strange/unusual behavior');
-define('ERROR_CODE_4','The order is too old and can no longer be invoiced against');
-define('ERROR_CODE_5','The order would cause the client to exceed Sveas credit limit');
-define('ERROR_CODE_6','The order exceeds the highest order amount permitted at Svea');
-define('ERROR_CODE_7','The order exceeds your highest order amount permitted');
-define('ERROR_CODE_8','The customer has a poor credit history at Svea');
-define('ERROR_CODE_9','The customer is not listed with the credit limit supplier');
-define('ERROR_CODE_DEFAULT', 'Error processing payment. Internal error');
-
 //Eu error codes
+define('ERROR_CODE_20000','Order closed');
 define('ERROR_CODE_20001','Order is denied ');
 define('ERROR_CODE_20002','Something is wrong with the order  ');
 define('ERROR_CODE_20003','Order has expired  ');
 define('ERROR_CODE_20004','Order does not exist  ');
 define('ERROR_CODE_20005','Wrong Order Type  ');
 define('ERROR_CODE_20006','InvalidAmount ');
-define('ERROR_CODE_20007','Amount over SVEA limit ');
-define('ERROR_CODE_20008','Amount over client limit ');
-define('ERROR_CODE_20000','Order is already closed ');
+define('ERROR_CODE_20013',' ');
+
+define('ERROR_CODE_27000','The provided campaigncode-amount combination does not match any campaign code attached to this client ');
+define('ERROR_CODE_27001','Can not deliver order since the specified pdf template is missing. Contact SveaWebPay´s support ');
+define('ERROR_CODE_27002','Can not partial deliver a PaymentPlan ');
+define('ERROR_CODE_27003','Can not mix CampaignCode with a fixed Monthly Amount. ');
+define('ERROR_CODE_27004','Can not find a suitable CampaignCode for the Monthly Amount ');
 
 define('ERROR_CODE_30000','The credit report was rejected');
 define('ERROR_CODE_30001','This customer is blocked or has shown strange/unusual behavior');
-define('ERROR_CODE_30002','The order would cause the client to exceed Sveas credit limit');
+define('ERROR_CODE_30002','Based upon the performed credit check the request was rejected');
+define('ERROR_CODE_30003','Customer cannot be found by credit check ');
 
-define('DD_PARTPAY_IN','Partpay in ');
-define('DD_PAY_IN_THREE','Pay within 3 months');
-define('DD_MONTHS',' months');
-define('DD_CURRENY_PER_MONTH',' kr/month');
+define('ERROR_CODE_40000','No customer found');
+define('ERROR_CODE_40001','The provided CountryCode is not supported');
+define('ERROR_CODE_40002','Invalid Customer information');
+define('ERROR_CODE_40004','Could not find any addresses for this customer ');
+
+define('ERROR_CODE_50000','Client is not authorized for this method');
+
+define('DD_NO_CAMPAIGN_ON_AMOUNT','Can not find a suitable CampaignCode for the given amount');
 
 // used in payment credentials form
-define('FORM_TEXT_COMPANY_OR_PRIVATE','Are you a private individual, or do you represent a company or organisation:');
-define('FORM_TEXT_COMPANY','Company');
-define('FORM_TEXT_PRIVATE','Private');
-define('FORM_TEXT_SS_NO','Enter your Social Security Number (SSN):');
-define('FORM_TEXT_GET_ADDRESS','Show and select invoice address.');
-define('FORM_TEXT_INITIALS','Initials');                                // TODO translate/add to other language files
-define('FORM_TEXT_BIRTHDATE','Date of Birth (YYYYMMDD)');               // TODO translate/add to other language files
-define('FORM_TEXT_VATNO','Vat Number (NL2345234)');                     // TODO translate/add to other language files
-define('FORM_TEXT_PARTPAY_ADDRESS','Select billing address to be used.');
-define('FORM_TEXT_PARTPAY_FEE','Payment Plan Fee:');
-define('FORM_TEXT_GET_PAYPLAN','Payment options:');
-define('DD_NO_CAMPAIGN_ON_AMOUNT','Can not find a suitable CampaignCode for the given amount');
+define('FORM_TEXT_PARTPAY_ADDRESS','Invoice address:');
+define('FORM_TEXT_PAYMENT_OPTIONS','Payment options:');
+
+define('FORM_TEXT_GET_PAY_OPTIONS','Get payment options');
+define('FORM_TEXT_SS_NO','Social Security No:');
+define('FORM_TEXT_INITIALS','Initials');                                
+define('FORM_TEXT_BIRTHDATE','Date of Birth (YYYYMMDD)');              
+define('FORM_TEXT_VATNO','Vat Number'); 
+define('FORM_TEXT_PARTPAY_FEE','initial fee will be added ');
+define('FORM_TEXT_GET_PAYPLAN','Get payment options:');
+
+define('ERROR_CODE_DEFAULT','Svea Error: ');
+
 ?>

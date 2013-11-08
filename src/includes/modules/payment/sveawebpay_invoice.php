@@ -135,7 +135,7 @@ class sveawebpay_invoice {
         }
 
         // radiobutton for choosing individual or organization
-        $sveaIsCompanyField = FORM_TEXT_COMPANY_OR_PRIVATE . ' <br />' .
+        $sveaIsCompanyField =
                             '<label><input type="radio" name="sveaIsCompany" value="false" checked>' . FORM_TEXT_PRIVATE . '</label>' .
                             '<label><input type="radio" name="sveaIsCompany" value="true">' . FORM_TEXT_COMPANY . '</label><br />';
 
@@ -234,12 +234,13 @@ class sveawebpay_invoice {
         }
 
         $sveaError = '<br /><span id="sveaSSN_error_invoice" style="color:red"></span>';
-
+        $sveaSubmitAddress = '<button id="sveaSubmitGetAddress" type="button">'.FORM_TEXT_GET_ADDRESS.'</button>';
         // create and add the field to be shown by our js when we select SveaInvoice payment method
         $sveaField =    '<div id="sveaInvoiceField" style="display:none">' .
                             $sveaIsCompanyField .   //  SE, DK, NO
                             $sveaSSN .              //  SE, DK, NO
                             $sveaSSNFI .            //  FI, no getAddresses
+                            $sveaSubmitAddress.
                             $sveaAddressDD .        //  SE, Dk, NO
                             $sveaInitialsDiv .      //  NL
                             $sveaBirthDateDiv .     //  NL, DE
@@ -898,6 +899,7 @@ class sveawebpay_invoice {
                                                                     $currencies->currencies[$currency]['decimal_point'],
                                                                     $currencies->currencies[$currency]['thousands_point']);
     }
+
 
     //Error Responses
     function responseCodes($err) {

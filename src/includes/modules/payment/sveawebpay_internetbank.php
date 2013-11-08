@@ -389,14 +389,26 @@ class sveawebpay_internetbank {
                 case 108:
                     $_SESSION['SWP_ERROR'] = ERROR_CODE_108;
                     break;
+                case 109:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_109;
+                    break;
+                case 110:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_110;
+                    break;
+                case 113:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_113;
+                    break;
                 case 114:
                     $_SESSION['SWP_ERROR'] = ERROR_CODE_114;
                     break;
-                case 127:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_123;
+                case 121:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_121;
                     break;
-                case 129:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_123;
+                case 124:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_124;
+                    break;
+                case 143:
+                    $_SESSION['SWP_ERROR'] = ERROR_CODE_143;
                     break;
                 default:
                     $_SESSION['SWP_ERROR'] =
