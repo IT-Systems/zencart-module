@@ -289,28 +289,26 @@ class sveawebpay_internetbank {
                     // We handle the coupons by adding a FixedDiscountRow for the amount, specified ex vat. The package
                     // handles the vat calculations.
 
-                    // add WebPayItem::fixedDiscount to swp_order object
+                    // if display price with tax is not set, svea's package calculations match zencart's and we can use value right away
                     if (DISPLAY_PRICE_WITH_TAX == 'false') {
                         $swp_order->addDiscount(
                             WebPayItem::fixedDiscount()
-                                    ->setAmountExVat( $order_total['value'] ) // $amountExVat works iff display prices with tax = false in shop
-                                    ->setDescription( $order_total['title'] )
+                                ->setAmountExVat( $order_total['value'] ) // $amountExVat works iff display prices with tax = false in shop
+                                ->setDescription( $order_total['title'] )
                         );
                     }
-                    else {              
-                        
-                        // we need to determine the order discount ex. vat. if display prices with tax is set to true, the ot_coupon module 
-                        // calculate_deductions() method returns a value including tax. We try to reconstruct the amount using the stored
-                        // order info and the order_totals entries
-                        
+                    // we need to determine the order discount ex. vat if display prices with tax is set to true,
+                    // the ot_coupon module calculate_deductions() method returns a value including tax. We try to 
+                    // reconstruct the amount using the stored order info and the order_totals entries
+                    else {
                         $swp_order_info_pre_coupon = unserialize( $_SESSION["swp_order_info_pre_coupon"] );        
                         $pre_coupon_subtotal_ex_tax = $swp_order_info_pre_coupon['subtotal'] - $swp_order_info_pre_coupon['tax'];
-                      
+
                         foreach( $order_totals as $key => $ot ) {
                             if( $ot['code'] === 'ot_subtotal' ) {
                                 $order_totals_subtotal_ex_tax = $ot['value'];
                             }
-                        }
+                        }                   
                         foreach( $order_totals as $key => $ot ) {
                             if( $ot['code'] === 'ot_tax' ) {
                                 $order_totals_subtotal_ex_tax -= $ot['value'];
@@ -321,16 +319,47 @@ class sveawebpay_internetbank {
                                 $order_totals_subtotal_ex_tax -= $ot['value'];
                             }
                         }
-                        
+
                         $value_from_subtotals = isset( $order_totals_subtotal_ex_tax ) ? 
-                                ($pre_coupon_subtotal_ex_tax - $order_totals_subtotal_ex_tax) : $order_total['value'];  // use order value as fallback
-                        
-                        $swp_order->addDiscount(
-                            WebPayItem::fixedDiscount()
+                                ($pre_coupon_subtotal_ex_tax - $order_totals_subtotal_ex_tax) : $order_total['value']; // 'value' fallback
+                      
+                        // if display_price_with tax is set to true && the coupon was specified as a fixed amount
+                        // zencart's math doesn't match svea's, so we force the discount to use the the shop's vat
+                        $coupon = $db->Execute("select * from " . TABLE_COUPONS . " where coupon_id = '" . (int)$_SESSION['cc_id'] . "'");
+
+                        // coupon_type is F for coupons specified with a fixed amount
+                        if( $coupon->fields['coupon_type'] == 'F' ) { 
+
+                            // calculate the vatpercent from zencart's amount: discount vat/discount amount ex vat
+                            $zencartDiscountVatPercent = 
+                                ($order_total['value'] - $coupon->fields['coupon_amount']) / $coupon->fields['coupon_amount'] *100;
+                            
+//                            $swp_order->addDiscount(
+//                                WebPayItem::fixedDiscount()
+//                                    ->setAmountIncVat( $order_total['value'] )
+//                                    ->setDescription( $order_total['title'] )  
+//                                    ->setVatPercent( round($zencartDiscountVatPercent,2,PHP_ROUND_HALF_EVEN ) )
+//                            );
+                            
+                            // split $zencartDiscountVatPercent into allowed values
+                            $taxRates = $this->getTaxRatesInOrder($swp_order);
+                            $discountRows = $this->splitMeanToTwoTaxRates( $coupon->fields['coupon_amount'], $zencartDiscountVatPercent, 
+                                    $order_total['title'], $order_total['title'], $taxRates );
+                            
+                            foreach($discountRows as $row) {
+                                $swp_order = $swp_order->addDiscount( $row );
+                            }
+
+                        }
+                        // if coupon specified as a percentage, or as a fixed amount and prices are ex vat.
+                        else {
+                            $swp_order->addDiscount(
+                                WebPayItem::fixedDiscount()
                                     ->setAmountExVat( $value_from_subtotals )   
                                     ->setDescription( $order_total['title'] )
-                        );
-                    }                
+                            );
+                        }
+                    } 
                     break;
 
                 // TODO default case not tested, lack of test case/data. ported from 3.0 zencart module
@@ -868,5 +897,85 @@ class sveawebpay_internetbank {
 
         return( array_key_exists( $iso3166, $countrynames) ? $countrynames[$iso3166] : $iso3166 );
     }
+    
+        /**
+     * TODO replace these with the one in php integration package Helper class in next release
+     *
+     * Takes a total discount value ex. vat, a mean tax rate & an array of allowed tax rates.
+     * returns an array of FixedDiscount objects representing the discount split
+     * over the allowed Tax Rates, defined using AmountExVat & VatPercent.
+     *
+     * Note: only supports two allowed tax rates for now.
+     */
+    private function splitMeanToTwoTaxRates( $discountAmountExVat, $discountMeanVat, $discountName, $discountDescription, $allowedTaxRates ) {
+
+        $fixedDiscounts = array();
+
+        if( sizeof( $allowedTaxRates ) > 1 ) {
+
+            // m = $discountMeanVat
+            // r0 = allowedTaxRates[0]; r1 = allowedTaxRates[1]
+            // m = a r0 + b r1 => m = a r0 + (1-a) r1 => m = (r0-r1) a + r1 => a = (m-r1)/(r0-r1)
+            // d = $discountAmountExVat;
+            // d = d (a+b) => 1 = a+b => b = 1-a
+
+            $a = ($discountMeanVat - $allowedTaxRates[1]) / ( $allowedTaxRates[0] - $allowedTaxRates[1] );
+            $b = 1 - $a;
+
+            $discountA = WebPayItem::fixedDiscount()
+                            ->setAmountExVat( Svea\Helper::bround(($discountAmountExVat * $a),2) )
+                            ->setVatPercent( $allowedTaxRates[0] )
+                            ->setName( isset( $discountName) ? $discountName : "" )
+                            ->setDescription( (isset( $discountDescription) ? $discountDescription : "") . ' (' .$allowedTaxRates[0]. '%)' )
+            ;
+
+            $discountB = WebPayItem::fixedDiscount()
+                            ->setAmountExVat( Svea\Helper::bround(($discountAmountExVat * $b),2) )
+                            ->setVatPercent(  $allowedTaxRates[1] )
+                            ->setName( isset( $discountName) ? $discountName : "" )
+                            ->setDescription( (isset( $discountDescription) ? $discountDescription : "") . ' (' .$allowedTaxRates[1]. '%)' )
+            ;
+
+            $fixedDiscounts[] = $discountA;
+            $fixedDiscounts[] = $discountB;
+        }
+        // single tax rate, so use shop supplied mean as vat rate
+        else {
+            $discountA = WebPayItem::fixedDiscount()
+                ->setAmountExVat( Svea\Helper::bround(($discountAmountExVat),2) )
+                ->setVatPercent( $allowedTaxRates[0] )
+                ->setName( isset( $discountName) ? $discountName : "" )
+                ->setDescription( (isset( $discountDescription) ? $discountDescription : "") )
+            ;
+            $fixedDiscounts[] = $discountA;
+        }
+
+        return $fixedDiscounts;
+    }
+    /**
+     * TODO replace these with the one in php integration package Helper class in next release
+     *
+     * Takes a createOrderBuilder object, iterates over its orderRows, and
+     * returns an array containing the distinct taxrates present in the order
+     */
+    private function getTaxRatesInOrder($order) {
+        $taxRates = array();
+
+        foreach( $order->orderRows as $orderRow ) {
+
+            if( isset($orderRow->vatPercent) ) {
+                $seenRate = $orderRow->vatPercent; //count
+            }
+            elseif( isset($orderRow->amountIncVat) && isset($orderRow->amountExVat) ) {
+                $seenRate = Svea\Helper::bround( (($orderRow->amountIncVat - $orderRow->amountExVat) / $orderRow->amountExVat) ,2) *100;
+            }
+
+            if(isset($seenRate)) {
+                isset($taxRates[$seenRate]) ? $taxRates[$seenRate] +=1 : $taxRates[$seenRate] =1;   // increase count of seen rate
+            }
+        }
+        return array_keys($taxRates);   //we want the keys
+    }
+
 }
 ?>
