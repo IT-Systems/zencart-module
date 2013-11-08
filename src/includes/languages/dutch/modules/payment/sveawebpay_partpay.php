@@ -39,7 +39,7 @@ define('ERROR_CODE_40004','Er kan geen adres gevonden worden voor deze klant');
 
 define('ERROR_CODE_50000','De klant is niet bevoegd voor deze methode');
 
-define('DD_NO_CAMPAIGN_ON_AMOUNT','Can not find a suitable CampaignCode for the given amount');
+define('DD_NO_CAMPAIGN_ON_AMOUNT','Kan geen geschikte actie code vinden voor de bepaalde bedrag');
 
 // used in payment credentials form
 define('FORM_TEXT_PARTPAY_ADDRESS','Factuuradres:');
@@ -50,7 +50,7 @@ define('FORM_TEXT_INITIALS','Initialen');
 define('FORM_TEXT_BIRTHDATE','Geboortedatum (YYYYMMDD)');              
 define('FORM_TEXT_VATNO','BTW nr');
 
-define('FORM_TEXT_GET_PAY_OPTIONS','Get payment options');
+define('FORM_TEXT_GET_PAY_OPTIONS','Betalingsmogelijkheden ontvangen');
 
 define('FORM_TEXT_INITIALS','');   
 define('FORM_TEXT_PARTPAY_FEE','');
