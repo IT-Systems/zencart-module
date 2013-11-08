@@ -40,9 +40,11 @@ function sveaAjaxGetPartPaymentOptions( $price, $country ) {
     // if not, show addresses and store response in session
     else {
        $priceResponse = WebPay::paymentPlanPricePerMonth( $price, $plansResponse );
-            foreach( $priceResponse->values as $cc) {
-                echo sprintf( '<div><input type="radio" name="sveaPaymentOptionsPP" value="%s">%s (%.2f)</div>', $cc['campaignCode'], $cc['description'], $cc['pricePerMonth'] );
-
+        $counter = 0;
+        foreach( $priceResponse->values as $cc) {
+            $checked = $counter === 0 ? "checked" : "";
+            echo sprintf( '<div><input type="radio" name="sveaPaymentOptionsPP" value="%s" '.$checked.'>%s (%.2f)</div>', $cc['campaignCode'], $cc['description'], $cc['pricePerMonth'] );
+            $counter ++;
         }
     }
 }
