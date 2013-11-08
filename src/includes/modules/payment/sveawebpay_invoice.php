@@ -97,8 +97,7 @@ class sveawebpay_invoice {
         $fields = array();
 
         // add svea invoice image file
-        if ($this->display_images)
-            $fields[] = array('title' => '<img src=images/SveaWebPay-Faktura-100px.png />', 'field' => '');
+             $fields[] = array('title' => '<img src=images/Svea/SVEAINVOICEEU_'.$order->customer['country']['iso_code_2'].'.png />', 'field' => '');
 
         // catch and display error messages raised when i.e. payment request from before_process() below turns out not accepted
         if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_invoice') {
@@ -832,9 +831,8 @@ class sveawebpay_invoice {
         $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPINVOICE_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
         $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPINVOICE_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
         $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value (but see AutoDeliver option below).', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
-        $db->Execute($common . ", set_function) values ('Display Svea Images', 'MODULE_PAYMENT_SWPINVOICE_IMAGES', 'True', 'Do you want to display Svea images when choosing between payment options?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
-        $db->Execute($common . ", set_function) values ('AutoDeliver Order', 'MODULE_PAYMENT_SWPINVOICE_AUTODELIVER', 'False', 'Do you want to autodeliver order invoices? This will override the the Set Order Status setting above.', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
-        $db->Execute($common . ", set_function) values ('AutoDeliver Order', 'MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE', 'Post', 'Deliver orders per Post or Email? NOTE: This must match your Svea admin settings or invoices may be non-delivered. Ask your Svea handler if unsure.', '6', '0', now(), 'zen_cfg_select_option(array(\'Post\', \'Email\'), ')");
+        $db->Execute($common . ", set_function) values ('Auto Deliver Order', 'MODULE_PAYMENT_SWPINVOICE_AUTODELIVER', 'False', 'Do you want to autodeliver order invoices? This will override the the Set Order Status setting above.', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
+        $db->Execute($common . ", set_function) values ('Invoice Distribution type', 'MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE', 'Post', 'Deliver orders per Post or Email? NOTE: This must match your Svea admin settings or invoices may be non-delivered. Ask your Svea handler if unsure.', '6', '0', now(), 'zen_cfg_select_option(array(\'Post\', \'Email\'), ')");
         $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPINVOICE_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
         $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPINVOICE_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
         $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
@@ -871,7 +869,6 @@ class sveawebpay_invoice {
             'MODULE_PAYMENT_SWPINVOICE_ALLOWED_CURRENCIES',
             'MODULE_PAYMENT_SWPINVOICE_DEFAULT_CURRENCY',
             'MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID',
-            'MODULE_PAYMENT_SWPINVOICE_IMAGES',
             'MODULE_PAYMENT_SWPINVOICE_AUTODELIVER',
             'MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE',
             'MODULE_PAYMENT_SWPINVOICE_IGNORE',
