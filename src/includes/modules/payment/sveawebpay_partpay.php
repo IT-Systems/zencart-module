@@ -266,7 +266,7 @@ class sveawebpay_partpay {
         }
 
         $_SESSION["swp_order_info_pre_coupon"]  = serialize($order->info);  // store order info needed to reconstruct amount pre coupon later
-        
+
         // return module fields to zencart
         return array(   'id' => $this->code,
                         'module' => $this->title,
@@ -421,24 +421,24 @@ class sveawebpay_partpay {
                     }
                     break;
 
-                case 'ot_coupon': 
-                   // zencart coupons are made out as either amount x.xx or a percentage y%. 
-                    // Both of these are calculated by zencart via the order total module ot_coupon.php and show up in the 
-                    // corresponding $order_totals[...]['value'] field. 
-                    // 
-                    // Depending on the module settings the value may differ, Svea assumes that the (zc 1.5.1) default settings 
+                case 'ot_coupon':
+                   // zencart coupons are made out as either amount x.xx or a percentage y%.
+                    // Both of these are calculated by zencart via the order total module ot_coupon.php and show up in the
+                    // corresponding $order_totals[...]['value'] field.
+                    //
+                    // Depending on the module settings the value may differ, Svea assumes that the (zc 1.5.1) default settings
                     // are being used:
                     //
                     // admin/ot_coupon module setting -- include shipping: false, include tax: false, re-calculate tax: standard
-                    // 
+                    //
                     // The value contains the total discount amount including tax iff configuration display prices with tax is set to true:
-                    // 
+                    //
                     // admin/configuration setting -- display prices with tax: true => ot_coupon['value'] includes vat, if false, excludes vat
-                    // 
+                    //
                     // Example:
-                    // zc adds an ot_coupon with value of 20 for i.e. a 10% discount on an order of 100 +(25%) + 100 (+6%). 
+                    // zc adds an ot_coupon with value of 20 for i.e. a 10% discount on an order of 100 +(25%) + 100 (+6%).
                     // This discount seems to be split in equal parts over the two order item vat rates:
-                    // 90*1,25 + 90*1,06 = 112,5 + 95,4 = 207,90, to which the shipping fee of 4 (+25%) is added. The total is 212,90 
+                    // 90*1,25 + 90*1,06 = 112,5 + 95,4 = 207,90, to which the shipping fee of 4 (+25%) is added. The total is 212,90
                     // ot_coupon['value'] is 23,10 iff display prices incuding tax = true, else ot_coupon['value'] = 20
                     //
                     // We handle the coupons by adding a FixedDiscountRow for the amount, specified ex vat. The package
@@ -452,15 +452,15 @@ class sveawebpay_partpay {
                                     ->setDescription( $order_total['title'] )
                         );
                     }
-                    else {              
-                        
-                        // we need to determine the order discount ex. vat. if display prices with tax is set to true, the ot_coupon module 
+                    else {
+
+                        // we need to determine the order discount ex. vat. if display prices with tax is set to true, the ot_coupon module
                         // calculate_deductions() method returns a value including tax. We try to reconstruct the amount using the stored
                         // order info and the order_totals entries
-                        
-                        $swp_order_info_pre_coupon = unserialize( $_SESSION["swp_order_info_pre_coupon"] );        
+
+                        $swp_order_info_pre_coupon = unserialize( $_SESSION["swp_order_info_pre_coupon"] );
                         $pre_coupon_subtotal_ex_tax = $swp_order_info_pre_coupon['subtotal'] - $swp_order_info_pre_coupon['tax'];
-                      
+
                         foreach( $order_totals as $key => $ot ) {
                             if( $ot['code'] === 'ot_subtotal' ) {
                                 $order_totals_subtotal_ex_tax = $ot['value'];
@@ -476,16 +476,16 @@ class sveawebpay_partpay {
                                 $order_totals_subtotal_ex_tax -= $ot['value'];
                             }
                         }
-                        
-                        $value_from_subtotals = isset( $order_totals_subtotal_ex_tax ) ? 
+
+                        $value_from_subtotals = isset( $order_totals_subtotal_ex_tax ) ?
                                 ($pre_coupon_subtotal_ex_tax - $order_totals_subtotal_ex_tax) : $order_total['value'];  // use order value as fallback
-                        
+
                         $swp_order->addDiscount(
                             WebPayItem::fixedDiscount()
-                                    ->setAmountExVat( $value_from_subtotals )   
+                                    ->setAmountExVat( $value_from_subtotals )
                                     ->setDescription( $order_total['title'] )
                         );
-                    }                
+                    }
                     break;
 
                 // TODO default case not tested, lack of test case/data. ported from 3.0 zencart module
@@ -493,7 +493,7 @@ class sveawebpay_partpay {
                 default:
                     $order_total_obj = $GLOBALS[$order_total['code']];
                     $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
-                    
+
                     // if displayed WITH tax, REDUCE the value since it includes tax
                     if (DISPLAY_PRICE_WITH_TAX == 'true') {
                         $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
@@ -611,9 +611,7 @@ class sveawebpay_partpay {
 
         // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {
-
-            $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->resultcode);
-
+            $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->resultcode,$swp_response->errormessage);
             $payment_error_return = 'payment_error=sveawebpay_partpay';
             zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return)); // error handled in selection() above
         }
@@ -865,7 +863,7 @@ class sveawebpay_partpay {
     }
 
     //Error Responses
-    function responseCodes($err) {
+    function responseCodes($err,$msg = NULL) {
         switch ($err) {
 
             // EU error codes
@@ -939,7 +937,7 @@ class sveawebpay_partpay {
                 break;
 
             default :
-                return ERROR_CODE_DEFAULT;
+                 return ERROR_CODE_DEFAULT . " " . $err . " - " . $msg;     // $err here is the response->resultcode
                 break;
         }
     }

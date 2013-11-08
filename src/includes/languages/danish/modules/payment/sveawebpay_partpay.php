@@ -48,10 +48,10 @@ define('FORM_TEXT_PAYMENT_OPTIONS','Betalingsmuligheder:');
 define('FORM_TEXT_GET_PAY_OPTIONS','Hente betalingsmuligheder');
 define('FORM_TEXT_SS_NO','Cpr.nr:');
 define('FORM_TEXT_INITIALS','Initialer');                                
-define('FORM_TEXT_BIRTHDATE','Fødselsdato (YYYYMMDD)');              
+define('FORM_TEXT_BIRTHDATE','Fødselsdato');              
 define('FORM_TEXT_VATNO','CVR-nummer'); 
 define('FORM_TEXT_PARTPAY_FEE','Indledende gebyr vil blive tilføjet.');
-define('FORM_TEXT_GET_PAYPLAN','Hente betalingsmuligheder:');
+define('FORM_TEXT_GET_PAYPLAN','Hente adresse:');
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');
 ?>

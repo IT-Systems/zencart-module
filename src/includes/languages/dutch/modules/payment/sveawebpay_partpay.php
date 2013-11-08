@@ -50,6 +50,12 @@ define('FORM_TEXT_INITIALS','Initialen');
 define('FORM_TEXT_BIRTHDATE','Geboortedatum (YYYYMMDD)');              
 define('FORM_TEXT_VATNO','BTW nr');
 
+define('FORM_TEXT_GET_PAY_OPTIONS','Get payment options');
+
+define('FORM_TEXT_INITIALS','');   
+define('FORM_TEXT_PARTPAY_FEE','');
+define('FORM_TEXT_GET_PAYPLAN','Adresgegevens ophalen');
+
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');
 

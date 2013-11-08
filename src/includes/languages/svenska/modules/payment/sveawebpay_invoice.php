@@ -43,9 +43,9 @@ define('FORM_TEXT_COMPANY','Företag');
 define('FORM_TEXT_PRIVATE','Privat');
 define('FORM_TEXT_GET_ADDRESS','Hämta adress');
 
-define('FORM_TEXT_SS_NO','Personnummer:');
+define('FORM_TEXT_SS_NO','Personnummer (YYYYMMDD-XXXX):');
 define('FORM_TEXT_INITIALS','Initialer');                                
-define('FORM_TEXT_BIRTHDATE','Födelsedatum (YYYYMMDD)');              
+define('FORM_TEXT_BIRTHDATE','Födelsedatum');              
 define('FORM_TEXT_VATNO','Organisationsnummer');
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');

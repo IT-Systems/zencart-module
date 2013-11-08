@@ -51,7 +51,7 @@ define('FORM_TEXT_INITIALS','Initialen');
 define('FORM_TEXT_BIRTHDATE','Geburtsdatum (YYYYMMDD)');              
 define('FORM_TEXT_VATNO','MwSt'); 
 define('FORM_TEXT_PARTPAY_FEE','Ausgangsgebühr hinzukommen');
-define('FORM_TEXT_GET_PAYPLAN','Get payment options:');
+define('FORM_TEXT_GET_PAYPLAN','Adresse bekommen');
 
 define('ERROR_CODE_DEFAULT','Svea Fehler: ');
 
