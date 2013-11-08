@@ -233,7 +233,10 @@ class sveawebpay_invoice {
         }
 
         $sveaError = '<br /><span id="sveaSSN_error_invoice" style="color:red"></span>';
-        $sveaSubmitAddress = '<button id="sveaSubmitGetAddress" type="button">'.FORM_TEXT_GET_ADDRESS.'</button>';
+        if($order->billing['country']['iso_code_2'] == "SE" || $order->billing['country']['iso_code_2'] == "DK"){
+             $sveaSubmitAddress = '<button id="sveaSubmitGetAddress" type="button">'.FORM_TEXT_GET_ADDRESS.'</button>';
+        }
+
         // create and add the field to be shown by our js when we select SveaInvoice payment method
         $sveaField =    '<div id="sveaInvoiceField" style="display:none">' .
                             $sveaIsCompanyField .   //  SE, DK, NO
