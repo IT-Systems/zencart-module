@@ -249,7 +249,11 @@ class sveawebpay_partpay {
         if(($minValue != '' && $order->info['total'] < $minValue) || ($maxValue != '' && $order->info['total'] > $maxValue)){
             $fields[] = array('title' => '<div id="sveaPartPayField" style="display:none">'.DD_NO_CAMPAIGN_ON_AMOUNT.'</div>', 'field' => '');
         }  else {
-         $sveaSubmitPaymentOptions = '<button id="sveaSubmitPaymentOptions" type="button">'.FORM_TEXT_GET_PAYPLAN.'</button><br />';
+         $sveaInitialFee =
+                '<br /><div>' . sprintf( FORM_TEXT_PARTPAY_FEE).'</div>';
+         if($order->billing['country']['iso_code_2'] == "SE" || $order->billing['country']['iso_code_2'] == "DK"){
+               $sveaSubmitPaymentOptions = '<button id="sveaSubmitPaymentOptions" type="button">'.FORM_TEXT_GET_PAYPLAN.'</button><br />';
+         }
              // create and add the field to be shown by our js when we select Payment Plan payment method
         $sveaField =    '<div id="sveaPartPayField" style="display:none">' .
                             $sveaSSNPP .              //  SE, DK, NO
@@ -261,7 +265,8 @@ class sveawebpay_partpay {
                             $sveaVatNoDivPP .         //  NL, DE
                             $sveaPaymentOptionsPP .
                             // FI, NL, DE also uses customer address data from zencart
-                        '</div>';
+                        '</div>'.
+                        $sveaInitialFee;
             $fields[] = array('title' => '', 'field' => '<br />' . $sveaField . $sveaError);
         }
 
