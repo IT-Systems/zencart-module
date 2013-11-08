@@ -27,7 +27,6 @@ class sveawebpay_partpay {
         $this->enabled = ((MODULE_PAYMENT_SWPPARTPAY_STATUS == 'True') ? true : false);
         $this->sort_order = MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER;
         $this->sveawebpay_url = MODULE_PAYMENT_SWPPARTPAY_URL;
-        $this->handling_fee = MODULE_PAYMENT_SWPPARTPAY_HANDLING_FEE;
         $this->default_currency = MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY;
         $this->allowed_currencies = explode(',', MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES);
         $this->display_images = ((MODULE_PAYMENT_SWPPARTPAY_IMAGES == 'True') ? true : false);

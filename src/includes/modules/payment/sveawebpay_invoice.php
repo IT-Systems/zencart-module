@@ -397,7 +397,8 @@ class sveawebpay_invoice {
                         // add WebPayItem::invoiceFee to swp_order object
                         $swp_order->addFee(
                                 WebPayItem::invoiceFee()
-                                        ->setDescription()
+                                        ->setName($order_total['title'])
+                                        ->setDescription($order_total['text'])
                                         ->setAmountExVat($hf_price)
                                         ->setVatPercent($hf_taxrate)
                         );
@@ -770,7 +771,6 @@ class sveawebpay_invoice {
         $db->Execute($common . ") values ('Svea Client no NL', 'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_NL', '85997', '', '6', '0', now())");
         $db->Execute($common . ") values ('Svea Client no DE', 'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_DE', '14997', '', '6', '0', now())");
         $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPINVOICE_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
-        $db->Execute($common . ") values ('Handling Fee', 'MODULE_PAYMENT_SWPINVOICE_HANDLING_FEE', '', 'This handling fee will be applied to all orders using this payment method.  The figure can either be set to a specific amount (incl. tax), eg. <b>5.00</b>, or set to a percentage of the order total, by ensuring the last character is a \'%\' eg <b>5.00%</b>.', '6', '0', now())");
         $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPINVOICE_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
         $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPINVOICE_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
         $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value (but see AutoDeliver option below).', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
@@ -810,7 +810,6 @@ class sveawebpay_invoice {
             'MODULE_PAYMENT_SWPINVOICE_PASSWORD_DE',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_DE',
             'MODULE_PAYMENT_SWPINVOICE_MODE',
-            'MODULE_PAYMENT_SWPINVOICE_HANDLING_FEE',
             'MODULE_PAYMENT_SWPINVOICE_ALLOWED_CURRENCIES',
             'MODULE_PAYMENT_SWPINVOICE_DEFAULT_CURRENCY',
             'MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID',
