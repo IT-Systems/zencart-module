@@ -319,7 +319,14 @@ class sveawebpay_partpay {
         $client_order_number = ($new_order_field['orders_id'] + 1) . '-' . time();
 
         // localization parameters
-        $user_country = $order->billing['country']['iso_code_2'];
+        if( isset( $order->billing['country']['iso_code_2'] ) ) {
+            $user_country = $order->billing['country']['iso_code_2']; 
+        }
+        // no billing address set, fallback to session country_id
+        else {
+            $country = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );
+            $user_country =  $country['countries_iso_code_2'];
+        }
 
         $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
         $user_language = $user_language->fields['code'];

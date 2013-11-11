@@ -32,7 +32,6 @@ function sveaAjaxGetPartPaymentOptions( $price, $country ) {
 
     $plansResponse = WebPay::getPaymentPlanParams( $sveaConfig )->setCountryCode($country)->doRequest();
 
-    // TODO change to use zencart error message stack instead, or svea errors?
     // error?
     if( $plansResponse->accepted == false) {
         echo( sprintf('<div><input type="radio" id="address_0" value="swp_not_set">%s</div>', $plansResponse->errormessage) );
@@ -66,7 +65,7 @@ function sveaAjaxGetBankPaymentOptions( $country ) {
     $banksResponse = WebPay::getPaymentMethods( $sveaConfig )->setContryCode( $country )->doRequest();
 
     if( sizeof( $banksResponse ) == 0 ) {
-        return "NO APPLICABLE BANKS FOR THIS PAYMENT METHOD"; //TODO fail gracefully
+        return "Error: NO APPLICABLE BANKS FOR THIS PAYMENT METHOD";
     }
     else {
         $logosPath = "images/logos/";
@@ -120,10 +119,9 @@ function sveaAjaxGetAddresses( $ssn, $country, $isCompany, $paymentType ) {
                     ->setIndividual( $ssn )
                     ->doRequest();
 
-    // TODO change to use zencart error message stack instead, or svea errors?
     // error?
     if( $response->accepted == false) {
-        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $response->errormessage) );
+        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $response->errormessage) ); 
     }
     // if not, show addresses and store response in session
     else {
@@ -184,7 +182,7 @@ function sveaAjaxSetCustomerInvoiceAddress() {
                      "AND entry_street_address = '" . $getAddressIdentity->street . "' " .
                      "AND entry_postcode = '" . strval($getAddressIdentity->zipCode) . "' " .
                      "AND entry_city = '" . $getAddressIdentity->locality . "' " .
-                     "AND entry_country_id ='" . intval($_SESSION['customer_country_id']) . "'" // TODO get zen country # = ->countryCode
+                     "AND entry_country_id ='" . intval($_SESSION['customer_country_id']) . "'"
                 ;
                 $queryFactoryResult = $db->execute($sqlGetInvoiceAddressBookId);
 
@@ -196,11 +194,11 @@ function sveaAjaxSetCustomerInvoiceAddress() {
                     $sqlAddInvoiceAddress['customers_id'] = intval($_SESSION['customer_id']);
                     $sqlAddInvoiceAddress['entry_firstname'] = $getAddressIdentity->firstName;
                     $sqlAddInvoiceAddress['entry_lastname'] = $getAddressIdentity->lastName;
-                    $sqlAddInvoiceAddress['entry_company'] = $getAddressIdentity->fullName;         // check if company first, else empty string?
+                    $sqlAddInvoiceAddress['entry_company'] = $getAddressIdentity->fullName; // check if company first, else empty string?
                     $sqlAddInvoiceAddress['entry_street_address'] = $getAddressIdentity->street;
                     $sqlAddInvoiceAddress['entry_postcode'] = strval($getAddressIdentity->zipCode);
                     $sqlAddInvoiceAddress['entry_city'] = $getAddressIdentity->locality;
-                    $sqlAddInvoiceAddress['entry_country_id'] = intval($_SESSION['customer_country_id']); // TODO get zen country # = ->countryCode
+                    $sqlAddInvoiceAddress['entry_country_id'] = intval($_SESSION['customer_country_id']);
 
                     $sqlInsertInvoiceAddressResult = zen_db_perform(TABLE_ADDRESS_BOOK, $sqlAddInvoiceAddress); // returns true if insert succeeded
 
