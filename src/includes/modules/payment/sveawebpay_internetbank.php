@@ -302,17 +302,17 @@ class sveawebpay_internetbank {
                         );
                     }
                     // we need to determine the order discount ex. vat if display prices with tax is set to true,
-                    // the ot_coupon module calculate_deductions() method returns a value including tax. We try to 
+                    // the ot_coupon module calculate_deductions() method returns a value including tax. We try to
                     // reconstruct the amount using the stored order info and the order_totals entries
                     else {
-                        $swp_order_info_pre_coupon = unserialize( $_SESSION["swp_order_info_pre_coupon"] );        
+                        $swp_order_info_pre_coupon = unserialize( $_SESSION["swp_order_info_pre_coupon"] );
                         $pre_coupon_subtotal_ex_tax = $swp_order_info_pre_coupon['subtotal'] - $swp_order_info_pre_coupon['tax'];
 
                         foreach( $order_totals as $key => $ot ) {
                             if( $ot['code'] === 'ot_subtotal' ) {
                                 $order_totals_subtotal_ex_tax = $ot['value'];
                             }
-                        }                   
+                        }
                         foreach( $order_totals as $key => $ot ) {
                             if( $ot['code'] === 'ot_tax' ) {
                                 $order_totals_subtotal_ex_tax -= $ot['value'];
@@ -324,25 +324,25 @@ class sveawebpay_internetbank {
                             }
                         }
 
-                        $value_from_subtotals = isset( $order_totals_subtotal_ex_tax ) ? 
+                        $value_from_subtotals = isset( $order_totals_subtotal_ex_tax ) ?
                                 ($pre_coupon_subtotal_ex_tax - $order_totals_subtotal_ex_tax) : $order_total['value']; // 'value' fallback
-                      
+
                         // if display_price_with tax is set to true && the coupon was specified as a fixed amount
                         // zencart's math doesn't match svea's, so we force the discount to use the the shop's vat
                         $coupon = $db->Execute("select * from " . TABLE_COUPONS . " where coupon_id = '" . (int)$_SESSION['cc_id'] . "'");
 
                         // coupon_type is F for coupons specified with a fixed amount
-                        if( $coupon->fields['coupon_type'] == 'F' ) { 
+                        if( $coupon->fields['coupon_type'] == 'F' ) {
 
                             // calculate the vatpercent from zencart's amount: discount vat/discount amount ex vat
-                            $zencartDiscountVatPercent = 
+                            $zencartDiscountVatPercent =
                                 ($order_total['value'] - $coupon->fields['coupon_amount']) / $coupon->fields['coupon_amount'] *100;
-                                                       
+
                             // split $zencartDiscountVatPercent into allowed values
                             $taxRates = $this->getTaxRatesInOrder($swp_order);
-                            $discountRows = $this->splitMeanToTwoTaxRates( $coupon->fields['coupon_amount'], $zencartDiscountVatPercent, 
+                            $discountRows = $this->splitMeanToTwoTaxRates( $coupon->fields['coupon_amount'], $zencartDiscountVatPercent,
                                     $order_total['title'], $order_total['title'], $taxRates );
-                            
+
                             foreach($discountRows as $row) {
                                 $swp_order = $swp_order->addDiscount( $row );
                             }
@@ -352,11 +352,11 @@ class sveawebpay_internetbank {
                         else {
                             $swp_order->addDiscount(
                                 WebPayItem::fixedDiscount()
-                                    ->setAmountExVat( $value_from_subtotals )   
+                                    ->setAmountExVat( $value_from_subtotals )
                                     ->setDescription( $order_total['title'] )
                             );
                         }
-                    } 
+                    }
                     break;
 
                 // TODO default case not tested, lack of test case/data. ported from 3.0 zencart module
@@ -393,7 +393,6 @@ class sveawebpay_internetbank {
 
         // set up direct bank via paypage
         // TODO extract ug banks, show and select to bypass paypage
-        $user_country = $order->billing['country']['iso_code_2'];
         $payPageLanguage = "";
         switch ($user_country) {
         case "DE":
@@ -892,7 +891,7 @@ class sveawebpay_internetbank {
 
         return( array_key_exists( $iso3166, $countrynames) ? $countrynames[$iso3166] : $iso3166 );
     }
-    
+
     /**
      * TODO replace these with the one in php integration package Helper class in next release
      *
