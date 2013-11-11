@@ -59,7 +59,7 @@ class ZenCartSveaConfigBase {
         
         // validate also handles SE => SV
         $country = $this->validateCountry( $country );     
-        if( !$country ) throw new Svea\InvalidCountryException('Invalid country. Accepted countries: SE, NO, DK, FI, NL'); // TODO +DE
+        if( !$country ) throw new Svea\InvalidCountryException('Invalid country. Accepted countries: SE, NO, DK, FI, NL, DE');
      
         switch( strtoupper($type) ) {
         case "INVOICE":
@@ -86,7 +86,6 @@ class ZenCartSveaConfigBase {
         $country = $this->validateCountry( $country );     
         if( !$country ) throw new Exception('Invalid country for payment method.');
         
-        // TODO make explicit -- same for INVOICE & PARTPAY
         $key = "MODULE_PAYMENT_SWPINVOICE_PASSWORD_" . strtoupper ( $country );
         $myPassword = $this->getZenCartConfigValue( $key );       
         return $myPassword;
@@ -103,7 +102,6 @@ class ZenCartSveaConfigBase {
         $country = $this->validateCountry( $country );     
         if( !$country ) throw new Exception('Invalid country for payment method.');
         
-        // TODO make explicit -- same for INVOICE & PARTPAY
         $key = "MODULE_PAYMENT_SWPINVOICE_USERNAME_" . strtoupper ( $country );
         $myUsername = $this->getZenCartConfigValue( $key );       
         return $myUsername;

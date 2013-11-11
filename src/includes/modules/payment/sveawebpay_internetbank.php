@@ -165,8 +165,15 @@ class sveawebpay_internetbank {
     $client_order_number = ($new_order_field['orders_id'] + 1) . '-' . time();
 
     // localization parameters
-    $user_country = $order->billing['country']['iso_code_2'];
-
+    if( isset( $order->billing['country']['iso_code_2'] ) ) {
+        $user_country = $order->billing['country']['iso_code_2']; 
+    }
+    // no billing address set, fallback to session country_id
+    else {
+        $country = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );
+        $user_country =  $country['countries_iso_code_2'];
+    }
+    
     $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
     $user_language = $user_language->fields['code'];
 
@@ -339,9 +346,9 @@ class sveawebpay_internetbank {
                                 ($order_total['value'] - $coupon->fields['coupon_amount']) / $coupon->fields['coupon_amount'] *100;
                                                        
                             // split $zencartDiscountVatPercent into allowed values
-                            $taxRates = $this->getTaxRatesInOrder($swp_order);
-                            $discountRows = $this->splitMeanToTwoTaxRates( $coupon->fields['coupon_amount'], $zencartDiscountVatPercent, 
-                                    $order_total['title'], $order_total['title'], $taxRates );
+                            $taxRates = Svea\Helper::getTaxRatesInOrder($swp_order);
+                            $discountRows = Svea\Helper::splitMeanToTwoTaxRates( $coupon->fields['coupon_amount'], 
+                                $zencartDiscountVatPercent, $order_total['title'], $order_total['title'], $taxRates );
                             
                             foreach($discountRows as $row) {
                                 $swp_order = $swp_order->addDiscount( $row );
@@ -359,11 +366,10 @@ class sveawebpay_internetbank {
                     } 
                     break;
 
-                // TODO default case not tested, lack of test case/data. ported from 3.0 zencart module
-                // default case handles 'unknown' items from other plugins. Might cause problems.
+                // default case attempt to handle 'unknown' items from other plugins, treating negatives as discount rows, positives as fees
                 default:
                     $order_total_obj = $GLOBALS[$order_total['code']];
-                    $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
+                    $tax_rate = zen_get_tax_rate($order_total_obj->tax_class,$order->delivery['country']['id'],$order->delivery['zone_id']);
 
                     // if displayed WITH tax, REDUCE the value since it includes tax
                     if (DISPLAY_PRICE_WITH_TAX == 'true') {
@@ -392,7 +398,6 @@ class sveawebpay_internetbank {
         }
 
         // set up direct bank via paypage
-        // TODO extract ug banks, show and select to bypass paypage
         $user_country = $order->billing['country']['iso_code_2'];
         $payPageLanguage = "";
         switch ($user_country) {
@@ -421,7 +426,7 @@ class sveawebpay_internetbank {
 
         // go directly to selected bank
         $swp_form = $swp_order->usePaymentMethod( $_REQUEST['BankPaymentOptions'] )
-            ->setCancelUrl( zen_href_link(FILENAME_CHECKOUT_PAYMENT, '', 'SSL', true) ) // todo test this
+            ->setCancelUrl( zen_href_link(FILENAME_CHECKOUT_PAYMENT, '', 'SSL', true) )
             ->setReturnUrl( zen_href_link(FILENAME_CHECKOUT_PROCESS, '', 'SSL') )
             ->getPaymentForm();
 
@@ -450,8 +455,7 @@ class sveawebpay_internetbank {
 
         // check for bad response
         if( $swp_response->resultcode === '0' ) {
-            die('Response failed authorization. AC not valid or
-                Response is not recognized');  // TODO don't die()
+            die('Response failed authorization. AC not valid or Response is not recognized');
         }
 
         // response ok, check if payment accepted
@@ -546,7 +550,6 @@ class sveawebpay_internetbank {
            'orders_status_id' => $order->info['order_status'],
            'date_added' => 'now()',
            'customer_notified' => 0,
-           // TODO take comments below to language files?
            'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);
        zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
@@ -892,86 +895,5 @@ class sveawebpay_internetbank {
 
         return( array_key_exists( $iso3166, $countrynames) ? $countrynames[$iso3166] : $iso3166 );
     }
-    
-    /**
-     * TODO replace these with the one in php integration package Helper class in next release
-     *
-     * Takes a total discount value ex. vat, a mean tax rate & an array of allowed tax rates.
-     * returns an array of FixedDiscount objects representing the discount split
-     * over the allowed Tax Rates, defined using AmountExVat & VatPercent.
-     *
-     * Note: only supports two allowed tax rates for now.
-     */
-    private function splitMeanToTwoTaxRates( $discountAmountExVat, $discountMeanVat, $discountName, $discountDescription, $allowedTaxRates )
-    {
-
-        $fixedDiscounts = array();
-
-        if( sizeof( $allowedTaxRates ) > 1 ) {
-
-            // m = $discountMeanVat
-            // r0 = allowedTaxRates[0]; r1 = allowedTaxRates[1]
-            // m = a r0 + b r1 => m = a r0 + (1-a) r1 => m = (r0-r1) a + r1 => a = (m-r1)/(r0-r1)
-            // d = $discountAmountExVat;
-            // d = d (a+b) => 1 = a+b => b = 1-a
-
-            $a = ($discountMeanVat - $allowedTaxRates[1]) / ( $allowedTaxRates[0] - $allowedTaxRates[1] );
-            $b = 1 - $a;
-
-            $discountA = WebPayItem::fixedDiscount()
-                            ->setAmountExVat( Svea\Helper::bround(($discountAmountExVat * $a),2) )
-                            ->setVatPercent( $allowedTaxRates[0] )
-                            ->setName( isset( $discountName) ? $discountName : "" )
-                            ->setDescription( (isset( $discountDescription) ? $discountDescription : "") . ' (' .$allowedTaxRates[0]. '%)' )
-            ;
-
-            $discountB = WebPayItem::fixedDiscount()
-                            ->setAmountExVat( Svea\Helper::bround(($discountAmountExVat * $b),2) )
-                            ->setVatPercent(  $allowedTaxRates[1] )
-                            ->setName( isset( $discountName) ? $discountName : "" )
-                            ->setDescription( (isset( $discountDescription) ? $discountDescription : "") . ' (' .$allowedTaxRates[1]. '%)' )
-            ;
-
-            $fixedDiscounts[] = $discountA;
-            $fixedDiscounts[] = $discountB;
-        }
-        // single tax rate, so use shop supplied mean as vat rate
-        else {
-            $discountA = WebPayItem::fixedDiscount()
-                ->setAmountExVat( Svea\Helper::bround(($discountAmountExVat),2) )
-                ->setVatPercent( $allowedTaxRates[0] )
-                ->setName( isset( $discountName) ? $discountName : "" )
-                ->setDescription( (isset( $discountDescription) ? $discountDescription : "") )
-            ;
-            $fixedDiscounts[] = $discountA;
-        }
-
-        return $fixedDiscounts;
-    }
-    /**
-     * TODO replace these with the one in php integration package Helper class in next release
-     *
-     * Takes a createOrderBuilder object, iterates over its orderRows, and
-     * returns an array containing the distinct taxrates present in the order
-     */
-    private function getTaxRatesInOrder($order) {
-        $taxRates = array();
-
-        foreach( $order->orderRows as $orderRow ) {
-
-            if( isset($orderRow->vatPercent) ) {
-                $seenRate = $orderRow->vatPercent; //count
-            }
-            elseif( isset($orderRow->amountIncVat) && isset($orderRow->amountExVat) ) {
-                $seenRate = Svea\Helper::bround( (($orderRow->amountIncVat - $orderRow->amountExVat) / $orderRow->amountExVat) ,2) *100;
-            }
-
-            if(isset($seenRate)) {
-                isset($taxRates[$seenRate]) ? $taxRates[$seenRate] +=1 : $taxRates[$seenRate] =1;   // increase count of seen rate
-            }
-        }
-        return array_keys($taxRates);   //we want the keys
-    }
-
 }
 ?>
