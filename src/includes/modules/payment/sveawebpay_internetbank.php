@@ -309,17 +309,17 @@ class sveawebpay_internetbank {
                         );
                     }
                     // we need to determine the order discount ex. vat if display prices with tax is set to true,
-                    // the ot_coupon module calculate_deductions() method returns a value including tax. We try to 
+                    // the ot_coupon module calculate_deductions() method returns a value including tax. We try to
                     // reconstruct the amount using the stored order info and the order_totals entries
                     else {
-                        $swp_order_info_pre_coupon = unserialize( $_SESSION["swp_order_info_pre_coupon"] );        
+                        $swp_order_info_pre_coupon = unserialize( $_SESSION["swp_order_info_pre_coupon"] );
                         $pre_coupon_subtotal_ex_tax = $swp_order_info_pre_coupon['subtotal'] - $swp_order_info_pre_coupon['tax'];
 
                         foreach( $order_totals as $key => $ot ) {
                             if( $ot['code'] === 'ot_subtotal' ) {
                                 $order_totals_subtotal_ex_tax = $ot['value'];
                             }
-                        }                   
+                        }
                         foreach( $order_totals as $key => $ot ) {
                             if( $ot['code'] === 'ot_tax' ) {
                                 $order_totals_subtotal_ex_tax -= $ot['value'];
@@ -331,20 +331,20 @@ class sveawebpay_internetbank {
                             }
                         }
 
-                        $value_from_subtotals = isset( $order_totals_subtotal_ex_tax ) ? 
+                        $value_from_subtotals = isset( $order_totals_subtotal_ex_tax ) ?
                                 ($pre_coupon_subtotal_ex_tax - $order_totals_subtotal_ex_tax) : $order_total['value']; // 'value' fallback
-                      
+
                         // if display_price_with tax is set to true && the coupon was specified as a fixed amount
                         // zencart's math doesn't match svea's, so we force the discount to use the the shop's vat
                         $coupon = $db->Execute("select * from " . TABLE_COUPONS . " where coupon_id = '" . (int)$_SESSION['cc_id'] . "'");
 
                         // coupon_type is F for coupons specified with a fixed amount
-                        if( $coupon->fields['coupon_type'] == 'F' ) { 
+                        if( $coupon->fields['coupon_type'] == 'F' ) {
 
                             // calculate the vatpercent from zencart's amount: discount vat/discount amount ex vat
-                            $zencartDiscountVatPercent = 
+                            $zencartDiscountVatPercent =
                                 ($order_total['value'] - $coupon->fields['coupon_amount']) / $coupon->fields['coupon_amount'] *100;
-                                                       
+
                             // split $zencartDiscountVatPercent into allowed values
                             $taxRates = Svea\Helper::getTaxRatesInOrder($swp_order);
                             $discountRows = Svea\Helper::splitMeanToTwoTaxRates( $coupon->fields['coupon_amount'], 
@@ -359,11 +359,11 @@ class sveawebpay_internetbank {
                         else {
                             $swp_order->addDiscount(
                                 WebPayItem::fixedDiscount()
-                                    ->setAmountExVat( $value_from_subtotals )   
+                                    ->setAmountExVat( $value_from_subtotals )
                                     ->setDescription( $order_total['title'] )
                             );
                         }
-                    } 
+                    }
                     break;
 
                 // default case attempt to handle 'unknown' items from other plugins, treating negatives as discount rows, positives as fees
@@ -398,7 +398,16 @@ class sveawebpay_internetbank {
         }
 
         // set up direct bank via paypage
-        $user_country = $order->billing['country']['iso_code_2'];
+        // localization parameters
+        if( isset( $order->billing['country']['iso_code_2'] ) ) {
+            $user_country = $order->billing['country']['iso_code_2']; 
+        }
+        // no billing address set, fallback to session country_id
+        else {
+            $country = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );
+            $user_country =  $country['countries_iso_code_2'];
+        }
+        
         $payPageLanguage = "";
         switch ($user_country) {
         case "DE":
@@ -584,8 +593,8 @@ class sveawebpay_internetbank {
     $db->Execute($common . ", set_function) values ('Enable Svea Direct Bank Payment Module', 'MODULE_PAYMENT_SWPINTERNETBANK_STATUS', 'True', '', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
     $db->Execute($common . ") values ('Svea Direct Bank Merchant ID', 'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID', '', 'The Merchant ID', '6', '0', now())");
     $db->Execute($common . ") values ('Svea Direct Bank Secret Word', 'MODULE_PAYMENT_SWPINTERNETBANK_SW', '', 'The Secret word', '6', '0', now())");
-    $db->Execute($common . ") values ('Svea Direct Bank Test Merchant ID', 'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID_TEST', '1130', 'The Merchant ID', '6', '0', now())");
-    $db->Execute($common . ") values ('Svea Direct Bank Test Secret Word', 'MODULE_PAYMENT_SWPINTERNETBANK_SW_TEST', '8a9cece566e808da63c6f07ff415ff9e127909d000d259aba24daa2fed6d9e3f8b0b62e8ad1fa91c7d7cd6fc3352deaae66cdb533123edf127ad7d1f4c77e7a3', 'The Secret word', '6', '0', now())");
+    $db->Execute($common . ") values ('Svea Direct Bank Test Merchant ID', 'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID_TEST', '', 'The Merchant ID', '6', '0', now())");
+    $db->Execute($common . ") values ('Svea Direct Bank Test Secret Word', 'MODULE_PAYMENT_SWPINTERNETBANK_SW_TEST', '', 'The Secret word', '6', '0', now())");
     $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPINTERNETBANK_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
     $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPINTERNETBANK_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
     $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPINTERNETBANK_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
