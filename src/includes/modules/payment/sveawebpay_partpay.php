@@ -191,13 +191,17 @@ class sveawebpay_partpay {
             //Years from 1913 to 1996
             $years = '';
             for($y = 1913; $y <= 1996; $y++){
-                $years .= "<option value='$y'>$y</option>";
+                if( $y == 1980 )
+                    $years .= "<option value='$y' selected>$y</option>"; // sensible default
+                else
+                    $years .= "<option value='$y'>$y</option>";
+                
             }
             $birthYear = "<select name='sveaBirthYearPP' id='sveaBirthYearPP'>$years</select>";
 
             $sveaBirthDateDivPP = '<div id="sveaBirthDate_divPP" >' .
                                     '<label for="sveaBirthYearPP">' . FORM_TEXT_BIRTHDATE . '</label><br />' .
-                                    $birthYear . $birthMonth . $birthDay .  // TODO better default, date order conforms w/DE,NL standard?
+                                    $birthYear . $birthMonth . $birthDay .
                                 '</div><br />';
 
             $sveaVatNoDivPP = '<div id="sveaVatNo_divPP" hidden="true">' .
@@ -340,11 +344,11 @@ class sveawebpay_partpay {
         $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
         // Create and initialize order object, using either test or production configuration
-        $swp_order = WebPay::createOrder( $sveaConfig ) // TODO uses default testmode config for now
+        $swp_order = WebPay::createOrder( $sveaConfig )
             ->setCountryCode( $user_country )
             ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
             ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
-            ->setOrderDate(date('c'))                      //Required for synchronous payments -- TODO check format "2012-12-12"
+            ->setOrderDate(date('c'))                      //Required for synchronous payments
         ;
 
         //
@@ -582,14 +586,14 @@ class sveawebpay_partpay {
         // set initials if required
         if( ($user_country == 'NL') )
         {
-            $swp_customer->setInitials($post_sveaInitials);  //TODO calculate from string
+            $swp_customer->setInitials($post_sveaInitials);
         }
 
         //Split street address and house no
         $pattern ="/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*[^\s])?(?:\s)*$/";
         $myStreetAddress = Array();
         preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
-        if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }  // TODO handle case Street w/o number in package?!
+        if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }
 
         // set common fields
         $swp_customer
@@ -625,13 +629,7 @@ class sveawebpay_partpay {
         // retrieve order object set in process_button()
         $swp_order = unserialize($_SESSION["swp_order"]);
 
-        // throws an exception if the payment request can't be done with current order content
-        try {
-            // set the chosen payment plan
-            $swp_order->usePaymentPlanPayment($_SESSION['sveaPaymentOptionsPP'])->prepareRequest();  // TODO debug, remove in production
-        } catch (Exception $e) {
-            echo 'Caught exception: ', $e->getMessage(), "\n";
-        }
+        $swp_order->usePaymentPlanPayment($_SESSION['sveaPaymentOptionsPP'])->prepareRequest();
 
         //
         // send payment request to svea, receive response
@@ -663,9 +661,6 @@ class sveawebpay_partpay {
                 $order->billing['company'] = "";
             }
 
-            // TODO check default zencart CHARSET define (should equal used database collation, i.e. utf-8).
-            // if not utf-8, must handle that when parsing swp_response (in utf-8) -- use utf8_decode(response-> ?)
-            // also, check that php 5.3 and 5.4+ behaves the same in zen_output_string ( htmlspecialchars() defaults to utf-8 from 5.4)
             $order->billing['street_address'] =
                     $swp_response->customerIdentity->street . " " . $swp_response->customerIdentity->houseNumber;
             $order->billing['suburb'] =  $swp_response->customerIdentity->coAddress;

@@ -190,15 +190,20 @@ class sveawebpay_invoice {
             //Years from 1913 to 1996
             $years = '';
             for($y = 1913; $y <= 1996; $y++){
-                $years .= "<option value='$y'>$y</option>";
+                if( $y == 1980 )
+                    $years .= "<option value='$y' selected>$y</option>"; // sensible default
+                else
+                    $years .= "<option value='$y'>$y</option>";
+                
             }
+            
             $birthYear = "<select name='sveaBirthYear' id='sveaBirthYear'>$years</select>";
 
             $sveaBirthDateDiv = '<div id="sveaBirthDate_div" >' .
                                     //'<label for="sveaBirthDate">' . FORM_TEXT_BIRTHDATE . '</label><br />' .
                                     //'<input type="text" name="sveaBirthDate" id="sveaBirthDate" maxlength="8" />' .
                                     '<label for="sveaBirthYear">' . FORM_TEXT_BIRTHDATE . '</label><br />' .
-                                    $birthYear . $birthMonth . $birthDay .  // TODO better default selected, date order conforms w/DE,NL standard?
+                                    $birthYear . $birthMonth . $birthDay .
                                 '</div><br />';
 
             $sveaVatNoDiv = '<div id="sveaVatNo_div" hidden="true">' .
@@ -222,7 +227,7 @@ class sveawebpay_invoice {
                 if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0) {
                     $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
 
-                    // calculate tax based on deliver country? TODO use zen cart tax zone??
+                    // calculate tax based on deliver country?
                     $paymentfee_tax =
                         $paymentfee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
                 }
@@ -591,7 +596,7 @@ class sveawebpay_invoice {
             $pattern ="/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*[^\s])?(?:\s)*$/";
             $myStreetAddress = Array();
             preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
-            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }  // TODO handle case Street w/o number in package?!
+            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }
 
             // set common fields
             $swp_customer
@@ -654,14 +659,14 @@ class sveawebpay_invoice {
             // set initials if required
             if( ($user_country == 'NL') )
             {
-                $swp_customer->setInitials($post_sveaInitials);  //TODO calculate from string
+                $swp_customer->setInitials($post_sveaInitials);
             }
 
             //Split street address and house no
             $pattern ="/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*[^\s])?(?:\s)*$/";
             $myStreetAddress = Array();
             preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
-            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }  // TODO move handling Street w/o number to package
+            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }
 
             // set common fields
             $swp_customer
@@ -729,9 +734,6 @@ class sveawebpay_invoice {
             else {
                 $order->billing['company'] = $swp_response->customerIdentity->fullName;
             }
-            // TODO check default zencart CHARSET define (should equal used database collation, i.e. utf-8).
-            // if not utf-8, must handle that when parsing swp_response (in utf-8) -- use utf8_decode(response-> ?)
-            // also, check that php 5.3 and 5.4+ behaves the same in zen_output_string ( htmlspecialchars() defaults to utf-8 from 5.4)
             $order->billing['street_address'] =
                     $swp_response->customerIdentity->street . " " . $swp_response->customerIdentity->houseNumber;
             $order->billing['suburb'] =  $swp_response->customerIdentity->coAddress;
@@ -805,7 +807,7 @@ class sveawebpay_invoice {
             'orders_status_id' => $order->info['order_status'], // set to MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID in constructor
             'date_added' => 'now()',
             'customer_notified' => $deliveryAccepted, // 0 = unlocked icon in zc admin order view, 1 = checkmark icon.
-            'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);   //TODO localize
+            'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);
         zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
         // make sure order status shows up as "delivered" in admin orders list

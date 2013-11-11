@@ -60,7 +60,7 @@ class sveawebpay_internetbank {
     }
 
     // do not use this module if the geograhical zone is set and we are not in it
-    if ( ($this->enabled == true) && ((int)MODULE_PAYMENT_SWPCREDITCARD_ZONE > 0) ) {   //TODO check swpcreditcard => swpinternetbank?
+    if ( ($this->enabled == true) && ((int)MODULE_PAYMENT_SWPCREDITCARD_ZONE > 0) ) {
       $check_flag = false;
       $check_query = $db->Execute("select zone_id from " . TABLE_ZONES_TO_GEO_ZONES . " where geo_zone_id = '" . MODULE_PAYMENT_SWPCREDITCARD_ZONE . "' and zone_country_id = '" . $order->billing['country']['id'] . "' order by zone_id");
 
