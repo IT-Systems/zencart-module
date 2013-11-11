@@ -219,14 +219,12 @@ class sveawebpay_invoice {
 
             // is the handling fee a percentage?
             if (substr($paymentfee_cost, -1) == '%')
-                $fields[] = array(  'title' => sprintf(MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $paymentfee_cost),
-                                    'field' => $paymentfee_cost);
+                $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $paymentfee_cost));
 
             // no, handling fee is a fixed amount
             else {
+                $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
                 if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0) {
-                    $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
-
                     // calculate tax based on deliver country?
                     $paymentfee_tax =
                         $paymentfee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
