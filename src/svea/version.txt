@@ -1,0 +1,7 @@
+Updated PHP Integration package:
+sveawebpay/php-integration
+release/1.6.0
+
+NOTICE!
+Remove file Item.php when updating lib.
+

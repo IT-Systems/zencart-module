@@ -23,10 +23,10 @@ class sveawebpay_handling_fee {
         $paymentfee_cost = $GLOBALS[$payment_module]->handling_fee;
         // if percentage, calculate from order total
         if (substr($paymentfee_cost, -1) == '%')
-          $paymentfee_cost = (float)((substr($paymentfee_cost, 0, -1)/100) * $order->info['total']);
+          $paymentfee_cost = (float)((substr($paymentfee_cost, 0, -1)/100) * $order->info['subtotal']);
       }
-    }    
-    
+    }
+
     // calculate tax and add cost to order total and tax
     if ($paymentfee_cost) {
       $paymentfee_tax = 0;
@@ -39,13 +39,12 @@ class sveawebpay_handling_fee {
         }
       }
       $order->info['total'] += $paymentfee_cost + $paymentfee_tax;
-      
       if (DISPLAY_PRICE_WITH_TAX == 'true') {
         $this->output[] = array(  'title' =>  sprintf(MODULE_ORDER_TOTAL_SWPHANDLING_LABEL, $GLOBALS[$payment_module]->title),
                                   'text'  =>  $currencies->format($paymentfee_cost + $paymentfee_tax, true, $order->info['currency'], $order->info['currency_value']),
                                   'tax'   =>  $paymentfee_tax,
                                   'value' =>  $paymentfee_cost + $paymentfee_tax);
-      } 
+      }
       else {
         $this->output[] = array(  'title' =>  sprintf(MODULE_ORDER_TOTAL_SWPHANDLING_LABEL, $GLOBALS[$payment_module]->title),
                                   'text'  =>  $currencies->format($paymentfee_cost, true, $order->info['currency'], $order->info['currency_value']),
@@ -70,17 +69,20 @@ class sveawebpay_handling_fee {
     $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('This module is installed', 'MODULE_ORDER_TOTAL_SWPHANDLING_STATUS', 'true', '', '6', '1','zen_cfg_select_option(array(\'true\'), ', now())");
     $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Sort Order', 'MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER', '299', 'Sort order of display.', '6', '3', now())");
     $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, use_function, set_function, date_added) values ('Tax Class', 'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS', '0', 'Use the following tax class on the payment handling fee.', '6', '0', 'zen_get_tax_class_title', 'zen_cfg_pull_down_tax_classes(', now())");
+    $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Fee', 'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE', '29', 'This handling fee will be applied to all orders using the invoice payment method. The figure can either be set to a specific amount, eg. <b>5.00</b>, or set to a percentage of the order total, by ensuring the last character is a \'%\' eg <b>5.00%</b>.', '6', '0', now())");
   }
 
   function remove() {
+    global $db;
     $db->Execute("delete from " . TABLE_CONFIGURATION . " where configuration_key in ('" . implode("', '", $this->keys()) . "')");
   }
 
   function keys() {
     global $db;
-    return array( 'MODULE_ORDER_TOTAL_SWPHANDLING_STATUS',
-                  'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS',
-                  'MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER');
+    return array(   'MODULE_ORDER_TOTAL_SWPHANDLING_STATUS',
+                    'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS',
+                    'MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER',
+                    'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE');
   }
 }
 ?>
