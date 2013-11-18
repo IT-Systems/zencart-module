@@ -750,18 +750,22 @@ class sveawebpay_invoice {
     //
     // if payment accepted, set addresses based on response, insert order into database
     function after_process() {
-        global $insert_id, $order, $db;
-
-        //
+        global $insert_id, $order, $db; // $insert_id contains the new order orders_id
+ 
         // retrieve response object from before_process()
         $swp_response = unserialize($_SESSION["swp_response"]);
 
-        $deliveryAccepted = 0;  // used to indicate customer notification status in zencart, see below
+        // store order_id and sveaOrderId in table
+        $sql_data_array = array(
+            'orders_id' => $insert_id,
+            'sveaorderid' =>$swp_response->sveaOrderId
+        );
+        zen_db_perform("svea_sveaorderid", $sql_data_array);
+        
         // if autodeliver option set, deliver order
         if( MODULE_PAYMENT_SWPINVOICE_AUTODELIVER == "True" ) {
 
             $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
-
             $swp_deliverOrder = WebPay::deliverOrder( $sveaConfig );
 
             // this really exploits CreateOrderRow objects having public properties...
@@ -791,29 +795,25 @@ class sveawebpay_invoice {
             else {
                 // order will show up as if AutoDeliver set to false in shop order history, i.e. handled manually
             }
-        }
 
-        // set zencart order info using data from response object
-        $order->info['SveaOrderId'] = $swp_response->sveaOrderId;
-        $order->info['type'] = $swp_response->customerIdentity->customerType;
-
-        
-
-        // insert zencart order into database
-        $sql_data_array = array('orders_id' => $insert_id,
-            'orders_status_id' => $order->info['order_status'], // set to MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID in constructor
-            'date_added' => 'now()',
-            'customer_notified' => $deliveryAccepted, // 0 = unlocked icon in zc admin order view, 1 = checkmark icon.
-            'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . 
-                isset( $swp_response->sveaOrderId ) ? 
-                $swp_response->sveaOrderId : $swp_response->transactionId //if request to webservice, use sveaOrderId, if hosted use transactionId
-        );
-        zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
-
-        // make sure order status shows up as "delivered" in admin orders list
-        $db->Execute(   "update " . TABLE_ORDERS . "
+            // insert autodeliver order status update in database
+            $sql_data_array = array('orders_id' => $insert_id,
+                'orders_status_id' => $order->info['order_status'], // set to MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID in constructor
+                'date_added' => 'now()',
+                'customer_notified' => 1,                               // meaning invoice will be sent out from svea
+                'comments' => 'AutoDelivered ' . date("Y-m-d G:i:s") . ' SveaOrderId #: ' . (    
+                    isset( $swp_response->sveaOrderId ) ?                       // TODO comment () fix => other modules
+                    $swp_response->sveaOrderId : $swp_response->transactionId   //if request to webservice, use sveaOrderId, if hosted use transactionId
+                ) 
+            );
+            zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
+         
+            // make sure order status shows up as "delivered" in admin orders list
+            $db->Execute(   "update " . TABLE_ORDERS . "
                         set orders_status = '" . $order->info['order_status'] . "', last_modified = now()
-                        where orders_id = '" . $insert_id . "'");
+                        where orders_id = '" . $insert_id . "'")
+            ;
+        }
 
         // clean up our session variables set during checkout   //$SESSION[swp_*
         unset($_SESSION['swp_order']);
@@ -869,12 +869,18 @@ class sveawebpay_invoice {
         $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPINVOICE_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
         $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPINVOICE_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
         $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
+        
+        // insert svea order id table if not exists already
+        $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_sveaorderid';");
+        if( $res->fields["COUNT(*)"] != 1 ) {
+            $db->Execute("CREATE TABLE svea_sveaorderid (orders_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, sveaorderid INT NOT NULL)");
+        }
     }
-
     // standard uninstall function
     function remove() {
         global $db;
         $db->Execute("delete from " . TABLE_CONFIGURATION . " where configuration_key in ('" . implode("', '", $this->keys()) . "')");
+        // we don't delete the svea_sveaorderid table, as it may be needed by other payment modules and to admin orders after reinstall of module
     }
 
     // must perfectly match keys inserted in install function
@@ -913,7 +919,7 @@ class sveawebpay_invoice {
      * Called from admin/orders.php when admin chooses to edit an order and updates its order status
      * 
      * 
-     * @param type $oID
+     * @param int $oID
      * @param type $status
      * @param type $comments
      * @param type $customer_notified
@@ -921,14 +927,19 @@ class sveawebpay_invoice {
      */
     function _doStatusUpdate($oID, $status, $comments, $customer_notified, $old_orders_status) {
         if( $status == 3 ) {    // TODO move magic number to admin settings, should be the same as used for autoDevlivered orders' statuses
-            doDeliverOrder();
+            $this->doDeliverOrder($oID);
         }       
     }
     
-    function doDeliverOrder() {
-        // reconstruct svea order object and do deliverOrder here
-    }
-    
-    
+    /**
+     * Given an orderID, reconstruct the svea order object and send deliver order request
+     * 
+     * @param int $oID
+     * @return Svea\SveaResponse object
+     */
+    function doDeliverOrder($oID) {
+        
+        
+    }   
 }
 ?>
