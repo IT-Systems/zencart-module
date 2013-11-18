@@ -908,5 +908,27 @@ class sveawebpay_invoice {
             'MODULE_PAYMENT_SWPINVOICE_ZONE',
             'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER');
     }
+    
+    /**
+     * Called from admin/orders.php when admin chooses to edit an order and updates its order status
+     * 
+     * 
+     * @param type $oID
+     * @param type $status
+     * @param type $comments
+     * @param type $customer_notified
+     * @param type $old_orders_status
+     */
+    function _doStatusUpdate($oID, $status, $comments, $customer_notified, $old_orders_status) {
+        if( $status == 3 ) {    // TODO move magic number to admin settings, should be the same as used for autoDevlivered orders' statuses
+            doDeliverOrder();
+        }       
+    }
+    
+    function doDeliverOrder() {
+        // reconstruct svea order object and do deliverOrder here
+    }
+    
+    
 }
 ?>
