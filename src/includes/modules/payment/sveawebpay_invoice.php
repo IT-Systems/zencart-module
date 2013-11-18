@@ -3,7 +3,7 @@
 /*
   HOSTED SVEAWEBPAY PAYMENT MODULE FOR ZEN CART
   -----------------------------------------------
-  Version 4.0 - Zen Cart
+  Version 4.0.1 - Zen Cart
 
   Kristian Grossman-Madsen, Shaho Ghobadi
  */
@@ -299,7 +299,7 @@ class sveawebpay_invoice {
         // calculate the order number
         $new_order_rs = $db->Execute("select orders_id from " . TABLE_ORDERS . " order by orders_id desc limit 1");
         $new_order_field = $new_order_rs->fields;
-        $client_order_number = ($new_order_field['orders_id'] + 1) . '-' . time();
+        $client_order_number = ($new_order_field['orders_id'] + 1);
 
         // localization parameters
         if( isset( $order->billing['country']['iso_code_2'] ) ) {

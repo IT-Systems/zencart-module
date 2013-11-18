@@ -1,5 +1,5 @@
 # Zen Cart - Svea payment module
-## Version 4.0.0
+## Version 4.0.1
 * Supports Zen Cart version 1.5.1 and 1.3.9
 
 This module supports Svea invoice and payment plan payments in Sweden, Finland, Norway, Denmark, Netherlands and Germany, as well as creditcard and direct bank payments from all countries.
@@ -215,4 +215,5 @@ Always check that you have set up your settings correctly before posting issues 
 
 ### Release history
 
+* 4.0.1  (20131118) Fix for wrong client order id used in request.
 * 4.0.0  (20131112) Rewrite of module to build on Svea php integration package and support the new eu payment flow. Supports ZenCart 1.5.1.
