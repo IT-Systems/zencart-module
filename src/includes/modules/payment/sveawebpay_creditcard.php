@@ -497,15 +497,15 @@ class sveawebpay_creditcard {
     require_once(DIR_FS_CATALOG . 'svea/Includes.php');
     $swp_response = unserialize($_SESSION["swp_response"]);
 
-    // set zencart order securityNumber -- if request to webservice, use sveaOrderId, if hosted use transactionId
-    $order->info['securityNumber'] = isset( $swp_response->sveaOrderId ) ? $swp_response->sveaOrderId : $swp_response->transactionId;
-
     // insert zencart order into database
     $sql_data_array = array('orders_id' => $insert_id,
         'orders_status_id' => $order->info['order_status'],
         'date_added' => 'now()',
         'customer_notified' => 0,
-        'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);
+            'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . 
+                isset( $swp_response->sveaOrderId ) ? 
+                $swp_response->sveaOrderId : $swp_response->transactionId //if request to webservice, use sveaOrderId, if hosted use transactionId
+        );
     zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
     //

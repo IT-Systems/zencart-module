@@ -719,15 +719,15 @@ class sveawebpay_partpay {
         $order->info['SveaOrderId'] = $swp_response->sveaOrderId;
         $order->info['type'] = $swp_response->customerIdentity->customerType;
 
-        // set zencart order securityNumber -- if request to webservice, use sveaOrderId, if hosted use transactionId
-        $order->info['securityNumber'] = isset( $swp_response->sveaOrderId ) ? $swp_response->sveaOrderId : $swp_response->transactionId;
-
         // insert zencart order into database
         $sql_data_array = array('orders_id' => $insert_id,
             'orders_status_id' => $order->info['order_status'],
             'date_added' => 'now()',
             'customer_notified' => $deliveryAccepted, // 0 = unlocked icon in zc admin order view, 1 = checkmark icon.
-            'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);
+            'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . 
+                isset( $swp_response->sveaOrderId ) ? 
+                $swp_response->sveaOrderId : $swp_response->transactionId //if request to webservice, use sveaOrderId, if hosted use transactionId
+        );
         zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
         // make sure order status shows up as "delivered" in admin orders list
