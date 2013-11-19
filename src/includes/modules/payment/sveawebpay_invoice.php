@@ -11,9 +11,10 @@
 // Include Svea php integration package files
 require_once(DIR_FS_CATALOG . 'svea/Includes.php');         // use new php integration package for v4
 require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');     // sveaConfig implementation
+
 require_once(DIR_FS_CATALOG . 'sveawebpay_common.php');     // zencart module common functions
 
-class sveawebpay_invoice {
+class sveawebpay_invoice extends SveaZencart {
     
     function sveawebpay_invoice() {
         global $order;
@@ -331,7 +332,7 @@ class sveawebpay_invoice {
         // for each item in cart, create WebPayItem::orderRow objects and add to order
         foreach ($order->products as $productId => $product) {
 
-            $amount_ex_vat = floatval( Helper::convert_to_currency(round($product['final_price'], 2), $currency) );
+            $amount_ex_vat = floatval( $this->convert_to_currency(round($product['final_price'], 2), $currency) );
 
             $swp_order->addOrderRow(
                     WebPayItem::orderRow()
@@ -514,7 +515,7 @@ class sveawebpay_invoice {
         // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {
 
-            $_SESSION['SWP_ERROR'] = Helper::responseCodes($swp_response->resultcode,$swp_response->errormessage);
+            $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->resultcode,$swp_response->errormessage);
 
             $payment_error_return = 'payment_error=sveawebpay_invoice';
             zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return)); // error handled in selection() above
@@ -547,7 +548,7 @@ class sveawebpay_invoice {
             $order->billing['state'] = '';  // "state" is not applicable in SWP countries
 
             $order->billing['country']['title'] =                                           // country name only needed for address
-                    Helper::getCountryName( $swp_response->customerIdentity->countryCode );
+                    $this->getCountryName( $swp_response->customerIdentity->countryCode );
 
             // save the response object
             $_SESSION["swp_response"] = serialize($swp_response);
@@ -884,7 +885,7 @@ class sveawebpay_invoice {
                         }
                         // handlingfee expressed as absolute amount (incl. tax)
                         else {
-                            $hf_price = Helper::convert_to_currency(floatval($this->handling_fee), $currency);
+                            $hf_price = $this->convert_to_currency(floatval($this->handling_fee), $currency);
                         }
                         $hf_taxrate =   zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS,
                                         $order->delivery['country']['id'], $order->delivery['zone_id']);
@@ -1003,7 +1004,7 @@ class sveawebpay_invoice {
                     if( $order_total['value'] < 0 ) {
                         $svea_order->addDiscount(
                             WebPayItem::fixedDiscount()
-                                ->setAmountExVat( -1* Helper::convert_to_currency(strip_tags($order_total['value']), $currency)) // given as positive amount
+                                ->setAmountExVat( -1* $this->convert_to_currency(strip_tags($order_total['value']), $currency)) // given as positive amount
                                 ->setVatPercent($tax_rate)  //Optional, see info above
                                 ->setDescription($order_total['title'])        //Optional
                         );
@@ -1011,7 +1012,7 @@ class sveawebpay_invoice {
                     else {
                         $svea_order->addFee(
                             WebPayItem::invoiceFee()
-                                ->setAmountExVat(Helper::convert_to_currency(strip_tags($order_total['value']), $currency))
+                                ->setAmountExVat($this->convert_to_currency(strip_tags($order_total['value']), $currency))
                                 ->setVatPercent($tax_rate)  //Optional, see info above
                                 ->setDescription($order_total['title'])        //Optional
                         );
@@ -1023,13 +1024,5 @@ class sveawebpay_invoice {
         return $svea_order;
     }
     
-    /**
-     *  switch to default currency if the customers currency is not supported
-     * 
-     * @return type -- currency to use
-     */
-    function getCurrency( $customerCurrency ) {
-        return in_array($customerCurrency, $this->allowed_currencies) ? $customerCurrency : $this->default_currency;
-    }
 }
 ?>

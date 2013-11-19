@@ -1,19 +1,10 @@
 <?php
-
-/*
-  COMMON SVEAWEBPAY FUNCTIONS FOR ZEN CART
-  -----------------------------------------------
-  Version 4.1 - Zen Cart
-
-  Kristian Grossman-Madsen
- */
-
 /**
- * Class Helper contains various utility functions used by Svea zencart payment modules
+ * Class SveaZencart contains various utility functions used by Svea zencart payment modules
  *
  * @author Kristian Grossman-Madsen
  */
-class Helper {  
+class SveaZencart {  
     
   /**
    *
@@ -24,7 +15,7 @@ class Helper {
    *    Having a non-standard decimal may cause i.e. number conversion with floatval() to truncate fractions.
    * @return type
    */
-    static function convert_to_currency($value, $currency, $no_number_format = true) {
+    function convertToCurrency($value, $currency, $no_number_format = true) {
         global $currencies;
 
         // item price is ALWAYS given in internal price from the products DB, so just multiply by currency rate from currency table
@@ -35,13 +26,20 @@ class Helper {
                                                                     $currencies->currencies[$currency]['decimal_point'],
                                                                     $currencies->currencies[$currency]['thousands_point']);
     }
-
-    
+   
+    /**
+     *  switch to default currency if the customers currency is not supported
+     * 
+     * @return type -- currency to use
+     */
+    function getCurrency( $customerCurrency ) {
+        return in_array($customerCurrency, $this->allowed_currencies) ? $customerCurrency : $this->default_currency;
+    }
     
     /**
      * Localize Error Responses
      */
-    static function responseCodes($err,$msg = NULL) {
+    function responseCodes($err,$msg = NULL) {
         switch ($err) {
 
             // EU error codes
@@ -116,7 +114,7 @@ class Helper {
      * @param string $iso3166
      * @return string english country name
      */
-    static function getCountryName( $iso3166 ) {
+    function getCountryName( $iso3166 ) {
 
         // countrynames from https://github.com/johannesl/Internationalization, thanks!
         $countrynames = array(
@@ -372,15 +370,14 @@ class Helper {
         );
         return( array_key_exists( $iso3166, $countrynames) ? $countrynames[$iso3166] : "swp_error: getCountryCode: unknown country code" );
     }   
-    
-    
+ 
     /**
      * Given English country name, returns iso 3166 country code.
      * 
      * @param string $country
      * @return string iso 3166 country code
     */
-    static function getCountryCode( $country ) {
+    function getCountryCode( $country ) {
 
         // countrynames from https://github.com/johannesl/Internationalization, thanks!
         $countrynames = array(
@@ -636,9 +633,7 @@ class Helper {
         );
         return( array_key_exists( $country, array_flip($countrynames) ) ? 
                 array_flip($countrynames)[$country] : "swp_error: getCountryCode: unknown country name" );
-    }   
-   
-    
+    }      
 }
 ?>
 
