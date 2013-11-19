@@ -927,19 +927,61 @@ class sveawebpay_invoice {
      */
     function _doStatusUpdate($oID, $status, $comments, $customer_notified, $old_orders_status) {
         if( $status == 3 ) {    // TODO move magic number to admin settings, should be the same as used for autoDevlivered orders' statuses
-            $this->doDeliverOrder($oID);
+            if( $this->doDeliverOrder($oID) == true ) {
+                // TODO update order status history table with comment?
+            }
+            else {
+                // TODO inform admin that deliver order failed, reset order status to != 3 ?
+            }
         }       
     }
     
     /**
-     * Given an orderID, reconstruct the svea order object and send deliver order request
+     * Given an orderID, reconstruct the svea order object and send deliver order request. 
+     * Returns true if deliver order request was accepted.
      * 
-     * @param int $oID
-     * @return Svea\SveaResponse object
+     * @param int $oID -- $oID is the order id
+     * @return boolean  -- return true if the deliver order request was accepted.
      */
-    function doDeliverOrder($oID) {
+    function doDeliverOrder($oID) {   
+        global $db;
+
+        // get zencart order from db
+        $order = new order($oID); 
         
+        // get svea order id reference returned in createOrder request result
+        $result = $db->Execute("SELECT sveaorderid FROM svea_sveaorderid WHERE orders_id = " . (int)$oID );
+        $sveaOrderId = $result->fields["sveaorderid"];
         
+        // Create and initialize order object, using either test or production configuration
+        $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+
+        $swp_deliverOrder = WebPay::deliverOrder( $sveaConfig )
+            ->setInvoiceDistributionType( MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE )
+            ->setCountryCode( Helper::getCountryCode($order->billing['country']) )
+            ->setOrderId($sveaOrderId)                                  
+        ;
+     
+        //as we created the order ourselves, we trust that values are present & correct below
+        foreach( $order->products as $product ) {
+            $swp_deliverOrder = $swp_deliverOrder->addOrderRow(
+                WebPayItem::orderRow()
+                    ->setQuantity( $product['qty'] )
+                    ->setDescription( $product['name'] )
+                    ->setAmountExVat( $product['price'] )
+                    ->setAmountIncVat( $product['price'] + $product['tax'] )
+            );           
+        };
+
+        // TODO add other order_total rows
+                
+        // send deliver order request
+        $swp_deliveryResponse = $swp_deliverOrder->deliverInvoiceOrder()->doRequest();
+        
+        //print_r( $swp_deliveryResponse ); die();  // TODO debug        
+
+        // return true/false depending on deliver order response
+        return ($swp_deliveryResponse->accepted == 1) ? true : false;
     }   
 }
 ?>
