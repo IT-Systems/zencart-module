@@ -3,7 +3,7 @@
 /*
   HOSTED SVEAWEBPAY PAYMENT MODULE FOR ZEN CART
   -----------------------------------------------
-  Version 4.0 - Zen Cart
+  Version 4.1 - Zen Cart
 
   Kristian Grossman-Madsen, Shaho Ghobadi
  */
@@ -301,7 +301,7 @@ class sveawebpay_invoice extends SveaZencart {
         // calculate the order number
         $new_order_rs = $db->Execute("select orders_id from " . TABLE_ORDERS . " order by orders_id desc limit 1");
         $new_order_field = $new_order_rs->fields;
-        $client_order_number = ($new_order_field['orders_id'] + 1) . '-' . time();
+        $client_order_number = ($new_order_field['orders_id'] + 1);
 
         // localization parameters
         if( isset( $order->billing['country']['iso_code_2'] ) ) {
@@ -345,23 +345,6 @@ class sveawebpay_invoice extends SveaZencart {
 
         $swp_order = $this->parseOrderTotals( $order_totals, $swp_order );
 
-//        ->addCustomerDetails(
-//            WebPayItem::companyCustomer()
-//            ->setNationalIdNumber(2345234)      //Required in SE, NO, DK, FI
-//            ->setVatNumber("NL2345234")         //Required in NL and DE
-//            ->setCompanyName("TestCompagniet")  //Required in NL and DE
-//            ->setStreetAddress("Gatan", 23)     //Required in NL and DE
-//            ->setZipCode(9999)                  //Required in NL and DE
-//            ->setLocality("Stan")               //Required in NL and DE
-//            ->setEmail("test@svea.com")         //Optional but desirable
-//            ->setIpAddress("123.123.123")       //Optional but desirable
-//            ->setCoAddress("c/o Eriksson")      //Optional
-//            ->setPhoneNumber(999999)            //Optional
-//            ->setAddressSelector("7fd7768")     //Optional, string recieved from WebPay::getAddress() request
-//        )
-//
-
-        //
         // Check if customer is company
         if( $post_sveaIsCompany === 'true'){
 
@@ -417,23 +400,6 @@ class sveawebpay_invoice extends SveaZencart {
             // add customer to order
             $swp_order->addCustomerDetails($swp_customer);
         }
-
-//        ->addCustomerDetails(
-//            WebPayItem::individualCustomer()
-//            ->setNationalIdNumber(194605092222) //Required for individual customers in SE, NO, DK, FI
-//            ->setInitials("SB")                 //Required for individual customers in NL
-//            ->setBirthDate(1923, 12, 20)        //Required for individual customers in NL and DE
-//            ->setName("Tess", "Testson")        //Required for individual customers in NL and DE
-//            ->setStreetAddress("Gatan", 23)     //Required in NL and DE
-//            ->setZipCode(9999)                  //Required in NL and DE
-//            ->setLocality("Stan")               //Required in NL and DE
-//            ->setEmail("test@svea.com")         //Optional but desirable
-//            ->setIpAddress("123.123.123")       //Optional but desirable
-//            ->setCoAddress("c/o Eriksson")      //Optional
-//            ->setPhoneNumber(999999)            //Optional
-//        )
-
-        //
         // customer is private individual
         else {
 
@@ -504,7 +470,7 @@ class sveawebpay_invoice extends SveaZencart {
      * as well as sends the actual payment request
      */
     function before_process() {
-        global $order;
+        global $order, $order_totals, $language, $billto, $sendto;
 
         // retrieve order object set in process_button()
         $swp_order = unserialize($_SESSION["swp_order"]);
@@ -514,9 +480,7 @@ class sveawebpay_invoice extends SveaZencart {
 
         // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {
-
             $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->resultcode,$swp_response->errormessage);
-
             $payment_error_return = 'payment_error=sveawebpay_invoice';
             zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return)); // error handled in selection() above
         }
@@ -709,6 +673,78 @@ class sveawebpay_invoice extends SveaZencart {
     }
     
     /**
+     * Localize Error Responses
+     */
+    function responseCodes($err,$msg = NULL) {
+        switch ($err) {
+
+            // EU error codes
+            case "20000" :
+                return ERROR_CODE_20000;
+                break;
+            case "20001" :
+                return ERROR_CODE_20001;
+                break;
+            case "20002" :
+                return ERROR_CODE_20002;
+                break;
+            case "20003" :
+                return ERROR_CODE_20003;
+                break;
+            case "20004" :
+                return ERROR_CODE_20004;
+                break;
+            case "20005" :
+                return ERROR_CODE_20005;
+                break;
+            case "20006" :
+                return ERROR_CODE_20006;
+                break;
+            case "20013" :
+                return ERROR_CODE_20013;
+                break;
+
+            case "24000" :
+                return ERROR_CODE_24000;
+                break;
+
+            case "30000" :
+                return ERROR_CODE_30000;
+                break;
+            case "30001" :
+                return ERROR_CODE_30001;
+                break;
+            case "30002" :
+                return ERROR_CODE_30002;
+                break;
+            case "30003" :
+                return ERROR_CODE_30003;
+                break;
+
+            case "40000" :
+                return ERROR_CODE_40000;
+                break;
+            case "40001" :
+                return ERROR_CODE_40001;
+                break;
+            case "40002" :
+                return ERROR_CODE_40002;
+                break;
+            case "40004" :
+                return ERROR_CODE_40004;
+                break;
+
+            case "50000" :
+                return ERROR_CODE_50000;
+                break;
+
+            default :
+                return ERROR_CODE_DEFAULT . " " . $err . " - " . $msg;     // $err here is the response->resultcode
+                break;
+        }
+    } 
+
+    /**
      * Called from admin/orders.php when admin chooses to edit an order and updates its order status
      * 
      * @param int $oID
@@ -718,26 +754,26 @@ class sveawebpay_invoice extends SveaZencart {
      * @param type $old_orders_status
      */
     function _doStatusUpdate($oID, $status, $comments, $customer_notified, $old_orders_status) {       
+        global $db;
+
         if( $status == 3 ) {    // TODO move magic number to admin settings, should be the same as used for autoDevlivered orders' statuses
-                      
+                     
+            $sveaOrderId = $this->doDeliverOrder($oID);
+
             // update order_status_history to include comment
-            global $db;
             $result = $db->Execute("SELECT sveaorderid FROM svea_order WHERE orders_id = " . (int)$oID );
             $sveaOrderId = $result->fields["sveaorderid"];
 
             $result = $db->Execute( "select * from orders_status_history where orders_id = ". (int)$oID .
                                     " order by date_added DESC LIMIT 1");
             $oshID = $result->fields["orders_status_history_id"];
-            
+
             $comment = 'Delivered by status update ' . date("Y-m-d G:i:s") . ' SveaOrderId: ' . $sveaOrderId;
 
             $db->Execute(   "update " . TABLE_ORDERS_STATUS_HISTORY . " " .
                             "set comments = '" . $comment . "' " .
                             "where orders_status_history_id = " . (int)$oshID)
             ;                   
-        }
-        else {
-            // we do nothing, as order will show up as undelivered in admin order overview
         }
     }
     
