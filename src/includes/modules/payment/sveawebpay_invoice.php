@@ -332,7 +332,7 @@ class sveawebpay_invoice extends SveaZencart {
         // for each item in cart, create WebPayItem::orderRow objects and add to order
         foreach ($order->products as $productId => $product) {
 
-            $amount_ex_vat = floatval( $this->convert_to_currency(round($product['final_price'], 2), $currency) );
+            $amount_ex_vat = floatval( $this->convertToCurrency(round($product['final_price'], 2), $currency) );
 
             $swp_order->addOrderRow(
                     WebPayItem::orderRow()
@@ -558,14 +558,16 @@ class sveawebpay_invoice extends SveaZencart {
     //
     // if payment accepted, set addresses based on response, insert order into database
     function after_process() {
-        global $insert_id, $order, $db; // $insert_id contains the new order orders_id
- 
+        global $insert_id, $order, $db;
+
+        $new_order_id = $insert_id;  // $insert_id contains the new order orders_id
+        
         // retrieve response object from before_process()
         $swp_response = unserialize($_SESSION["swp_response"]);
 
         // store create order object along with response sveaOrderId in db
         $sql_data_array = array(
-            'orders_id' => $insert_id,
+            'orders_id' => $new_order_id,
             'sveaorderid' => $swp_response->sveaOrderId,
             'createorder_object' => $_SESSION["swp_order"]      // session data is already serialized
         );
@@ -573,57 +575,32 @@ class sveawebpay_invoice extends SveaZencart {
    
         // if autodeliver option set, deliver order
         if( MODULE_PAYMENT_SWPINVOICE_AUTODELIVER == "True" ) {
-
-            $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
-            $swp_deliverOrder = WebPay::deliverOrder( $sveaConfig );
-
-            // this really exploits CreateOrderRow objects having public properties...
-            $swp_order = unserialize($_SESSION["swp_order"]);
-
-            // ~hack
-            $swp_deliverOrder->orderRows = $swp_order->orderRows;
-            $swp_deliverOrder->shippingFeeRows = $swp_order->shippingFeeRows;
-            $swp_deliverOrder->invoiceFeeRows = $swp_order->invoiceFeeRows;
-            $swp_deliverOrder->fixedDiscountRows = $swp_order->fixedDiscountRows;
-            $swp_deliverOrder->relativeDiscountRows = $swp_order->relativeDiscountRows;
-            $swp_deliverOrder->countryCode = $swp_order->countryCode;
-            // /hack
-
-            $swp_deliverOrder->setOrderId( $swp_response->sveaOrderId );
-            $swp_deliverOrder->setInvoiceDistributionType( MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE );
-
-            $swp_deliveryResponse = $swp_deliverOrder->deliverInvoiceOrder()->doRequest();
-
-            // all is well?
-            if($swp_deliveryResponse->accepted == 1){
-                //update order status for delivered
-                $deliveryAccepted = 1;              // customer is now notified
-                $order->info['order_status'] = 3;   // Delivered [3]
+ 
+            $sveaOrderId = $this->doDeliverOrder($insert_id);
+            if( $sveaOrderId != false ) {
+           
+                // insert autodeliver order status update in database
+                $sql_data_array = array(
+                    'orders_id' => $new_order_id,
+                    'orders_status_id' => 3,  // Magic number 3 from "Delivered [3]"                             
+                    'date_added' => 'now()',
+                    'customer_notified' => 1,
+                    'comments' => 'AutoDelivered ' . date("Y-m-d G:i:s") . ' SveaOrderId: ' . $sveaOrderId 
+                );
+                zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
+                
+                // make sure order status shows up as "delivered" in admin orders list
+                $db->Execute(   "update " . TABLE_ORDERS . " " .
+                                "set orders_status = '" . 3 . "', " .    // Magic number 3 from "Delivered [3]"
+                                "last_modified = now() " .     
+                                "where orders_id = '" . $new_order_id . "'")
+                ;
             }
-            // delivery failure
             else {
-                // order will show up as if AutoDeliver set to false in shop order history, i.e. handled manually
-            }
-
-            // insert autodeliver order status update in database
-            $sql_data_array = array('orders_id' => $insert_id,
-                'orders_status_id' => $order->info['order_status'], // set to MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID in constructor
-                'date_added' => 'now()',
-                'customer_notified' => 1,                               // meaning invoice will be sent out from svea
-                'comments' => 'AutoDelivered ' . date("Y-m-d G:i:s") . ' SveaOrderId #: ' . (    
-                    isset( $swp_response->sveaOrderId ) ?                       // TODO comment () fix => other modules
-                    $swp_response->sveaOrderId : $swp_response->transactionId   //if request to webservice, use sveaOrderId, if hosted use transactionId
-                ) 
-            );
-            zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
-         
-            // make sure order status shows up as "delivered" in admin orders list
-            $db->Execute(   "update " . TABLE_ORDERS . "
-                        set orders_status = '" . $order->info['order_status'] . "', last_modified = now()
-                        where orders_id = '" . $insert_id . "'")
-            ;
+                // we do nothing, as order will show up as undelivered in admin order overview
+            }          
         }
-
+        
         // clean up our session variables set during checkout   //$SESSION[swp_*
         unset($_SESSION['swp_order']);
         unset($_SESSION['swp_response']);
@@ -734,30 +711,42 @@ class sveawebpay_invoice extends SveaZencart {
     /**
      * Called from admin/orders.php when admin chooses to edit an order and updates its order status
      * 
-     * 
      * @param int $oID
      * @param type $status
      * @param type $comments
      * @param type $customer_notified
      * @param type $old_orders_status
      */
-    function _doStatusUpdate($oID, $status, $comments, $customer_notified, $old_orders_status) {
+    function _doStatusUpdate($oID, $status, $comments, $customer_notified, $old_orders_status) {       
         if( $status == 3 ) {    // TODO move magic number to admin settings, should be the same as used for autoDevlivered orders' statuses
-            if( $this->doDeliverOrder($oID) == true ) {
-                // TODO update order status history table with comment?
-            }
-            else {
-                // TODO inform admin that deliver order failed, reset order status to != 3 ?
-            }
-        }       
+                      
+            // update order_status_history to include comment
+            global $db;
+            $result = $db->Execute("SELECT sveaorderid FROM svea_order WHERE orders_id = " . (int)$oID );
+            $sveaOrderId = $result->fields["sveaorderid"];
+
+            $result = $db->Execute( "select * from orders_status_history where orders_id = ". (int)$oID .
+                                    " order by date_added DESC LIMIT 1");
+            $oshID = $result->fields["orders_status_history_id"];
+            
+            $comment = 'Delivered by status update ' . date("Y-m-d G:i:s") . ' SveaOrderId: ' . $sveaOrderId;
+
+            $db->Execute(   "update " . TABLE_ORDERS_STATUS_HISTORY . " " .
+                            "set comments = '" . $comment . "' " .
+                            "where orders_status_history_id = " . (int)$oshID)
+            ;                   
+        }
+        else {
+            // we do nothing, as order will show up as undelivered in admin order overview
+        }
     }
     
     /**
      * Given an orderID, reconstruct the svea order object and send deliver order request. 
-     * Returns true if deliver order request was accepted.
+     * returns false if the deliver order request was accepted, else returns sveaOrderId
      * 
      * @param int $oID -- $oID is the order id
-     * @return boolean  -- return true if the deliver order request was accepted.
+     * @return int -- false (0) or sveaOrderId 
      */
     function doDeliverOrder($oID) {   
         global $db;
@@ -788,36 +777,10 @@ class sveawebpay_invoice extends SveaZencart {
             $swp_deliverOrder->countryCode = $swp_order->countryCode;
             // /hack
 
-            $swp_deliveryResponse = $swp_deliverOrder->deliverInvoiceOrder()->doRequest();
-
-            // all is well?
-            if($swp_deliveryResponse->accepted == 1){
-                //update order status for delivered
-                $deliveryAccepted = 1;              // customer is now notified
-                $order->info['order_status'] = 3;   // Delivered [3]
-            }
-            // delivery failure
-            else {
-                // order will show up as if AutoDeliver set to false in shop order history, i.e. handled manually
-            }
-
-            // insert autodeliver order status update in database
-            $sql_data_array = array('orders_id' => $oID,
-                'orders_status_id' => $order->info['order_status'],     // set to MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID in constructor
-                'date_added' => 'now()',
-                'customer_notified' => 1,                               // meaning invoice will be sent out from svea
-                'comments' => 'Delivered' . date("Y-m-d G:i:s") . ' SveaOrderId #: ' . $sveaOrderId 
-            );
-            zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
-         
-            // make sure order status shows up as "delivered" in admin orders list
-            $db->Execute(   "update " . TABLE_ORDERS . "
-                            set orders_status = '" . $order->info['order_status'] . "', last_modified = now()
-                            where orders_id = '" . $oID . "'")
-            ;
-        
+            $swp_deliveryResponse = $swp_deliverOrder->deliverInvoiceOrder()->doRequest();       
+       
         // return true/false depending on deliver order response
-        return ($swp_deliveryResponse->accepted == 1) ? true : false;
+        return ($swp_deliveryResponse->accepted == 1) ? $sveaOrderId : 0;
     }   
 
     /**
@@ -885,7 +848,7 @@ class sveawebpay_invoice extends SveaZencart {
                         }
                         // handlingfee expressed as absolute amount (incl. tax)
                         else {
-                            $hf_price = $this->convert_to_currency(floatval($this->handling_fee), $currency);
+                            $hf_price = $this->convertToCurrency(floatval($this->handling_fee), $currency);
                         }
                         $hf_taxrate =   zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS,
                                         $order->delivery['country']['id'], $order->delivery['zone_id']);
@@ -1004,7 +967,7 @@ class sveawebpay_invoice extends SveaZencart {
                     if( $order_total['value'] < 0 ) {
                         $svea_order->addDiscount(
                             WebPayItem::fixedDiscount()
-                                ->setAmountExVat( -1* $this->convert_to_currency(strip_tags($order_total['value']), $currency)) // given as positive amount
+                                ->setAmountExVat( -1* $this->convertToCurrency(strip_tags($order_total['value']), $currency)) // given as positive amount
                                 ->setVatPercent($tax_rate)  //Optional, see info above
                                 ->setDescription($order_total['title'])        //Optional
                         );
@@ -1012,7 +975,7 @@ class sveawebpay_invoice extends SveaZencart {
                     else {
                         $svea_order->addFee(
                             WebPayItem::invoiceFee()
-                                ->setAmountExVat($this->convert_to_currency(strip_tags($order_total['value']), $currency))
+                                ->setAmountExVat($this->convertToCurrency(strip_tags($order_total['value']), $currency))
                                 ->setVatPercent($tax_rate)  //Optional, see info above
                                 ->setDescription($order_total['title'])        //Optional
                         );
@@ -1023,6 +986,5 @@ class sveawebpay_invoice extends SveaZencart {
         
         return $svea_order;
     }
-    
-}
+}    
 ?>
