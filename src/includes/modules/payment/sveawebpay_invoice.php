@@ -526,12 +526,12 @@ class sveawebpay_invoice extends SveaZencart {
         $new_order_id = $insert_id;  // $insert_id contains the new order orders_id
         
         // retrieve response object from before_process()
-        $swp_response = unserialize($_SESSION["swp_response"]);
+        $createOrderResponse = unserialize($_SESSION["swp_response"]);
 
         // store create order object along with response sveaOrderId in db
         $sql_data_array = array(
             'orders_id' => $new_order_id,
-            'sveaorderid' => $swp_response->sveaOrderId,
+            'sveaorderid' => $createOrderResponse->sveaOrderId,
             'createorder_object' => $_SESSION["swp_order"]      // session data is already serialized
         );
         zen_db_perform("svea_order", $sql_data_array);
@@ -539,8 +539,8 @@ class sveawebpay_invoice extends SveaZencart {
         // if autodeliver option set, deliver order
         if( MODULE_PAYMENT_SWPINVOICE_AUTODELIVER == "True" ) {
  
-            $sveaOrderId = $this->doDeliverOrder($insert_id);
-            if( $sveaOrderId != false ) {
+            $deliverResponse = $this->doDeliverOrder($insert_id);
+            if( $deliverResponse->accepted == true ) {
            
                 // insert autodeliver order status update in database
                 $sql_data_array = array(
@@ -548,10 +548,10 @@ class sveawebpay_invoice extends SveaZencart {
                     'orders_status_id' => 3,  // Magic number 3 from "Delivered [3]"                             
                     'date_added' => 'now()',
                     'customer_notified' => 1,
-                    'comments' => 'AutoDelivered ' . date("Y-m-d G:i:s") . ' SveaOrderId: ' . $sveaOrderId 
+                    'comments' => 'Order AutoDelivered. (SveaOrderId: ' . $createOrderResponse->sveaOrderId . ')'
                 );
                 zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
-                
+               
                 // make sure order status shows up as "delivered" in admin orders list
                 $db->Execute(   "update " . TABLE_ORDERS . " " .
                                 "set orders_status = '" . 3 . "', " .    // Magic number 3 from "Delivered [3]"
@@ -626,7 +626,7 @@ class sveawebpay_invoice extends SveaZencart {
         }
 
         // insert svea order table if not exists already
-        $sql = "CREATE TABLE svea_order (orders_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, sveaorderid INT NOT NULL, createorder_object BLOB )";
+        $sql = "CREATE TABLE svea_order (orders_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, sveaorderid INT NOT NULL, createorder_object BLOB, invoice_id INT )";
         $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_sveaorderid';");
         if( $res->fields["COUNT(*)"] != 1 ) {
             $db->Execute( $sql );
@@ -743,13 +743,11 @@ class sveawebpay_invoice extends SveaZencart {
         }
     } 
 
-    
     /**
-     * Given an orderID, reconstruct the svea order object and send deliver order request. 
-     * returns false if the deliver order request was accepted, else returns sveaOrderId
+     * Given an orderID, reconstruct the svea order object and send deliver order request, return response
      * 
      * @param int $oID -- $oID is the order id
-     * @return int -- false (0) or sveaOrderId 
+     * @return Svea\DeliverOrderResult
      */
     function doDeliverOrder($oID) {   
         global $db;
@@ -780,10 +778,19 @@ class sveawebpay_invoice extends SveaZencart {
             $swp_deliverOrder->countryCode = $swp_order->countryCode;
             // /hack
 
-            $swp_deliveryResponse = $swp_deliverOrder->deliverInvoiceOrder()->doRequest();       
+            $swp_deliverResponse = $swp_deliverOrder->deliverInvoiceOrder()->doRequest();       
        
-        // return true/false depending on deliver order response
-        return ($swp_deliveryResponse->accepted == 1) ? $sveaOrderId : 0;
+            // if deliverorder accepted, update svea_order table with svea invoiceId
+            if( $swp_deliverResponse->accepted == true ) {
+
+                $db->Execute(   
+                    "update svea_order " .
+                    "set invoice_id = " . $swp_deliverResponse->invoiceId . " " .
+                    "where orders_id = " . (int)$oID )
+                ; 
+            }
+        // return deliver order response
+        return $swp_deliverResponse;
     }   
 
     /**
@@ -1004,22 +1011,43 @@ class sveawebpay_invoice extends SveaZencart {
 
         if( $status == 3 ) {    // TODO move magic number to admin settings, should be the same as used for autoDevlivered orders' statuses
                      
-            $sveaOrderId = $this->doDeliverOrder($oID);
+            $deliverResult = $this->doDeliverOrder($oID);
+            if( $deliverResult->accepted == true ) {
 
-            // update order_status_history to include comment
-            $result = $db->Execute("SELECT sveaorderid FROM svea_order WHERE orders_id = " . (int)$oID );
-            $sveaOrderId = $result->fields["sveaorderid"];
+                // update order_status_history to include comment
+                $sveaResult = $db->Execute("SELECT sveaorderid FROM svea_order WHERE orders_id = " . (int)$oID );
+                $sveaOrderId = $sveaResult->fields["sveaorderid"];
 
-            $result = $db->Execute( "select * from orders_status_history where orders_id = ". (int)$oID .
-                                    " order by date_added DESC LIMIT 1");
-            $oshID = $result->fields["orders_status_history_id"];
+                $historyResult = $db->Execute( "select * from orders_status_history where orders_id = ". (int)$oID .
+                                        " order by date_added DESC LIMIT 1");
+                $oshID = $historyResult->fields["orders_status_history_id"];
 
-            $comment = 'Delivered by status update ' . date("Y-m-d G:i:s") . ' SveaOrderId: ' . $sveaOrderId;
+                $comment = 'Delivered by status update ' . date("Y-m-d G:i:s") . ' SveaOrderId: ' . $sveaOrderId;
 
-            $db->Execute(   "update " . TABLE_ORDERS_STATUS_HISTORY . " " .
-                            "set comments = '" . $comment . "' " .
-                            "where orders_status_history_id = " . (int)$oshID)
-            ;                   
+                $db->Execute(   "update " . TABLE_ORDERS_STATUS_HISTORY . " " .
+                                "set comments = '" . $comment . "' " .
+                                "where orders_status_history_id = " . (int)$oshID)
+                ;                   
+            }
+            // deliverOrder failed, so reset status to old status & state order closed in comment
+            else {
+                $sveaResult = $db->Execute("SELECT sveaorderid FROM svea_order WHERE orders_id = " . (int)$oID );
+                $sveaOrderId = $sveaResult->fields["sveaorderid"];
+  
+                $historyResult = $db->Execute( "select * from orders_status_history where orders_id = ". (int)$oID .
+                                        " order by date_added DESC LIMIT 1");
+                $oshID = $historyResult->fields["orders_status_history_id"];
+
+                $comment = 'WARNING: Deliver order failed, status not changed. (SveaOrderId: ' . $sveaOrderId . ')';
+
+                // update, as zencart enters the status history before _doStatusUpdate called
+                $db->Execute(   "update " . TABLE_ORDERS_STATUS_HISTORY . " " .
+                                "set orders_status_id = " . $old_orders_status . " " .
+                                ", comments = '" . $comment . "' " .
+                                "where orders_status_history_id = " . (int)$oshID)
+                ;                   
+                
+            }
         }
     }
     
@@ -1035,22 +1063,99 @@ class sveawebpay_invoice extends SveaZencart {
         // display svea logo & admin text
         // TODO
         //               
-        // check if status = 3 at any time in history (i.e. order has been delivered) => can't do closeOrder()
-        $result = $db->Execute( "SELECT COUNT(orders_status_id) AS delivered FROM `orders_status_history` WHERE orders_status_id = 3 AND orders_id = " . $oID );
+        // check if status = 3 at any time in history (i.e. order has been delivered) => can't do closeOrder(), but enables credit order
+        $result = $db->Execute( "SELECT COUNT(orders_status_id) AS delivered FROM `orders_status_history` 
+                                WHERE orders_status_id = 3 AND orders_id = " . $oID );
                 
-        if( $result->fields['delivered'] == false ) {   // 0 occurances of "delivered" in history
+        if( $result->fields['delivered'] == 0 ) {   // 0 occurances of "delivered" in history 
             echo '<div id=SveaCancelOrderDiv>' .
                 '<form name=SveaAdminCancelOrder action="http://sveazencart151.se/zc_admin/orders.php" method=get>' .
                     '<input type="hidden" name="oID" value="' . $_GET['oID'] .'" />' .                 
                     '<input type="hidden" name="page" value="' . $_GET['page'] .'" />' .                 
                     '<input type="hidden" name="action" value="doVoid" />' .                 
-                    '<input type="submit" value="Svea admin: Cancel order" />' .
+                    '<input type="submit" value="Svea admin: Close order" />' .
                 '</form>'.
             '</div>';        
         }
-        else {
-            // TODO show the deliverbutton? 
+        else {            
+            // show the refund-button if order has been delivered 
+            echo '<div id=SveaRefundOrderDiv>' .
+                '<form name=SveaAdminRefundOrder action="http://sveazencart151.se/zc_admin/orders.php" method=get>' .
+                    '<input type="hidden" name="oID" value="' . $_GET['oID'] .'" />' .                 
+                    '<input type="hidden" name="page" value="' . $_GET['page'] .'" />' .                 
+                    '<input type="hidden" name="action" value="doRefund" />' .                 
+                    '<input type="submit" value="Svea admin: Credit invoice" />' .
+                '</form>'.
+            '</div>';    
         }
+    }
+
+    // called when we want to cancel an undelivered order
+    function _doRefund($oID) {      
+        global $db;
+        
+        // get svea invoice id reference returned with deliverOrder request result
+        $result = $db->Execute("SELECT * FROM svea_order WHERE orders_id = " . (int)$oID );
+        $sveaOrderId = $result->fields["sveaorderid"];
+        $invoiceId = $result->fields["invoice_id"];
+        $swp_order = unserialize( $result->fields["createorder_object"] );
+        
+        // Create and initialize order object, using either test or production configuration
+        $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+
+        $swp_creditInvoice = WebPay::deliverOrder($sveaConfig)
+                ->setInvoiceDistributionType( MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE )
+                ->setOrderId($sveaOrderId)                                                  //Required, received when creating an order     
+        ;
+     
+        // this really exploits CreateOrderRow objects having public properties...
+        // ~hack
+        $swp_creditInvoice->orderRows = $swp_order->orderRows;
+        $swp_creditInvoice->shippingFeeRows = $swp_order->shippingFeeRows;
+        $swp_creditInvoice->invoiceFeeRows = $swp_order->invoiceFeeRows;
+        $swp_creditInvoice->fixedDiscountRows = $swp_order->fixedDiscountRows;
+        $swp_creditInvoice->relativeDiscountRows = $swp_order->relativeDiscountRows;
+        $swp_creditInvoice->countryCode = $swp_order->countryCode;
+        // /hack
+
+        $swp_creditResponse = $swp_creditInvoice->setCreditInvoice($invoiceId)->deliverInvoiceOrder()->doRequest();       
+
+        if( $swp_creditResponse->accepted == true ) {
+            $sql_data_array = array(
+                'orders_id' => $oID,
+                'orders_status_id' => 10,  // TODO move to constants file -- Magic number meaning Svea Invoice is Credited"                             
+                'date_added' => 'now()',
+                'customer_notified' => 0,
+                'comments' => 'Svea invoice credited. ' . '(Svea invoiceId: ' . $invoiceId . ')'
+            );
+            zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
+
+            $db->Execute(   "update " . TABLE_ORDERS . " " .
+                            "set orders_status = '" . 10 . "', " .
+                            "last_modified = now() " .     
+                            "where orders_id = '" . $oID . "'")
+            ;
+        }
+        // creditOrder failed, insert error in history
+        else {
+            $historyResult = $db->Execute(  "select * from orders_status_history where orders_id = ". (int)$oID .
+                                            " order by date_added DESC LIMIT 1");
+            $oshID = $historyResult->fields["orders_status_history_id"];
+            
+            $comment =  'WARNING: Credit invoice failed, status not changed. ' . 
+                        'Error: ' . $swp_creditResponse->errormessage . ". (InvoiceId: " . $invoiceId  . ')';
+      
+            $sql_data_array = array(
+                'orders_id' => $oID,
+                'orders_status_id' => $oshID,                             
+                'date_added' => 'now()',
+                'customer_notified' => 0,
+                'comments' => $comment  
+            );
+            zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);                
+        }
+
+        zen_redirect(zen_href_link(FILENAME_ORDERS, zen_get_all_get_params(array('action')). 'action=edit', 'NONSSL'));    // redirect to orders list
     }
     
     // called when we want to cancel an undelivered order
@@ -1058,7 +1163,7 @@ class sveawebpay_invoice extends SveaZencart {
         global $db;
         
         // get svea order id reference returned in createOrder request result
-        $result = $db->Execute("SELECT sveaorderid, createorder_object FROM svea_order WHERE orders_id = " . (int)$oID );
+        $result = $db->Execute("SELECT * FROM svea_order WHERE orders_id = " . (int)$oID );
         $sveaOrderId = $result->fields["sveaorderid"];
         $swp_order = unserialize( $result->fields["createorder_object"] );
         
@@ -1080,22 +1185,44 @@ class sveawebpay_invoice extends SveaZencart {
         // /hack
 
         $swp_closeResponse = $swp_closeOrder->closeInvoiceOrder()->doRequest();       
-    
+
         if( $swp_closeResponse->accepted == true ) {
-            // ta bort order från tabellen & gåt ill sammanställningen
-            // TODO
+
+            $sql_data_array = array(
+                'orders_id' => $oID,
+                'orders_status_id' => 9,  // TODO move to constants file -- Magic number meaning Svea Order is Closed"                             
+                'date_added' => 'now()',
+                'customer_notified' => 0,
+                'comments' => 'Svea order closed. ' . '(SveaOrderId: ' . $sveaOrderId . ')'
+            );
+            zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
+
+            $db->Execute(   "update " . TABLE_ORDERS . " " .
+                            "set orders_status = '" . 9 . "', " .
+                            "last_modified = now() " .     
+                            "where orders_id = '" . $oID . "'" )
+            ;
+        }
+        // close order failed, insert error in history
+        else {
+            $historyResult = $db->Execute(  "select * from orders_status_history where orders_id = ". (int)$oID .
+                                            " order by date_added DESC LIMIT 1");
+            $oshID = $historyResult->fields["orders_status_history_id"];
             
+            $comment =  'WARNING: Close order request failed, status not changed. ' . 
+                        'Error: ' . $swp_closeResponse->errormessage . ' (SveaOrderId: ' . $sveaOrderId . ')';
+         
+            $sql_data_array = array(
+                'orders_id' => $oID,
+                'orders_status_id' => $oshID,                             
+                'date_added' => 'now()',
+                'customer_notified' => 0,
+                'comments' => $comment  
+            );
+            zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
         }
         
-// DEBUG             
-//        $result = $db->Execute( "select * from orders_status_history where orders_id = ". (int)$oID .
-//                                " order by date_added DESC LIMIT 1");
-//        $oshID = $result->fields["orders_status_history_id"];
-//        
-//        $db->Execute(   "update " . TABLE_ORDERS_STATUS_HISTORY . " " .
-//                        "set comments = '" . time() . "' " .
-//                        "where orders_status_history_id = " . (int)$oshID)
-//        ;
-    } 
+        zen_redirect(zen_href_link(FILENAME_ORDERS, zen_get_all_get_params(array('action')). 'action=edit', 'NONSSL'));    // redirect to orders list
+    }
 }    
 ?>

@@ -85,6 +85,6 @@ class HandleOrder {
         $svea_req = $request->DeliverOrderEu($object);
 
         $response = new \SveaResponse($svea_req,"");
-        return $response->response;
+        return $response->getResponse();
     }
 }
