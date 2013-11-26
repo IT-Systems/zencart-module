@@ -545,7 +545,7 @@ class sveawebpay_invoice extends SveaZencart {
                 // insert autodeliver order status update in database
                 $sql_data_array = array(
                     'orders_id' => $new_order_id,
-                    'orders_status_id' => 3,  // Magic number 3 from "Delivered [3]"                             
+                    'orders_status_id' => SVEA_ORDERSTATUS_DELIVERED_ID,                              
                     'date_added' => 'now()',
                     'customer_notified' => 1,
                     'comments' => 'Order AutoDelivered. (SveaOrderId: ' . $createOrderResponse->sveaOrderId . ')'
@@ -554,7 +554,7 @@ class sveawebpay_invoice extends SveaZencart {
                
                 // make sure order status shows up as "delivered" in admin orders list
                 $db->Execute(   "update " . TABLE_ORDERS . " " .
-                                "set orders_status = '" . 3 . "', " .    // Magic number 3 from "Delivered [3]"
+                                "set orders_status = '" . SVEA_ORDERSTATUS_DELIVERED_ID . "', " .    // Magic number 3 from "Delivered [3]"
                                 "last_modified = now() " .     
                                 "where orders_id = '" . $new_order_id . "'")
                 ;
@@ -626,17 +626,28 @@ class sveawebpay_invoice extends SveaZencart {
         }
 
         // insert svea order table if not exists already
-        $sql = "CREATE TABLE svea_order (orders_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, sveaorderid INT NOT NULL, createorder_object BLOB, invoice_id INT )";
         $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_sveaorderid';");
         if( $res->fields["COUNT(*)"] != 1 ) {
+            $sql = "CREATE TABLE svea_order (orders_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, sveaorderid INT NOT NULL, createorder_object BLOB, invoice_id INT )";
             $db->Execute( $sql );
         }     
+        
+        // insert svea order statuses into table order_status, if not exists already
+        $res = $db->Execute('SELECT COUNT(*) FROM ' . TABLE_ORDERS_STATUS . ' WHERE orders_status_name = "'. SVEA_ORDERSTATUS_CLOSED .'"');
+        if( $res->fields["COUNT(*)"] == 0 ) {
+            $sql =  'INSERT INTO ' . TABLE_ORDERS_STATUS . ' (`orders_status_id`, `language_id`, `orders_status_name`) VALUES ' .
+                    '(' . SVEA_ORDERSTATUS_CLOSED_ID . ', 1, "' . SVEA_ORDERSTATUS_CLOSED . '"), ' .
+                    '(' . SVEA_ORDERSTATUS_CREDITED_ID . ', 1, "' . SVEA_ORDERSTATUS_CREDITED . '")' 
+            ;          
+            $db->Execute( $sql );
+        } 
     }
     // standard uninstall function
     function remove() {
         global $db;
         $db->Execute("delete from " . TABLE_CONFIGURATION . " where configuration_key in ('" . implode("', '", $this->keys()) . "')");
-        // we don't delete the svea_ tables, as they may be needed by other payment modules and to admin orders etc.
+        
+        // we don't delete svea_order tables, as data may be needed by other payment modules and to admin orders etc.        
     }
 
     // must perfectly match keys inserted in install function
@@ -1009,7 +1020,7 @@ class sveawebpay_invoice extends SveaZencart {
     function _doStatusUpdate($oID, $status, $comments, $customer_notified, $old_orders_status) {       
         global $db;
 
-        if( $status == 3 ) {    // TODO move magic number to admin settings, should be the same as used for autoDevlivered orders' statuses
+        if( $status == SVEA_ORDERSTATUS_DELIVERED_ID ) {   // should be the same as used for autoDevlivered orders' statuses
                      
             $deliverResult = $this->doDeliverOrder($oID);
             if( $deliverResult->accepted == true ) {
@@ -1052,7 +1063,8 @@ class sveawebpay_invoice extends SveaZencart {
     }
     
     /**
-     * Called from admin/orders.php at the top of the edit order view
+     * Called from admin/orders.php at the top of the edit order view, here we add order administration buttons to
+     * hook into _doRefund() and _doVoid() actions
      * 
      * @param int $oID
 
@@ -1061,19 +1073,21 @@ class sveawebpay_invoice extends SveaZencart {
         global $db;
 
         // display svea logo & admin text
-        // TODO
-        //               
+        echo '<div id=SveaLogoDiv>' .
+                '<img alt="Svea logo" src="/images/Svea/sveawebpay.png">' .
+        '</div>';  
+        
         // check if status = 3 at any time in history (i.e. order has been delivered) => can't do closeOrder(), but enables credit order
-        $result = $db->Execute( "SELECT COUNT(orders_status_id) AS delivered FROM `orders_status_history` 
-                                WHERE orders_status_id = 3 AND orders_id = " . $oID );
+        $result = $db->Execute( 'SELECT COUNT(orders_status_id) AS delivered FROM `orders_status_history` 
+                                WHERE orders_status_id = ' . SVEA_ORDERSTATUS_DELIVERED_ID . ' AND orders_id = ' . $oID );
                 
-        if( $result->fields['delivered'] == 0 ) {   // 0 occurances of "delivered" in history 
+        if( $result->fields['delivered'] == 0 ) {   // found 0 occurances of "delivered" in history, show close order button
             echo '<div id=SveaCancelOrderDiv>' .
                 '<form name=SveaAdminCancelOrder action="http://sveazencart151.se/zc_admin/orders.php" method=get>' .
                     '<input type="hidden" name="oID" value="' . $_GET['oID'] .'" />' .                 
                     '<input type="hidden" name="page" value="' . $_GET['page'] .'" />' .                 
                     '<input type="hidden" name="action" value="doVoid" />' .                 
-                    '<input type="submit" value="Svea admin: Close order" />' .
+                    '<input type="submit" value="' . SVEA_ADMIN_CLOSEBUTTON .'" />' .
                 '</form>'.
             '</div>';        
         }
@@ -1084,7 +1098,7 @@ class sveawebpay_invoice extends SveaZencart {
                     '<input type="hidden" name="oID" value="' . $_GET['oID'] .'" />' .                 
                     '<input type="hidden" name="page" value="' . $_GET['page'] .'" />' .                 
                     '<input type="hidden" name="action" value="doRefund" />' .                 
-                    '<input type="submit" value="Svea admin: Credit invoice" />' .
+                    '<input type="submit" value="' . SVEA_ADMIN_CREDITBUTTON .'" />' .
                 '</form>'.
             '</div>';    
         }
@@ -1108,8 +1122,7 @@ class sveawebpay_invoice extends SveaZencart {
                 ->setOrderId($sveaOrderId)                                                  //Required, received when creating an order     
         ;
      
-        // this really exploits CreateOrderRow objects having public properties...
-        // ~hack
+        // ~hack, exploits CreateOrderRow objects having public properties...
         $swp_creditInvoice->orderRows = $swp_order->orderRows;
         $swp_creditInvoice->shippingFeeRows = $swp_order->shippingFeeRows;
         $swp_creditInvoice->invoiceFeeRows = $swp_order->invoiceFeeRows;
@@ -1123,7 +1136,7 @@ class sveawebpay_invoice extends SveaZencart {
         if( $swp_creditResponse->accepted == true ) {
             $sql_data_array = array(
                 'orders_id' => $oID,
-                'orders_status_id' => 10,  // TODO move to constants file -- Magic number meaning Svea Invoice is Credited"                             
+                'orders_status_id' => SVEA_ORDERSTATUS_CREDITED_ID,                           
                 'date_added' => 'now()',
                 'customer_notified' => 0,
                 'comments' => 'Svea invoice credited. ' . '(Svea invoiceId: ' . $invoiceId . ')'
@@ -1131,7 +1144,7 @@ class sveawebpay_invoice extends SveaZencart {
             zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
             $db->Execute(   "update " . TABLE_ORDERS . " " .
-                            "set orders_status = '" . 10 . "', " .
+                            "set orders_status = '" . SVEA_ORDERSTATUS_CREDITED_ID . "', " .
                             "last_modified = now() " .     
                             "where orders_id = '" . $oID . "'")
             ;
@@ -1140,14 +1153,14 @@ class sveawebpay_invoice extends SveaZencart {
         else {
             $historyResult = $db->Execute(  "select * from orders_status_history where orders_id = ". (int)$oID .
                                             " order by date_added DESC LIMIT 1");
-            $oshID = $historyResult->fields["orders_status_history_id"];
+            $osID = $historyResult->fields["orders_status_id"];
             
             $comment =  'WARNING: Credit invoice failed, status not changed. ' . 
                         'Error: ' . $swp_creditResponse->errormessage . ". (InvoiceId: " . $invoiceId  . ')';
       
             $sql_data_array = array(
                 'orders_id' => $oID,
-                'orders_status_id' => $oshID,                             
+                'orders_status_id' => $osID,                             
                 'date_added' => 'now()',
                 'customer_notified' => 0,
                 'comments' => $comment  
@@ -1190,7 +1203,7 @@ class sveawebpay_invoice extends SveaZencart {
 
             $sql_data_array = array(
                 'orders_id' => $oID,
-                'orders_status_id' => 9,  // TODO move to constants file -- Magic number meaning Svea Order is Closed"                             
+                'orders_status_id' => SVEA_ORDERSTATUS_CLOSED_ID,                         
                 'date_added' => 'now()',
                 'customer_notified' => 0,
                 'comments' => 'Svea order closed. ' . '(SveaOrderId: ' . $sveaOrderId . ')'
@@ -1198,7 +1211,7 @@ class sveawebpay_invoice extends SveaZencart {
             zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
             $db->Execute(   "update " . TABLE_ORDERS . " " .
-                            "set orders_status = '" . 9 . "', " .
+                            "set orders_status = '" . SVEA_ORDERSTATUS_CLOSED_ID . "', " .
                             "last_modified = now() " .     
                             "where orders_id = '" . $oID . "'" )
             ;
@@ -1207,14 +1220,14 @@ class sveawebpay_invoice extends SveaZencart {
         else {
             $historyResult = $db->Execute(  "select * from orders_status_history where orders_id = ". (int)$oID .
                                             " order by date_added DESC LIMIT 1");
-            $oshID = $historyResult->fields["orders_status_history_id"];
+            $osID = $historyResult->fields["orders_status_id"];
             
             $comment =  'WARNING: Close order request failed, status not changed. ' . 
                         'Error: ' . $swp_closeResponse->errormessage . ' (SveaOrderId: ' . $sveaOrderId . ')';
          
             $sql_data_array = array(
                 'orders_id' => $oID,
-                'orders_status_id' => $oshID,                             
+                'orders_status_id' => $osID,                             
                 'date_added' => 'now()',
                 'customer_notified' => 0,
                 'comments' => $comment  
