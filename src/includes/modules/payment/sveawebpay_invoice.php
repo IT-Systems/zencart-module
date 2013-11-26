@@ -1009,6 +1009,44 @@ class sveawebpay_invoice extends SveaZencart {
     }
 
     /**
+     * Updates latest order_status entry in table order, orders_status_history
+     * 
+     * @param int $oID  -- order id to change orders_status for
+     * @param int $status -- updated status you want to set
+     * @param string $comment -- updated comment you want to set
+     */
+    function updateOrdersStatus( $oID, $status, $comment ) {
+        global $db;
+
+        $historyResult = $db->Execute(  "select * from " . TABLE_ORDERS_STATUS_HISTORY . " where orders_id = ". (int)$oID .
+                                        " order by date_added DESC LIMIT 1");
+        $oshID = $historyResult->fields["orders_status_history_id"];
+
+        $db->Execute(   "update " . TABLE_ORDERS_STATUS_HISTORY . " " .
+                        "set comments = '" . $comment . "', " .
+                        "orders_status_id = " . (int)$status . " " .
+                        "where orders_status_history_id = " . (int)$oshID)
+        ;
+        
+        $db->Execute(   "update " . TABLE_ORDERS . " " .
+                        "set orders_status = " . (int)$status . " " .
+                        "where orders_id = " . (int)$oID );
+    }
+    
+    /**
+     * Return the Svea sveaOrderId corresponding to an order
+     * 
+     * @param int $oID
+     * @return int 
+     */
+    function getSveaOrderId( $oID ) {
+        global $db;
+        
+        $sveaResult = $db->Execute("SELECT sveaorderid FROM svea_order WHERE orders_id = " . (int)$oID );
+        return $sveaResult->fields["sveaorderid"];
+    }
+    
+    /**
      * Called from admin/orders.php when admin chooses to edit an order and updates its order status
      * 
      * @param int $oID
@@ -1020,44 +1058,19 @@ class sveawebpay_invoice extends SveaZencart {
     function _doStatusUpdate($oID, $status, $comments, $customer_notified, $old_orders_status) {       
         global $db;
 
-        if( $status == SVEA_ORDERSTATUS_DELIVERED_ID ) {   // should be the same as used for autoDevlivered orders' statuses
-                     
+        if( $status == SVEA_ORDERSTATUS_DELIVERED_ID ) 
+        {             
             $deliverResult = $this->doDeliverOrder($oID);
-            if( $deliverResult->accepted == true ) {
-
-                // update order_status_history to include comment
-                $sveaResult = $db->Execute("SELECT sveaorderid FROM svea_order WHERE orders_id = " . (int)$oID );
-                $sveaOrderId = $sveaResult->fields["sveaorderid"];
-
-                $historyResult = $db->Execute( "select * from orders_status_history where orders_id = ". (int)$oID .
-                                        " order by date_added DESC LIMIT 1");
-                $oshID = $historyResult->fields["orders_status_history_id"];
-
-                $comment = 'Delivered by status update ' . date("Y-m-d G:i:s") . ' SveaOrderId: ' . $sveaOrderId;
-
-                $db->Execute(   "update " . TABLE_ORDERS_STATUS_HISTORY . " " .
-                                "set comments = '" . $comment . "' " .
-                                "where orders_status_history_id = " . (int)$oshID)
-                ;                   
+            
+            if( $deliverResult->accepted == true ) 
+            {               
+                $comment = 'Delivered by status update. (SveaOrderId: ' . $this->getSveaOrderId( $oID ) . ')';
+                $this->updateOrdersStatus( $oID, $status, $comment );    
             }
-            // deliverOrder failed, so reset status to old status & state order closed in comment
-            else {
-                $sveaResult = $db->Execute("SELECT sveaorderid FROM svea_order WHERE orders_id = " . (int)$oID );
-                $sveaOrderId = $sveaResult->fields["sveaorderid"];
-  
-                $historyResult = $db->Execute( "select * from orders_status_history where orders_id = ". (int)$oID .
-                                        " order by date_added DESC LIMIT 1");
-                $oshID = $historyResult->fields["orders_status_history_id"];
-
-                $comment = 'WARNING: Deliver order failed, status not changed. (SveaOrderId: ' . $sveaOrderId . ')';
-
-                // update, as zencart enters the status history before _doStatusUpdate called
-                $db->Execute(   "update " . TABLE_ORDERS_STATUS_HISTORY . " " .
-                                "set orders_status_id = " . $old_orders_status . " " .
-                                ", comments = '" . $comment . "' " .
-                                "where orders_status_history_id = " . (int)$oshID)
-                ;                   
-                
+            else // deliverOrder failed, so reset status to old status & state order closed in comment
+            {
+                $comment = 'WARNING: Deliver order failed, status not changed. (SveaOrderId: ' .  $this->getSveaOrderId( $oID ) . ')';
+                $this->updateOrdersStatus( $oID, $old_orders_status, $comment );           
             }
         }
     }
