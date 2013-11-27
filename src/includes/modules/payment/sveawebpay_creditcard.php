@@ -405,8 +405,8 @@ class sveawebpay_creditcard {
         // put response into responsehandler
         $sveaConfig = (MODULE_PAYMENT_SWPCREDITCARD_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
-        $swp_response = (new SveaResponse( $_REQUEST, $user_country, $sveaConfig ))->response; // returns HostedPaymentResponse
-
+        $swp_respObj = new SveaResponse( $_REQUEST, $user_country, $sveaConfig ); // returns HostedPaymentResponse
+		$swp_response = $swp_respObj->response;
         // check for bad response
         if( $swp_response->resultcode == '0' ) {
             die('Response failed authorization. AC not valid or Response is not recognized');  
