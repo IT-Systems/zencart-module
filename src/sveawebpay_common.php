@@ -574,7 +574,7 @@ class SveaZencart {
             "ZW"=>"Zimbabwe"
         );
         return( array_key_exists( $country, array_flip($countrynames) ) ? 
-                array_flip($countrynames)[$country] : "swp_error: getCountryCode: unknown country name" );
+                array_flip($countrynames[$country]) : "swp_error: getCountryCode: unknown country name" );
     }      
 }
 ?>
