@@ -222,8 +222,6 @@ Use this if you wish to cancel a non-delivered invoice or payment plan order.
 ### Credit invoice plan order
 Use this if you wish to credit a delivered invoice order in full.
 
-![Credit order] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/credit_order.PNG "Credit order")
-
 Should you get an error message "WARNING: Credit invoice failed, status not changed. Error: The invoice to credit is not approved.", the invoice has not been approved by Svea. You may approve the invoice manually via the Svea administration interface. You may also turn on auto-approval of invoices, please contact your Svea integration manager to this effect.
 
 ![Credit order] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/credit_order_2.PNG "Credit order")
