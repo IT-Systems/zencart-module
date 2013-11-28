@@ -490,41 +490,44 @@ class sveawebpay_partpay extends SveaZencart{
         $new_order_id = $insert_id;  // $insert_id contains the new order orders_id
 
         // retrieve response object from before_process()
-        $swp_response = unserialize($_SESSION["swp_response"]);
+        $createOrderResponse = unserialize($_SESSION["swp_response"]);
 
         // store create order object along with response sveaOrderId in db
         $sql_data_array = array(
             'orders_id' => $new_order_id,
-            'sveaorderid' => $swp_response->sveaOrderId,
+            'sveaorderid' => $createOrderResponse->sveaOrderId,
             'createorder_object' => $_SESSION["swp_order"]      // session data is already serialized
         );
         zen_db_perform("svea_order", $sql_data_array);
    
-        // if autodeliver option set, deliver order
-        if( MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER == "True" ) {
- 
-            $sveaOrderId = $this->doDeliverOrderPartPay($insert_id);
-            if( $sveaOrderId != false ) {
-           
+        // if autodeliver order status matches the new order status, deliver the order
+        if( $this->getCurrentOrderStatus( $new_order_id ) == MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER )
+        {          
+            $deliverResponse = $this->doDeliverOrderPartPay($new_order_id);
+            if( $deliverResponse->accepted == true ) 
+            {
+                $comment = 'Order AutoDelivered. (SveaOrderId: ' .$this->getSveaOrderId( $new_order_id ). ')'; 
+                
                 // insert autodeliver order status update in database
                 $sql_data_array = array(
                     'orders_id' => $new_order_id,
-                    'orders_status_id' => 3,  // Magic number 3 from "Delivered [3]"                             
+                    'orders_status_id' => SVEA_ORDERSTATUS_DELIVERED_ID,              
                     'date_added' => 'now()',
                     'customer_notified' => 1,
-                    'comments' => 'AutoDelivered ' . date("Y-m-d G:i:s") . ' SveaOrderId: ' . $sveaOrderId 
+                    'comments' => $comment
                 );
                 zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
                 
-                // make sure order status shows up as "delivered" in admin orders list
                 $db->Execute(   "update " . TABLE_ORDERS . " " .
-                                "set orders_status = '" . 3 . "', " .    // Magic number 3 from "Delivered [3]"
-                                "last_modified = now() " .     
-                                "where orders_id = '" . $new_order_id . "'")
-                ;
+                                "set orders_status = " . SVEA_ORDERSTATUS_DELIVERED_ID . " " .
+                                "where orders_id = " . $new_order_id 
+                );
             }
-            else {
-                // we do nothing, as order will show up as undelivered in admin order overview
+            else 
+            {
+                $comment =  'WARNING: AutoDeliver failed, status not changed. ' .
+                            'Error: ' . $deliverResponse->errormessage . ' (SveaOrderId: ' .$this->getSveaOrderId( $new_order_id ). ')';
+                $this->insertOrdersStatus( $new_order_id, $this->getCurrentOrderStatus( $new_order_id ), $comment );
             }
         }
 
@@ -601,16 +604,42 @@ class sveawebpay_partpay extends SveaZencart{
         $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
         $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
         $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value (but see AutoDeliver option below).', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
-        $db->Execute($common . ", set_function) values ('AutoDeliver Order', 'MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER', 'False', 'Do you want to autodeliver order invoices? This will override the Set Order Status setting above.', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
+        $db->Execute($common . ", set_function) values ('Auto Deliver Order', 'MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER', '3', 'AutoDeliver: When the order status of an order is set to this value, it will be delivered to Svea. Use in conjunction with Set Order Status above to autodeliver orders.', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(')");
         $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPPARTPAY_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
         $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPPARTPAY_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
         $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
+        
+        // insert svea order id table if not exists already
+        $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_sveaorderid';");
+        if( $res->fields["COUNT(*)"] != 1 ) {
+            $db->Execute("CREATE TABLE svea_sveaorderid (orders_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, sveaorderid INT NOT NULL)");
+        }
+
+        // insert svea order table if not exists already
+        $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_sveaorderid';");
+        if( $res->fields["COUNT(*)"] != 1 ) {
+            $sql = "CREATE TABLE svea_order (orders_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, sveaorderid INT NOT NULL, createorder_object BLOB, invoice_id INT )";
+            $db->Execute( $sql );
+        }     
+        
+        // insert svea order statuses into table order_status, if not exists already
+        $res = $db->Execute('SELECT COUNT(*) FROM ' . TABLE_ORDERS_STATUS . ' WHERE orders_status_name = "'. SVEA_ORDERSTATUS_CLOSED .'"');
+        if( $res->fields["COUNT(*)"] == 0 ) {
+            $sql =  'INSERT INTO ' . TABLE_ORDERS_STATUS . ' (`orders_status_id`, `language_id`, `orders_status_name`) VALUES ' .
+                    '(' . SVEA_ORDERSTATUS_CLOSED_ID . ', 1, "' . SVEA_ORDERSTATUS_CLOSED . '"), ' .
+                    '(' . SVEA_ORDERSTATUS_CREDITED_ID . ', 1, "' . SVEA_ORDERSTATUS_CREDITED . '"), ' .
+                    '(' . SVEA_ORDERSTATUS_DELIVERED_ID . ', 1, "' . SVEA_ORDERSTATUS_DELIVERED . '")' 
+            ;          
+            $db->Execute( $sql );
+        } 
+        
     }
 
     // standard uninstall function
     function remove() {
         global $db;
-        $db->Execute("delete from " . TABLE_CONFIGURATION . " where configuration_key in ('" . implode("', '", $this->keys()) . "')");
+        $db->Execute("delete from " . TABLE_CONFIGURATION . " where configuration_key in ('" . implode("', '", $this->keys()) . "')");       
+        // we don't delete svea_order tables, as data may be needed by other payment modules and to admin orders etc.      
     }
 
     // must perfectly match keys inserted in install function
@@ -737,6 +766,56 @@ class sveawebpay_partpay extends SveaZencart{
     }
     
     /**
+     * Given an orderID, reconstruct the svea order object and send deliver order request, return response
+     * 
+     * @param int $oID -- $oID is the order id
+     * @return Svea\DeliverOrderResult
+     */
+    function doDeliverOrderPartPay($oID) {   
+        global $db;
+
+        // get zencart order from db
+        $order = new order($oID); 
+        
+        // get svea order id reference returned in createOrder request result
+        $sveaOrderId = $this->getSveaOrderId( $oID );
+        $swp_order = $this->getSveaCreateOrderObject( $oID );
+        
+        // Create and initialize order object, using either test or production configuration
+        $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+
+        $swp_deliverOrder = WebPay::deliverOrder( $sveaConfig )
+            ->setOrderId($sveaOrderId)                                  
+        ;
+    
+        // TODO create helper functions in integration package that transforms createOrder -> deliverOrder -> closeOrder etc. (see INTG-324)
+
+        // this really exploits CreateOrderRow objects having public properties...
+        // ~hack
+        $swp_deliverOrder->orderRows = $swp_order->orderRows;
+        $swp_deliverOrder->shippingFeeRows = $swp_order->shippingFeeRows;
+        $swp_deliverOrder->invoiceFeeRows = $swp_order->invoiceFeeRows;
+        $swp_deliverOrder->fixedDiscountRows = $swp_order->fixedDiscountRows;
+        $swp_deliverOrder->relativeDiscountRows = $swp_order->relativeDiscountRows;
+        $swp_deliverOrder->countryCode = $swp_order->countryCode;
+        // /hack
+
+        $swp_deliverResponse = $swp_deliverOrder->deliverPaymentPlanOrder()->doRequest();
+
+        // if deliverorder accepted, update svea_order table with Svea contractNumber
+        if( $swp_deliverResponse->accepted == true ) 
+        {
+            $db->Execute(   
+                "update svea_order " .
+                "set invoice_id = " . $swp_deliverResponse->contractNumber. " " .
+                "where orders_id = " . (int)$oID )
+            ; 
+        }
+        // return deliver order response
+        return $swp_deliverResponse;
+    }   
+  
+    /**
      * Called from admin/orders.php when admin chooses to edit an order and updates its order status
      * 
      * @param int $oID
@@ -746,274 +825,112 @@ class sveawebpay_partpay extends SveaZencart{
      * @param type $old_orders_status
      */
     function _doStatusUpdate($oID, $status, $comments, $customer_notified, $old_orders_status) {       
-        if( $status == 3 ) {    // TODO move magic number to admin settings, should be the same as used for autoDevlivered orders' statuses
-               
-            $sveaOrderId = $this->doDeliverOrderPartPay($oID);
+        global $db;
 
-            // update order_status_history to include comment
-            global $db;
-            $result = $db->Execute("SELECT sveaorderid FROM svea_order WHERE orders_id = " . (int)$oID );
-            $sveaOrderId = $result->fields["sveaorderid"];
-
-            $result = $db->Execute( "select * from orders_status_history where orders_id = ". (int)$oID .
-                                    " order by date_added DESC LIMIT 1");
-            $oshID = $result->fields["orders_status_history_id"];
+        switch( $status ) 
+        { 
+        case $old_orders_status:
+            // do nothing
+            break;
             
-            $comment = 'Delivered by status update ' . date("Y-m-d G:i:s") . ' SveaOrderId: ' . $sveaOrderId;
-
-            $db->Execute(   "update " . TABLE_ORDERS_STATUS_HISTORY . " " .
-                            "set comments = '" . $comment . "' " .
-                            "where orders_status_history_id = " . (int)$oshID)
-            ;                   
+        case MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER:  
+            // deliver if new status == autodeliver status setting
+        case SVEA_ORDERSTATUS_DELIVERED_ID:
+            $deliverResult = $this->doDeliverOrderPartPay($oID);
+            if( $deliverResult->accepted == true ) 
+            {               
+                $comment = 'Delivered by status update. (SveaOrderId: ' . $this->getSveaOrderId( $oID ) . ')';
+                $status = SVEA_ORDERSTATUS_DELIVERED_ID;  // override set status
+            }
+            else // deliverOrder failed, so reset status to old status & state order closed in comment
+            {
+                $comment =  'WARNING: Deliver order failed, status not changed. ' . 
+                            'Error: ' . $deliverResult->errormessage . ' (SveaOrderId: ' .  $this->getSveaOrderId( $oID ) . ')';
+                $status = $old_orders_status;
+            }
+            $this->updateOrdersStatus( $oID, $status, $comment );   
+            break;
+            
+        case SVEA_ORDERSTATUS_CLOSED_ID:
+            $this->_doVoid( $oID, $old_orders_status );
+            break;
+        
+        case SVEA_ORDERSTATUS_CREDITED_ID:
+            $this->_doRefund( $oID, $old_orders_status );
+            break;
+        
+        default:
+            break;
         }
-        else {
-            // we do nothing, as order will show up as undelivered in admin order overview
+    }
+
+    // called when we want to refund a delivered order (i.e. invoice)
+    function _doRefund($oID, $from_doStatusUpdate = false ) {      
+        global $db;
+        
+        // get svea invoice id reference returned with deliverOrder request result
+        $sveaOrderId = $this->getSveaOrderId( $oID );
+        $contractNumber = $this->getSveaInvoiceId( $oID );   // contains contractNumber
+        
+        $comment =  'WARNING: Credit invoice is not applicable to Payment plan orders, status not changed. ' . "(ContractNumber: " . $contractNumber  . ')'; 
+        $status = ($from_doStatusUpdate == false) ? $this->getCurrentOrderStatus($oID) : $from_doStatusUpdate;     // use current/old order status
+        
+        if( $from_doStatusUpdate == true )  // update status inserted before _doStatusUpdate
+        {
+            $this->updateOrdersStatus( $oID, $status, $comment );
+        }
+        else    // insert status
+        {
+            $this->insertOrdersStatus( $oID, $status, $comment );
         }
     }
     
-    /**
-     * Given an orderID, reconstruct the svea order object and send deliver order request. 
-     * returns false if the deliver order request was accepted, else returns sveaOrderId
-     * 
-     * @param int $oID -- $oID is the order id
-     * @return int -- false (0) or sveaOrderId 
-     */
-    function doDeliverOrderPartPay($oID) {   
+    // called when we want to cancel (close) an undelivered order
+    function _doVoid($oID, $from_doStatusUpdate = false ) {      
         global $db;
-
-        // get zencart order from db
-        $order = new order($oID); 
         
-        // get svea order id reference returned in createOrder request result
-        $result = $db->Execute("SELECT sveaorderid, createorder_object FROM svea_order WHERE orders_id = " . (int)$oID );
-        $sveaOrderId = $result->fields["sveaorderid"];
-        $swp_order = unserialize( $result->fields["createorder_object"] );
+        $sveaOrderId = $this->getSveaOrderId( $oID );
+        $swp_order = $this->getSveaCreateOrderObject( $oID );
         
         // Create and initialize order object, using either test or production configuration
         $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
-        $swp_deliverOrder = WebPay::deliverOrder( $sveaConfig )
-            ->setOrderId($sveaOrderId)                                  
+        $swp_closeOrder = WebPay::closeOrder($sveaConfig)
+            ->setOrderId($sveaOrderId)    
         ;
      
-            // this really exploits CreateOrderRow objects having public properties...
-            // ~hack
-            $swp_deliverOrder->orderRows = $swp_order->orderRows;
-            $swp_deliverOrder->shippingFeeRows = $swp_order->shippingFeeRows;
-            $swp_deliverOrder->invoiceFeeRows = $swp_order->invoiceFeeRows;
-            $swp_deliverOrder->fixedDiscountRows = $swp_order->fixedDiscountRows;
-            $swp_deliverOrder->relativeDiscountRows = $swp_order->relativeDiscountRows;
-            $swp_deliverOrder->countryCode = $swp_order->countryCode;
-            // /hack
+        // this really exploits CreateOrderRow objects having public properties...
+        // ~hack
+        $swp_closeOrder->orderRows = $swp_order->orderRows;
+        $swp_closeOrder->shippingFeeRows = $swp_order->shippingFeeRows;
+        $swp_closeOrder->invoiceFeeRows = $swp_order->invoiceFeeRows;
+        $swp_closeOrder->fixedDiscountRows = $swp_order->fixedDiscountRows;
+        $swp_closeOrder->relativeDiscountRows = $swp_order->relativeDiscountRows;
+        $swp_closeOrder->countryCode = $swp_order->countryCode;
+        // /hack
 
-            $swp_deliveryResponse = $swp_deliverOrder->deliverPaymentPlanOrder()->doRequest();       
-       
-        // return true/false depending on deliver order response
-        return ($swp_deliveryResponse->accepted == 1) ? $sveaOrderId : 0;
-    }   
-    
-    /**
-     * parseOrderTotals() goes through the zencart order order_totals for diverse non-product
-     * order rows and updates the svea order object with the appropriate shipping, handling
-     * and discount rows.
-     * 
-     * @param array $order_totals
-     * @param createOrderBuilder or deliverOrderBuilder $svea_order
-     * @return createOrderBuilder or deliverOrderBuilder -- the updated $svea_order object
-     */
-    function parseOrderTotals( $order_totals, &$svea_order ) {
-        global $db, $order;
-        
-        $currency = $this->getCurrency($order->info['currency']);
-        
-        foreach ($order_totals as $ot_id => $order_total) {
+        $swp_closeResponse = $swp_closeOrder->closePaymentPlanOrder()->doRequest(); 
 
-            switch ($order_total['code']) {
-
-                // ignore these order_total codes
-                case in_array( $order_total['code'], $this->ignore_list):
-                case 'ot_subtotal':
-                case 'ot_total':
-                case 'ot_tax':
-                    // do nothing
-                    break;
-
-                // if shipping fee, create WebPayItem::shippingFee object and add to order
-                case 'ot_shipping':
-
-                    // makes use of zencart $order-info[] shipping information to populate object
-                    // shop shows prices including tax, take this into accord when calculating tax
-                    if (DISPLAY_PRICE_WITH_TAX == 'false') {
-                        $amountExVat = $order->info['shipping_cost'];
-                        $amountIncVat = $order->info['shipping_cost'] + $order->info['shipping_tax'];
-                    }
-                    else {
-                        $amountExVat = $order->info['shipping_cost'] - $order->info['shipping_tax'];
-                        $amountIncVat = $order->info['shipping_cost'] ;
-                    }
-
-                    // add WebPayItem::shippingFee to swp_order object
-                    $svea_order->addFee(
-                            WebPayItem::shippingFee()
-                                    ->setDescription($order->info['shipping_method'])
-                                    ->setAmountExVat( $amountExVat )
-                                    ->setAmountIncVat( $amountIncVat )
-                    );
-                    break;
-
-                // if handling fee applies, create WebPayItem::invoiceFee object and add to order
-                case 'sveawebpay_handling_fee' :
-
-                    // is the handling_fee module activated?
-                    if (isset($this->handling_fee) && $this->handling_fee > 0) {
-
-                        // handlingfee expressed as percentage?
-                        if (substr($this->handling_fee, -1) == '%') {
-
-                            // sum of products + shipping * handling_fee as percentage
-                            $hf_percentage = floatval(substr($this->handling_fee, 0, -1));
-
-                            $hf_price = ($order->info['subtotal'] + $order->info['shipping_cost']) * ($hf_percentage / 100.0);
-                        }
-                        // handlingfee expressed as absolute amount (incl. tax)
-                        else {
-                            $hf_price = $this->convertToCurrency(floatval($this->handling_fee), $currency);
-                        }
-                        $hf_taxrate =   zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS,
-                                        $order->delivery['country']['id'], $order->delivery['zone_id']);
-
-                        // add WebPayItem::invoiceFee to swp_order object
-                        $svea_order->addFee(
-                                WebPayItem::invoiceFee()
-                                        ->setName($order_total['title'])
-                                        ->setDescription($order_total['text'])
-                                        ->setAmountExVat($hf_price)
-                                        ->setVatPercent($hf_taxrate)
-                        );
-                    }
-                    break;
-
-                case 'ot_coupon':
-                    // zencart coupons are made out as either amount x.xx or a percentage y%.
-                    // Both of these are calculated by zencart via the order total module ot_coupon.php and show up in the
-                    // corresponding $order_totals[...]['value'] field.
-                    //
-                    // Depending on the module settings the value may differ, Svea assumes that the (zc 1.5.1) default settings
-                    // are being used:
-                    //
-                    // admin/ot_coupon module setting -- include shipping: false, include tax: false, re-calculate tax: standard
-                    //
-                    // The value contains the total discount amount including tax iff configuration display prices with tax is set to true:
-                    //
-                    // admin/configuration setting -- display prices with tax: true => ot_coupon['value'] includes vat, if false, excludes vat
-                    //
-                    // Example:
-                    // zc adds an ot_coupon with value of 20 for i.e. a 10% discount on an order of 100 +(25%) + 100 (+6%).
-                    // This discount seems to be split in equal parts over the two order item vat rates:
-                    // 90*1,25 + 90*1,06 = 112,5 + 95,4 = 207,90, to which the shipping fee of 4 (+25%) is added. The total is 212,90
-                    // ot_coupon['value'] is 23,10 iff display prices incuding tax = true, else ot_coupon['value'] = 20
-                    //
-                    // We handle the coupons by adding a FixedDiscountRow for the amount, specified ex vat. The package
-                    // handles the vat calculations.
-
-                    // if display price with tax is not set, svea's package calculations match zencart's and we can use value right away
-                    if (DISPLAY_PRICE_WITH_TAX == 'false') {
-                        $svea_order->addDiscount(
-                            WebPayItem::fixedDiscount()
-                                ->setAmountExVat( $order_total['value'] ) // $amountExVat works iff display prices with tax = false in shop
-                                ->setDescription( $order_total['title'] )
-                        );
-                    }
-                    // we need to determine the order discount ex. vat if display prices with tax is set to true,
-                    // the ot_coupon module calculate_deductions() method returns a value including tax. We try to
-                    // reconstruct the amount using the stored order info and the order_totals entries
-                    else {
-                        $swp_order_info_pre_coupon = unserialize( $_SESSION["swp_order_info_pre_coupon"] );
-                        $pre_coupon_subtotal_ex_tax = $swp_order_info_pre_coupon['subtotal'] - $swp_order_info_pre_coupon['tax'];
-
-                        foreach( $order_totals as $key => $ot ) {
-                            if( $ot['code'] === 'ot_subtotal' ) {
-                                $order_totals_subtotal_ex_tax = $ot['value'];
-                            }
-                        }
-                        foreach( $order_totals as $key => $ot ) {
-                            if( $ot['code'] === 'ot_tax' ) {
-                                $order_totals_subtotal_ex_tax -= $ot['value'];
-                            }
-                        }
-                        foreach( $order_totals as $key => $ot ) {
-                            if( $ot['code'] === 'ot_coupon' ) {
-                                $order_totals_subtotal_ex_tax -= $ot['value'];
-                            }
-                        }
-
-                        $value_from_subtotals = isset( $order_totals_subtotal_ex_tax ) ?
-                                ($pre_coupon_subtotal_ex_tax - $order_totals_subtotal_ex_tax) : $order_total['value']; // 'value' fallback
-
-                        // if display_price_with tax is set to true && the coupon was specified as a fixed amount
-                        // zencart's math doesn't match svea's, so we force the discount to use the the shop's vat
-                        $coupon = $db->Execute("select * from " . TABLE_COUPONS . " where coupon_id = '" . (int)$_SESSION['cc_id'] . "'");
-
-                        // coupon_type is F for coupons specified with a fixed amount
-                        if( $coupon->fields['coupon_type'] == 'F' ) {
-
-                            // calculate the vatpercent from zencart's amount: discount vat/discount amount ex vat
-                            $zencartDiscountVatPercent =
-                                ($order_total['value'] - $coupon->fields['coupon_amount']) / $coupon->fields['coupon_amount'] *100;
-
-                            // split $zencartDiscountVatPercent into allowed values
-                            $taxRates = Svea\Helper::getTaxRatesInOrder($svea_order);
-                            $discountRows = Svea\Helper::splitMeanToTwoTaxRates( $coupon->fields['coupon_amount'], 
-                                    $zencartDiscountVatPercent, $order_total['title'], $order_total['title'], $taxRates );
-                            
-                            foreach($discountRows as $row) {
-                                $svea_order = $svea_order->addDiscount( $row );
-                            }
-
-                        }
-                        // if coupon specified as a percentage, or as a fixed amount and prices are ex vat.
-                        else {
-                            $svea_order->addDiscount(
-                                WebPayItem::fixedDiscount()
-                                    ->setAmountExVat( $value_from_subtotals )
-                                    ->setDescription( $order_total['title'] )
-                            );
-                        }
-                    }
-                    break;
-
-                // default case attempt to handle 'unknown' items from other plugins, treating negatives as discount rows, positives as fees
-                default:
-                    $order_total_obj = $GLOBALS[$order_total['code']];
-                    $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
-
-                    // if displayed WITH tax, REDUCE the value since it includes tax
-                    if (DISPLAY_PRICE_WITH_TAX == 'true') {
-                        $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
-                    }
-                    
-                    // write negative amounts as FixedDiscount with the given tax rate, write positive amounts as HandlingFee
-                    if( $order_total['value'] < 0 ) {
-                        $svea_order->addDiscount(
-                            WebPayItem::fixedDiscount()
-                                ->setAmountExVat( -1* $this->convertToCurrency(strip_tags($order_total['value']), $currency)) // given as positive amount
-                                ->setVatPercent($tax_rate)  //Optional, see info above
-                                ->setDescription($order_total['title'])        //Optional
-                        );
-                    }
-                    else {
-                        $svea_order->addFee(
-                            WebPayItem::invoiceFee()
-                                ->setAmountExVat($this->convertToCurrency(strip_tags($order_total['value']), $currency))
-                                ->setVatPercent($tax_rate)  //Optional, see info above
-                                ->setDescription($order_total['title'])        //Optional
-                        );
-                    }
-                    break;
-            }
+        if( $swp_closeResponse->accepted == true ) 
+        {
+            $comment = 'Svea order closed. ' . '(SveaOrderId: ' . $sveaOrderId . ')';    
+            $status = SVEA_ORDERSTATUS_CLOSED_ID;
         }
+        else    // close order failed, insert error in history
+        {
+            $comment =  'WARNING: Close order request failed, status not changed. ' . 
+                        'Error: ' . $swp_closeResponse->errormessage . ' (SveaOrderId: ' . $sveaOrderId . ')';               
+            $status = ($from_doStatusUpdate == false) ? $this->getCurrentOrderStatus($oID) : $from_doStatusUpdate;     // use current/old order status
+        }    
         
-        return $svea_order;
+        if( $from_doStatusUpdate == true )  // update status inserted before _doStatusUpdate
+        {
+            $this->updateOrdersStatus( $oID, $status, $comment );
+        }
+        else    // insert status
+        {
+            $this->insertOrdersStatus( $oID, $status, $comment );
+        }       
     }
 }
 ?>
