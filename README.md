@@ -243,8 +243,9 @@ Always check that you have set up your settings correctly before posting issues 
 
 ### General FAQ
 
-Q: What is this Svea administration interface that you talk about?
-A: This is where you administrate invoices and payment plans created from your customer orders. You should have been provided with login information and instructions from your Svea integration manager, please contact them if not so. 
+**Q:** *What is this Svea administration interface that you talk about?*
+
+**A:** This is where you administrate invoices and payment plans created from your customer orders. You should have been provided with login information and instructions from your Svea integration manager, please contact them if not so. 
 
 An example screenshot of the interface is found in the next section under "Invoice orders".
 
@@ -252,8 +253,9 @@ An example screenshot of the interface is found in the next section under "Invoi
 
 #### Invoice orders
 
-Q: I receive the error message "WARNING: Credit invoice failed, status not changed. Error: The invoice to credit is not approved." when attempting to credit an order.
-A: The invoice has not been approved by Svea. You may approve the invoice manually via the Svea administration interface. You may also turn on auto-approval of invoices, please contact your Svea integration manager to this effect.
+**Q:** *I receive the error message "WARNING: Credit invoice failed, status not changed. Error: The invoice to credit is not approved." when attempting to credit an order.*
+
+**A:** The invoice has not been approved by Svea. You may approve the invoice manually via the Svea administration interface. You may also turn on auto-approval of invoices, please contact your Svea integration manager to this effect.
 
 ![Svea administration interface] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/svea_admin.PNG "Svea administration interface")
 
