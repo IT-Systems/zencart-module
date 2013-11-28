@@ -1,8 +1,8 @@
 # Zen Cart - Svea payment module
-## Version 4.0.1
+## Version 4.1
 * Supports Zen Cart version 1.5.1 and 1.3.9
 
-This module supports Svea invoice and payment plan payments in Sweden, Finland, Norway, Denmark, Netherlands and Germany, as well as creditcard and direct bank payments from all countries.
+This module supports Svea invoice and payment plan payments in Sweden, Finland, Norway, Denmark, Netherlands and Germany, as well as creditcard and direct bank payments from all countries. It is also possible to perform basic Svea order administration actions by setting the order status in the Zen Cart order administration interface. The supported Svea administration actions are: Deliver and Cancel invoice and payment plan orders and Credit invoice orders.
 
 The module has been tested with Zen Cart and any pre-installed checkout, coupon, voucher and shipping modules, including the Svea invoice fee. The module has been updated to make use of the latest payment systems at Svea, and builds upon the included Svea php integration package.
 
@@ -59,9 +59,11 @@ In this example we'll first configure the Svea invoice payment method, instructi
 
 * _Default Currency_: If the customer ha an unsupported currency selected it will be converted to the default currency upon customer checkout. The default currency must also be present in the _Accepted Currencies_ list (above).
 
-* _Set Order Status_: The Zen Cart order status given to orders after the customer has completed checkout. This will be overridden by _Auto Deliver Order_, if set (see below).
+* _Set Order Status_: The Zen Cart order status given to orders after the customer has completed checkout.
 
-* _Auto Deliver Order_: If set to True, Svea invoices will automatically be delivered (sent out to) the customer. This means that you don't have to manually accept and deliver invoices via Svea's admin interface, which is the case if this is set to False.
+* _Auto Deliver Order_: Order invoices will be delivered (sent out) to the customer by Svea if an order's status is set to this status. This may be done manually through the Zen Cart order admin, or you may use the Set Over Status (above) to this and the order will be autodelivered upon creation.
+
+![Auto Deliver order settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/autodeliver.PNG "Auto deliver settings")
 
 * _Invoice Distribution Type_: If _Auto Deliver Order_ (above) is set to true, this setting must match the corresponding setting in Svea's admin interface. Ask your Svea integration manager is unsure.
 
@@ -73,7 +75,7 @@ In this example we'll first configure the Svea invoice payment method, instructi
 
 * Finally, remember to _save_ your settings.
 
-![Invoice payment settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/invoice_settings_2.PNG "method invoice settings 2")
+![Invoice payment settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/invoice_settings_2.PNG "Method invoice settings 2")
 
 #### Next we set up the Svea Invoice handling fee (used by Svea Invoice payment method )
 
@@ -112,9 +114,9 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 
 * _Default Currency_: If the customer has an unsupported currency selected it will be converted to the default currency upon customer checkout. The default currency must also be present in the _Accepted Currencies_ list (above).
 
-* _Set Order Status_: The Zen Cart order status given to orders after the customer has completed checkout. This will be overridden by _Auto Deliver Order_, if set (see below).
+* _Set Order Status_: The Zen Cart order status given to orders after the customer has completed checkout.
 
-* _Auto Deliver Order_: If set to True, Svea invoices will automatically be delivered (sent out to) the customer. This means that you don't have to manually accept and deliver invoices via Svea's admin interface, which is the case if this is set to False. Payment plan invoices are always sent out by post.
+* _Auto Deliver Order_: Order payment plan will be delivered (sent out) to the customer by Svea if an order's status is set to this status. This may be done manually through the Zen Cart order admin, or you may use the Set Over Status (above) to this and the order will be autodelivered upon creation.
 
 * _Ignore OT list_: if you experience problems with i.e. incompatible order total modules, the module name(s) may be entered here and will then be ignored by the invoice payment module.
 
@@ -194,6 +196,38 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 
 * The recommended order total modules sort order is: sub-total (lowest), svea invoice fee, shipping, coupon, taxes, store credit, voucher and total.
 
+## Svea order administration actions
+It is possible to perform basic Svea order administration actions by setting the corresponding order status in the Zen Cart order administration interface. The supported Svea administration actions are: Deliver and Cancel invoice and payment plan orders and Credit invoice orders.
+
+To administrate an order and change its order status, go to admin/customers/orders, select the order and press the "edit" button:
+
+![Invoice payment settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/admin_order_list.PNG "Zen Cart admin orders")
+
+### Deliver invoice or payment plan order
+When an order is marked as delivered by Svea, the invoice or payment plan will be created and delivered to the customer. The timing of this should usually correspond with the ordered goods being shipped out from your store to the customer. 
+
+Only orders being delivered in their entirety can be administrated through the Zen Cart interface, if you wish to partially deliver an order you have to administer the order through the Svea administration interface instead.
+
+To deliver an order, go to the order and select the status corresponding to the payment method Auto Deliver setting from the Status dropdown menu (here: "Delivered [3]"). You may also use the "Svea: Delivered [1703]" setting directly. Then press the "update" button: 
+
+![Deliver order] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/deliver_order.PNG "Deliver order")
+
+The new order status will show up in the order status history along with a comment stating the Svea order id. The current order status will also show in the order list view. Note that a setting corresponding to the Auto Deliver setting will be converted to the "Svea: Delivered" status.
+
+### Cancel (close) invoice or payment plan order
+Use this if you wish to cancel a non-delivered invoice or payment plan order.
+
+![Cancel order] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/close_order.PNG "Cancel order")
+
+### Credit invoice plan order
+Use this if you wish to credit a delivered invoice order in full.
+
+![Credit order] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/credit_order.PNG "Credit order")
+
+Should you get an error message "WARNING: Credit invoice failed, status not changed. Error: The invoice to credit is not approved.", the invoice has not been approved by Svea. You may approve the invoice manually via the Svea administration interface. You may also turn on auto-approval of invoices, please contact your Svea integration manager to this effect.
+
+![Credit order] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/credit_order_2.PNG "Credit order")
+
 ##Troubleshooting and recommendations
 Always check that you have set up your settings correctly before posting issues or contacting Svea support. Specifically, the following settings must all be in place for the payment modules to work correctly in the various countries:
 
@@ -209,11 +243,26 @@ Always check that you have set up your settings correctly before posting issues 
 
 * You are using the correct test case credentials when conducting test purchases.
 
+### General FAQ
+
+Q: What is this Svea administration interface that you talk about?
+A: This is where you administrate invoices and payment plans created from your customer orders. You should have been provided with login information and instructions from your Svea integration manager, please contact them if not so. 
+
+An example screenshot of the interface is found in the next section under "Invoice orders".
+
 ### Specific payment method problems FAQ
+
+#### Invoice orders
+
+Q: I receive the error message "WARNING: Credit invoice failed, status not changed. Error: The invoice to credit is not approved." when attempting to credit an order.
+A: The invoice has not been approved by Svea. You may approve the invoice manually via the Svea administration interface. You may also turn on auto-approval of invoices, please contact your Svea integration manager to this effect.
+
+![Svea administration interface] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/svea_admin.PNG "Svea administration interface")
 
 (Intentionally left blank.)
 
 ### Release history
 
+* 4.1    (20131128) Able to perform basic Svea order administration actions by setting the order status in the Zen Cart order administration interface. Changes to AutoDeliver order settings for invoice and payment plan payment methods.
 * 4.0.1  (20131118) Fix for wrong client order id used in request.
 * 4.0.0  (20131112) Rewrite of module to build on Svea php integration package and support the new eu payment flow. Supports ZenCart 1.5.1.
