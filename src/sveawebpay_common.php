@@ -577,50 +577,8 @@ class SveaZencart {
                 array_flip($countrynames)[$country] : "swp_error: getCountryCode: unknown country name" );
     }    
     
-    
-        /**
-     * Called from admin/orders.php at the top of the edit order view, here we add order administration buttons to
-     * hook into _doRefund() and _doVoid() actions
-     * 
-     * @param int $oID
-
-     */
-    function admin_notification($oID) {  
-        global $db;
-
-        // display svea logo & admin text
-        echo '<div id=SveaLogoDiv>' .
-                '<img alt="Svea logo" src="/images/Svea/sveawebpay.png">' .
-        '</div>';  
-        
-        // check if order has been delivered to Svea => can't do closeOrder(), but enables credit order
-        $result = $db->Execute( 'SELECT COUNT(orders_status_id) AS delivered FROM `orders_status_history` 
-                                WHERE orders_status_id = ' . SVEA_ORDERSTATUS_DELIVERED_ID . ' AND orders_id = ' . $oID );
-                
-        if( $result->fields['delivered'] == 0 ) {   // found 0 occurances of "delivered" in history, show close order button
-            echo '<div id=SveaCancelOrderDiv>' .
-                '<form name=SveaAdminCancelOrder action="http://sveazencart151.se/zc_admin/orders.php" method=get>' .
-                    '<input type="hidden" name="oID" value="' . $_GET['oID'] .'" />' .                 
-                    '<input type="hidden" name="page" value="' . $_GET['page'] .'" />' .                 
-                    '<input type="hidden" name="action" value="doVoid" />' .                 
-                    '<input type="submit" value="' . SVEA_ADMIN_CLOSEBUTTON .'" />' .
-                '</form>'.
-            '</div>';        
-        }
-        else {            
-            // show the refund-button if order has been delivered 
-            echo '<div id=SveaRefundOrderDiv>' .
-                '<form name=SveaAdminRefundOrder action="http://sveazencart151.se/zc_admin/orders.php" method=get>' .
-                    '<input type="hidden" name="oID" value="' . $_GET['oID'] .'" />' .                 
-                    '<input type="hidden" name="page" value="' . $_GET['page'] .'" />' .                 
-                    '<input type="hidden" name="action" value="doRefund" />' .                 
-                    '<input type="submit" value="' . SVEA_ADMIN_CREDITBUTTON .'" />' .
-                '</form>'.
-            '</div>';    
-        }
-    }
-    
-        /**
+      
+    /**
      * Updates latest order_status entry in table order, orders_status_history
      * 
      * @param int $oID  -- order id to change orders_status for
