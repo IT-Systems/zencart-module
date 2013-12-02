@@ -199,6 +199,8 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 ## Svea order administration actions
 It is possible to perform basic Svea order administration actions by setting the corresponding order status in the Zen Cart order administration interface. The supported Svea administration actions are: Deliver and Cancel invoice and payment plan orders and Credit invoice orders.
 
+Please note that orders created with earlier versions of the Svea Zencart module (<4.1) cannot be administrated from the Zen Cart order administration interface.
+
 To administrate an order and change its order status, go to admin/customers/orders, select the order and press the "edit" button:
 
 ![Invoice payment settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/admin_order_list.PNG "Zen Cart admin orders")

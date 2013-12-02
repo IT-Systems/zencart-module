@@ -610,14 +610,8 @@ class sveawebpay_invoice extends SveaZencart {
         $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPINVOICE_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
         $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
         
-        // insert svea order id table if not exists already
-        $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_sveaorderid';");
-        if( $res->fields["COUNT(*)"] != 1 ) {
-            $db->Execute("CREATE TABLE svea_sveaorderid (orders_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, sveaorderid INT NOT NULL)");
-        }
-
         // insert svea order table if not exists already
-        $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_sveaorderid';");
+        $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_order';");
         if( $res->fields["COUNT(*)"] != 1 ) {
             $sql = "CREATE TABLE svea_order (orders_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, sveaorderid INT NOT NULL, createorder_object BLOB, invoice_id INT )";
             $db->Execute( $sql );
@@ -807,6 +801,21 @@ class sveawebpay_invoice extends SveaZencart {
     function _doStatusUpdate($oID, $status, $comments, $customer_notified, $old_orders_status) {       
         global $db;
 
+        //if this is a legacy order (i.e. it isn't in table svea_order), fail gracefully: reset status to old status if needed
+        if( ! $this->getSveaOrderId( $oID ) )
+        {        
+            $comment =  'WARNING: Unable to administrate orders created with Svea payment module < version 4.1.';
+            if( $status == SVEA_ORDERSTATUS_CLOSED_ID || $status == SVEA_ORDERSTATUS_CREDITED_ID || $status == SVEA_ORDERSTATUS_DELIVERED_ID )
+            {
+                $comment = $comment . " Status not changed.";
+                $status = $old_orders_status;
+            }
+            $this->updateOrdersStatus( $oID, $status, $comment );   
+            
+            return; //exit _doStatusUpdate
+        }
+
+        
         switch( $status ) 
         { 
         case $old_orders_status:

@@ -624,16 +624,16 @@ class SveaZencart {
     }
     
     /**
-     * Return the Svea sveaOrderId corresponding to an order
+     * Return the Svea sveaOrderId corresponding to an order, or false if order not found in svea_order table
      * 
      * @param int $oID -- order id
-     * @return int -- svea order id
+     * @return int -- svea order id, or false if order not found in svea_order table
      */
     function getSveaOrderId( $oID ) {
         global $db;
         
         $sveaResult = $db->Execute("SELECT * FROM svea_order WHERE orders_id = " . (int)$oID );
-        return $sveaResult->fields["sveaorderid"];
+        return isset( $sveaResult->fields["sveaorderid"] ) ? $sveaResult->fields["sveaorderid"] : false;
     }
     
     /**
