@@ -576,8 +576,7 @@ class SveaZencart {
         return( array_key_exists( $country, array_flip($countrynames) ) ? 
                 array_flip($countrynames[$country]) : "swp_error: getCountryCode: unknown country name" );
     }    
-    
-      
+          
     /**
      * Updates latest order_status entry in table order, orders_status_history
      * 
@@ -594,7 +593,8 @@ class SveaZencart {
 
         $db->Execute(   "update " . TABLE_ORDERS_STATUS_HISTORY . " " .
                         "set comments = '" . $comment . "', " .
-                        "orders_status_id = " . (int)$status . " " .
+                        "orders_status_id = " . (int)$status . ", " .
+                        "customer_notified = " . 0 . " " .         // 0 for "no email" (open lock symbol) in order status history
                         "where orders_status_history_id = " . (int)$oshID)
         ;
         
@@ -615,7 +615,7 @@ class SveaZencart {
                 'orders_id' => $oID,
                 'orders_status_id' => $status,                           
                 'date_added' => 'now()',
-                'customer_notified' => 1,
+                'customer_notified' => 0,  // 0 for "no email" (open lock symbol) in order status history
                 'comments' => $comment
         );
         zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
