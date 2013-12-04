@@ -405,8 +405,8 @@ class sveawebpay_creditcard {
         // put response into responsehandler
         $sveaConfig = (MODULE_PAYMENT_SWPCREDITCARD_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
-        $swp_response = (new SveaResponse( $_REQUEST, $user_country, $sveaConfig ))->response; // returns HostedPaymentResponse
-
+        $swp_respObj = new SveaResponse( $_REQUEST, $user_country, $sveaConfig ); // returns HostedPaymentResponse
+		$swp_response = $swp_respObj->response;
         // check for bad response
         if( $swp_response->resultcode == '0' ) {
             die('Response failed authorization. AC not valid or Response is not recognized');  
@@ -497,15 +497,15 @@ class sveawebpay_creditcard {
     require_once(DIR_FS_CATALOG . 'svea/Includes.php');
     $swp_response = unserialize($_SESSION["swp_response"]);
 
-    // set zencart order securityNumber -- if request to webservice, use sveaOrderId, if hosted use transactionId
-    $order->info['securityNumber'] = isset( $swp_response->sveaOrderId ) ? $swp_response->sveaOrderId : $swp_response->transactionId;
-
     // insert zencart order into database
     $sql_data_array = array('orders_id' => $insert_id,
         'orders_status_id' => $order->info['order_status'],
         'date_added' => 'now()',
         'customer_notified' => 0,
-        'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $order->info['securityNumber']);
+            'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . 
+                isset( $swp_response->sveaOrderId ) ? 
+                $swp_response->sveaOrderId : $swp_response->transactionId //if request to webservice, use sveaOrderId, if hosted use transactionId
+        );
     zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
     //
