@@ -228,6 +228,12 @@ Should you get an error message "WARNING: Credit invoice failed, status not chan
 
 ![Credit order] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/credit_order_2.PNG "Credit order")
 
+### Limitations
+
+Note that per default, customers receive an email upon an order status change. This is the case even if an order administration action with Svea should fail and not go through. We recommend selecting "Notify customer: no email" when administrating order statuses.
+
+Please also note that these administration order status actions are not available for other payment methods than the Svea Invoice and Svea Part payment methods.
+
 ##Troubleshooting and recommendations
 Always check that you have set up your settings correctly before posting issues or contacting Svea support. Specifically, the following settings must all be in place for the payment modules to work correctly in the various countries:
 
@@ -265,6 +271,6 @@ An example screenshot of the interface is found in the next section under "Invoi
 
 ### Release history
 
-* 4.1    (20131128) Able to perform basic Svea order administration actions by setting the order status in the Zen Cart order administration interface. Changes to AutoDeliver order settings for invoice and payment plan payment methods.
+* 4.1    (20131204) Able to perform basic Svea order administration actions by setting the order status in the Zen Cart order administration interface. Changes to AutoDeliver order settings for invoice and payment plan payment methods.
 * 4.0.1  (20131118) Fix for wrong client order id used in request.
 * 4.0.0  (20131112) Rewrite of module to build on Svea php integration package and support the new eu payment flow. Supports ZenCart 1.5.1.

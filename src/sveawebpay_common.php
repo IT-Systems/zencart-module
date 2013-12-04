@@ -590,9 +590,10 @@ class SveaZencart {
         $historyResult = $db->Execute(  "select * from " . TABLE_ORDERS_STATUS_HISTORY . " where orders_id = ". (int)$oID .
                                         " order by date_added DESC LIMIT 1");
         $oshID = $historyResult->fields["orders_status_history_id"];
+        $comments = $historyResult->fields["comments"];
 
         $db->Execute(   "update " . TABLE_ORDERS_STATUS_HISTORY . " " .
-                        "set comments = '" . $comment . "', " .
+                        "set comments = '" . $comments . "\n " . $comment . "', " .
                         "orders_status_id = " . (int)$status . ", " .
                         "customer_notified = " . 0 . " " .         // 0 for "no email" (open lock symbol) in order status history
                         "where orders_status_history_id = " . (int)$oshID)

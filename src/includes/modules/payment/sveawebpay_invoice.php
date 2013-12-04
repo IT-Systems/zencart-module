@@ -532,7 +532,7 @@ class sveawebpay_invoice extends SveaZencart {
             if( $deliverResponse->accepted == true )
             {                    
                 $comment = 'Order AutoDelivered. (SveaOrderId: ' .$this->getSveaOrderId( $new_order_id ). ')';                
-                //$this->insertOrdersStatus( $new_order_id, SVEA_ORDERSTATUS_DELIVERED_ID, $comment );   // <= results in duplicate order history entries? 
+                //$this->insertOrdersStatus( $new_order_id, SVEA_ORDERSTATUS_DELIVERED_ID, $comment );
                 $sql_data_array = array(
                     'orders_id' => $new_order_id,
                     'orders_status_id' => SVEA_ORDERSTATUS_DELIVERED_ID,              
