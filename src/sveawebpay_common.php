@@ -1,7 +1,5 @@
 <?php
 
-// for now, we use zencart order status = 3 for orders delivered to Svea.
-//define('SVEA_ORDERSTATUS_DELIVERED_ID', 3);     // Magic number 3 from zencart order status "Delivered [3]", see table orders_status
 define('SVEA_ORDERSTATUS_DELIVERED_ID', 1703);
 define('SVEA_ORDERSTATUS_DELIVERED', 'Svea: Delivered');  // not used
 define('SVEA_ORDERSTATUS_CLOSED_ID', 1701);     // Added to zencart orders_status table on install

@@ -160,7 +160,7 @@ jQuery(document).ready(function (){
     } // isReady
 });
 
-// hide billing, invoice fields in getAddress countries
+// hide billing, invoice address fields in getAddress countries
 function hideBillingAndInvoiceAddress( country ) {
     if( (country === 'SE') ||
         (country === 'NO') ||
@@ -172,7 +172,7 @@ function hideBillingAndInvoiceAddress( country ) {
     }
 }
 
-// show billing address if hidden
+// show billing address if currently hidden
 function showBillingAndInvoiceAddress() {
     jQuery('#checkoutPaymentHeadingAddress').show();
     jQuery('#checkoutBillto').show();
