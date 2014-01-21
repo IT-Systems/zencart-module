@@ -37,7 +37,7 @@ define('ERROR_CODE_40001','Maatunnusta ei tueta');
 define('ERROR_CODE_40002','Väärä asiakastieto');
 define('ERROR_CODE_40004','Tälle asiakkaalle ei löydy osoitetta');
 
-define('ERROR_CODE_50000','Tälle asiakkaalle ei löydy osoitetta');
+define('ERROR_CODE_50000','Asiakkaalla ei ole oikeutta käyttää tätä menetelmää.');
 
 define('DD_NO_CAMPAIGN_ON_AMOUNT','Sopivaa kampanjakoodia ei löydy annetulle summalle.');
 

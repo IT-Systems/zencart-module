@@ -46,7 +46,7 @@ define('FORM_TEXT_GET_ADDRESS','Adresse bekommen');
 
 define('FORM_TEXT_SS_NO','Sozialversicherungsnummer:');
 define('FORM_TEXT_INITIALS','Initialen');                                
-define('FORM_TEXT_BIRTHDATE','Geburtsdatum (YYYYMMDD)');              
+define('FORM_TEXT_BIRTHDATE','Geburtsdatum');              
 define('FORM_TEXT_VATNO','MwSt');
 
 define('ERROR_CODE_DEFAULT','Svea Fehler: ');
