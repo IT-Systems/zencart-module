@@ -189,14 +189,14 @@ class sveawebpay_partpay extends SveaZencart{
             }
             $birthMonth = "<select name='sveaBirthMonthPP' id='sveaBirthMonthPP'>$months</select>";
 
-            //Years from 1913 to 1996
+            //Years from 1913 to date('Y')
             $years = '';
-            for($y = 1913; $y <= 1996; $y++){
-                if( $y == 1980 )
-                    $years .= "<option value='$y' selected>$y</option>"; // sensible default
-                else
-                    $years .= "<option value='$y'>$y</option>";
-                
+            for($y = 1913; $y <= date('Y'); $y++){
+                $selected = "";
+                if( $y == (date('Y')-30) )      // selected is backdated 30 years
+                    $selected = "selected";
+
+                $years .= "<option value='$y' $selected>$y</option>";
             }
             $birthYear = "<select name='sveaBirthYearPP' id='sveaBirthYearPP'>$years</select>";
 
