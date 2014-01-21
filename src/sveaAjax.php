@@ -19,8 +19,8 @@ if( isset($_POST['SveaAjaxGetCustomerCountry']) ) {
  */
 if( isset($_POST['SveaAjaxGetPartPaymentOptions']) ) {
 
-    $price = isset( $_SESSION['sveaAjaxOrderTotal'] ) ? $_SESSION['sveaAjaxOrderTotal'] : "swp_not_set";
-    $country = isset( $_SESSION['sveaAjaxCountryCode'] ) ? $_SESSION['sveaAjaxCountryCode'] : "swp_not_set";
+    $price = isset( $_SESSION['sveaAjaxOrderTotal'] ) ? $_SESSION['sveaAjaxOrderTotal'] : "swp_not_set";        // from payment method
+    $country = isset( $_SESSION['sveaAjaxCountryCode'] ) ? $_SESSION['sveaAjaxCountryCode'] : "swp_not_set";    // from svea.js
 
     sveaAjaxGetPartPaymentOptions( $price, $country );
     exit();
