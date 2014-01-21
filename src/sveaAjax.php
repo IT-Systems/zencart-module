@@ -115,9 +115,7 @@ function sveaAjaxGetAddresses( $ssn, $country, $isCompany, $paymentType ) {
             $response = $response->setOrderTypePaymentPlan();
             break;
     }
-    $response = $response->setCountryCode( $country )
-                    ->setIndividual( $ssn )
-                    ->doRequest();
+    $response = $response->setCountryCode( $country )->doRequest();
 
     // error?
     if( $response->accepted == false) {
