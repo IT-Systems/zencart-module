@@ -95,9 +95,10 @@ jQuery(document).ready(function (){
                                     jQuery('#pmt-sveawebpay_partpay').attr("sveaCustomerCountry"),
                                     "sveaAddressSelectorPP"
                     );
-                    // get & show getPaymentOptions
+                });                
+                
+                // get & show getPaymentOptions
                 getPartPaymentOptions( customerCountry );
-                });
 
                 // set zencart billing/shipping to match getAddresses selection
                 jQuery('#sveaAddressSelectorPP').change( function() {

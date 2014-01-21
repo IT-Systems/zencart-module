@@ -138,7 +138,6 @@ class sveawebpay_invoice extends SveaZencart {
                             '<label><input type="radio" name="sveaIsCompany" value="false" checked>' . FORM_TEXT_PRIVATE . '</label>' .
                             '<label><input type="radio" name="sveaIsCompany" value="true">' . FORM_TEXT_COMPANY . '</label><br />';
 
-
         // these are the countries we support getAddress in (getAddress also depends on sveaSSN being present)
         if( ($customer_country == 'SE') ||
             ($customer_country == 'NO') ||
@@ -149,7 +148,7 @@ class sveawebpay_invoice extends SveaZencart {
         }
 
         // if customer is located in Netherlands, get initials
-        if( $customer_country == 'NL') {
+        if( $customer_country == 'NL' ) {
 
             $sveaInitialsDiv =  '<div id="sveaInitials_div" >' .
                                     '<label for="sveaInitials">' . FORM_TEXT_INITIALS . '</label><br />' .
@@ -374,7 +373,7 @@ class sveawebpay_invoice extends SveaZencart {
             }
 
             //Split street address and house no
-            $pattern ="/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*[^\s])?(?:\s)*$/";
+            $pattern = "/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*(?:\s*[0-9]*)?[^\s])?(?:\s)*$/";         
             $myStreetAddress = Array();
             preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
             if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }
@@ -426,11 +425,11 @@ class sveawebpay_invoice extends SveaZencart {
             }
 
             //Split street address and house no
-            $pattern ="/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*[^\s])?(?:\s)*$/";
+            $pattern = "/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*(?:\s*[0-9]*)?[^\s])?(?:\s)*$/";
             $myStreetAddress = Array();
             preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
             if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }
-
+         
             // set common fields
             $swp_customer
                 ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )  // street, housenumber
@@ -464,7 +463,7 @@ class sveawebpay_invoice extends SveaZencart {
         // retrieve order object set in process_button()
         $swp_order = unserialize($_SESSION["swp_order"]);
 
-        // send payment request to svea, receive response
+        // send payment request to svea, receive response       
         $swp_response = $swp_order->useInvoicePayment()->doRequest();
 
         // payment request failed; handle this by redirecting w/result code as error message
