@@ -338,6 +338,7 @@ class sveawebpay_invoice extends SveaZencart {
            );
         }
 
+        // creates non-item order rows from Order Total entries
         $swp_order = $this->parseOrderTotals( $order_totals, $swp_order );
 
         // Check if customer is company
