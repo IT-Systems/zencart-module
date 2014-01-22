@@ -787,60 +787,27 @@ class SveaZencart {
                                 ->setDescription( $order_total['title'] )
                         );
                     }
-                    // we need to determine the order discount ex. vat if display prices with tax is set to true,
-                    // the ot_coupon module calculate_deductions() method returns a value including tax. We try to
-                    // reconstruct the amount using the stored order info and the order_totals entries
-                    else {
-                        $swp_order_info_pre_coupon = unserialize( $_SESSION["swp_order_info_pre_coupon"] );
-                        $pre_coupon_subtotal_ex_tax = $swp_order_info_pre_coupon['subtotal'] - $swp_order_info_pre_coupon['tax'];
-
-                        foreach( $order_totals as $key => $ot ) {
-                            if( $ot['code'] === 'ot_subtotal' ) {
-                                $order_totals_subtotal_ex_tax = $ot['value'];
-                            }
-                        }
-                        foreach( $order_totals as $key => $ot ) {
-                            if( $ot['code'] === 'ot_tax' ) {
-                                $order_totals_subtotal_ex_tax -= $ot['value'];
-                            }
-                        }
-                        foreach( $order_totals as $key => $ot ) {
-                            if( $ot['code'] === 'ot_coupon' ) {
-                                $order_totals_subtotal_ex_tax -= $ot['value'];
-                            }
-                        }
-
-                        $value_from_subtotals = isset( $order_totals_subtotal_ex_tax ) ?
-                                ($pre_coupon_subtotal_ex_tax - $order_totals_subtotal_ex_tax) : $order_total['value']; // 'value' fallback
-
-                        // if display_price_with tax is set to true && the coupon was specified as a fixed amount
-                        // zencart's math doesn't match svea's, so we force the discount to use the the shop's vat
+                    
+                    // if display prices with tax is set to true, the ot_coupon module calculate_deductions() method returns a value including tax.
+                    elseif (DISPLAY_PRICE_WITH_TAX == 'true')
+                    {                  
+                        // get the discount coupon type
                         $coupon = $db->Execute("select * from " . TABLE_COUPONS . " where coupon_id = '" . (int)$_SESSION['cc_id'] . "'");
-
-                        // coupon_type is F for coupons specified with a fixed amount
-                        if( $coupon->fields['coupon_type'] == 'F' ) {
-
-                            // calculate the vatpercent from zencart's amount: discount vat/discount amount ex vat
-                            $zencartDiscountVatPercent =
-                                ($order_total['value'] - $coupon->fields['coupon_amount']) / $coupon->fields['coupon_amount'] *100;
-
-                            // split $zencartDiscountVatPercent into allowed values
-                            $taxRates = Svea\Helper::getTaxRatesInOrder($svea_order);
-                            $discountRows = Svea\Helper::splitMeanToTwoTaxRates( $coupon->fields['coupon_amount'], 
-                                    $zencartDiscountVatPercent, $order_total['title'], $order_total['title'], $taxRates );
-                            
-                            foreach($discountRows as $row) {
-                                $svea_order = $svea_order->addDiscount( $row );
-                            }
-
-                        }
-                        // if coupon specified as a percentage, or as a fixed amount and prices are ex vat.
-                        else {
+                        
+                        // if coupon specified as a percentage, Sveas fixedDiscount w/setAmountIncVat match zencart's calculation
+                        if( $coupon->fields['coupon_type'] == 'P' )
+                        {
                             $svea_order->addDiscount(
                                 WebPayItem::fixedDiscount()
-                                    ->setAmountExVat( $value_from_subtotals )
+                                    ->setAmountIncVat( $order_total['value'] )
                                     ->setDescription( $order_total['title'] )
                             );
+                        }
+                        
+                        // if coupon specified as a fixed amount, ZenCart's vat calculation does not fit Svea's, so we just pass on shop values as is 
+                        elseif( $coupon->fields['coupon_type'] == 'F')
+                        {
+                            //TODO
                         }
                     }
                     break;
