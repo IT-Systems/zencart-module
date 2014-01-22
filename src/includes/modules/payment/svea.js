@@ -40,6 +40,11 @@ jQuery(document).ready(function (){
                 // get customerCountry
                 var customerCountry = jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry");
 
+                // hide getAddress button
+                if( customerCountry == "NO" ) {       // hide getAddress button for NO (default)
+                    jQuery('#sveaSubmitGetAddress').hide();
+                }
+
                 // hide addresses
                 hideBillingAndInvoiceAddress( customerCountry );
 
@@ -48,7 +53,7 @@ jQuery(document).ready(function (){
                 jQuery('#sveaPartPayField').hide();
                 jQuery('#sveaInvoiceField').show();
 
-                // force getAddresses on ssn input
+                // do getAddresses on button press
                 jQuery("#sveaSubmitGetAddress").click( function(){
                     getAddresses(   jQuery('#sveaSSN').val(),
                                     "invoice",
@@ -150,12 +155,21 @@ jQuery(document).ready(function (){
         jQuery('#sveaInitials_div').show();
         jQuery('#sveaBirthDate_div').show();
         jQuery('#sveaVatNo_div').hide();
+                
+        if( jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry") == "NO" ) {       // hide getAddress button
+            jQuery('#sveaSubmitGetAddress').hide();
+        }
     });
 
     jQuery("input[type=radio][name='sveaIsCompany'][value='true']").click( function() {     // company
         jQuery('#sveaInitials_div').hide();
         jQuery('#sveaBirthDate_div').hide();
         jQuery('#sveaVatNo_div').show();
+                
+        if( jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry") == "NO" ) {       // show getAddress button
+            jQuery('#sveaSubmitGetAddress').show();
+        }
+        
     });
 
     } // isReady

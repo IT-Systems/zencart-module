@@ -231,7 +231,11 @@ class sveawebpay_invoice extends SveaZencart {
         }
 
         $sveaError = '<br /><span id="sveaSSN_error_invoice" style="color:red"></span>';
-        if($order->billing['country']['iso_code_2'] == "SE" || $order->billing['country']['iso_code_2'] == "DK"){
+        if(     $order->billing['country']['iso_code_2'] == "SE" ||
+                $order->billing['country']['iso_code_2'] == "DK" ||
+                $order->billing['country']['iso_code_2'] == "NO"        // but don't show button/do getAddress unless customer is company!
+        )
+        {
              $sveaSubmitAddress = '<button id="sveaSubmitGetAddress" type="button">'.FORM_TEXT_GET_ADDRESS.'</button>';
         }
 
