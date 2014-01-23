@@ -92,6 +92,8 @@ In this example we'll first configure the Svea invoice payment method, instructi
 
 * _Fee_: The fee can either be set to a specific amount, i.e. "5.00", or set to a percentage of the order sub-total, by ensuring the last character of the fee is a '%', i.e. "5.00%". Note that the fee always should be specified excluding tax. Also, make sure to use the correct decimal point notation, i.e. a dot (.) when specifying the fee.
 
+Note that the invoice fee is always set in the shop default currency. The actual amount charged in the customer payment currency will be calculated using the standard zencart currency conversion rules.
+
 ![Invoice fee settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/invoice_fee_settings.PNG "Invoice fee settings")
 
 ### Other payment methods
