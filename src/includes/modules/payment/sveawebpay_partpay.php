@@ -361,6 +361,7 @@ class sveawebpay_partpay extends SveaZencart{
             );
         }
 
+        // creates non-item order rows from Order Total entries
         $swp_order = $this->parseOrderTotals( $order_totals, $swp_order );
         
         // customer is always private individual with partpay

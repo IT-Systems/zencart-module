@@ -338,6 +338,7 @@ class sveawebpay_invoice extends SveaZencart {
            );
         }
 
+        // creates non-item order rows from Order Total entries
         $swp_order = $this->parseOrderTotals( $order_totals, $swp_order );
 
         // Check if customer is company
@@ -467,6 +468,8 @@ class sveawebpay_invoice extends SveaZencart {
         // retrieve order object set in process_button()
         $swp_order = unserialize($_SESSION["swp_order"]);
 
+//        print_r( $swp_order->useInvoicePayment()->prepareRequest() );
+//        
         // send payment request to svea, receive response       
         $swp_response = $swp_order->useInvoicePayment()->doRequest();
 
