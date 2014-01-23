@@ -806,26 +806,22 @@ class SveaZencart {
                         
                         // if coupon specified as a fixed amount, ZenCart's vat calculation does not fit Svea's, so we just pass on shop values as is 
                         elseif( $coupon->fields['coupon_type'] == 'F')
-                        {
-//                            
-//                            print_r( $order_total['value'] );
-//                            print_r( (int)$coupon->fields['coupon_amount']); die;
-//                            
+                        {                          
                             $discountExVat = (int)$coupon->fields['coupon_amount'];
                             $discountIncVat = $order_total['value'];
                             
-                            $discountVatPercent = ($discountIncVat-$discountExVat)/$discountExVat *100;
+                            // calculate the vatpercent from zencart's amount: discount vat/discount amount ex vat
+                            $zencartDiscountVatPercent = ($discountIncVat-$discountExVat)/$discountExVat *100;
                             
-                            $svea_order->addDiscount(
-                                WebPayItem::fixedDiscount()
-                                    ->setAmountExVat( (int)$coupon->fields['coupon_amount'] )                              
-                                    //->setAmountIncVat( $order_total['value'] ) // specifying discounts with incVat+exVat is not supported...
-                                    ->setVatPercent($discountVatPercent)
-                                    ->setDescription( $order_total['title'] )
-                            );  
+                            // split $zencartDiscountVatPercent into allowed values
+                            $taxRates = Svea\Helper::getTaxRatesInOrder($svea_order);
+                            $discountRows = Svea\Helper::splitMeanToTwoTaxRates( $coupon->fields['coupon_amount'],
+                                    $zencartDiscountVatPercent, $order_total['title'], $order_total['title'], $taxRates );
                             
-                            // TODO: the above does not set a discountrow -- check hos fixedDiscount rows are handled in the package...
-                            
+                            // add the discount split over the valid taxrates
+                            foreach($discountRows as $row) {
+                                $svea_order = $svea_order->addDiscount( $row );
+                            }                             
                         }
                     }
                     break;
