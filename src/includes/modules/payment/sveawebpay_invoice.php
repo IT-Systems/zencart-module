@@ -378,11 +378,8 @@ class sveawebpay_invoice extends SveaZencart {
             }
 
             //Split street address and house no
-            $pattern = "/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*(?:\s*[0-9]*)?[^\s])?(?:\s)*$/";         
-            $myStreetAddress = Array();
-            preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
-            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }
-
+            $myStreetAddress = Helper::splitStreetAddress( $order->billing['street_address'] );
+            
             // set common fields
             $swp_customer
                 ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )
@@ -430,11 +427,8 @@ class sveawebpay_invoice extends SveaZencart {
             }
 
             //Split street address and house no
-            $pattern = "/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*(?:\s*[0-9]*)?[^\s])?(?:\s)*$/";
-            $myStreetAddress = Array();
-            preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
-            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }
-         
+            $myStreetAddress = Helper::splitStreetAddress( $order->billing['street_address'] );
+            
             // set common fields
             $swp_customer
                 ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )  // street, housenumber
