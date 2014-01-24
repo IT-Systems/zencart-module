@@ -397,8 +397,19 @@ class sveawebpay_partpay extends SveaZencart{
             $swp_customer->setInitials($post_sveaInitials);
         }
 
-        //Split street address and house no
-        $myStreetAddress = Helper::splitStreetAddress( $order->billing['street_address'] );
+        // set housenumber
+        if( ($user_country == 'NL') ||
+            ($user_country == 'DE') )
+        {
+            $myStreetAddress = Helper::splitStreetAddress( $order->billing['street_address'] ); // Split street address and house no
+        }
+        else // other countries disregard housenumber field, so put entire address in streetname field     
+        {
+            $myStreetAddress[0] = $order->billing['street_address'];
+            $myStreetAddress[1] = $order->billing['street_address'];
+            $myStreetAddress[2] = "";
+        }
+            
         // set common fields
         $swp_customer
             ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )  // street, housenumber
