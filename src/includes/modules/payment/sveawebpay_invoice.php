@@ -346,7 +346,7 @@ class sveawebpay_invoice extends SveaZencart {
         {
             // create company customer object
             $swp_customer = WebPayItem::companyCustomer();
-
+           
             // set company name
             $swp_customer->setCompanyName( $order->billing['company'] );
 
@@ -381,7 +381,7 @@ class sveawebpay_invoice extends SveaZencart {
             if( ($user_country == 'NL') ||
                 ($user_country == 'DE') )
             {
-                $myStreetAddress = Helper::splitStreetAddress( $order->billing['street_address'] ); // Split street address and house no
+                $myStreetAddress = Svea\Helper::splitStreetAddress( $order->billing['street_address'] ); // Split street address and house no
             }
             else // other countries disregard housenumber field, so put entire address in streetname field     
             {
@@ -440,7 +440,7 @@ class sveawebpay_invoice extends SveaZencart {
             if( ($user_country == 'NL') ||
                 ($user_country == 'DE') )
             {
-                $myStreetAddress = Helper::splitStreetAddress( $order->billing['street_address'] ); // Split street address and house no
+                $myStreetAddress = Svea\Helper::splitStreetAddress( $order->billing['street_address'] ); // Split street address and house no
             }
             else // other countries disregard housenumber field, so put entire address in streetname field     
             {
