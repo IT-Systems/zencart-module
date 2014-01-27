@@ -1,7 +1,9 @@
 # Zen Cart - Svea payment module
-## Version 4.1
+## Version 4.1.2
 * Supports Zen Cart version 1.5.1 and 1.3.9
 * Requires PHP 5.3 or higher (namespace support)
+
+For release history, see [**github release tags**](https://github.com/sveawebpay/zencart-module/releases)
 
 This module supports Svea invoice and payment plan payments in Sweden, Finland, Norway, Denmark, Netherlands and Germany, as well as creditcard and direct bank payments from all countries. It is also possible to perform basic Svea order administration actions by setting the order status in the Zen Cart order administration interface. The supported Svea administration actions are: Deliver and Cancel invoice and payment plan orders and Credit invoice orders.
 
@@ -271,10 +273,3 @@ An example screenshot of the interface is found in the next section under "Invoi
 ![Svea administration interface] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/svea_admin.PNG "Svea administration interface")
 
 (Intentionally left blank.)
-
-### Release history
-
-* 4.1.1  (20131218) Added note on PHP 5.3+ required for module.
-* 4.1    (20131204) Able to perform basic Svea order administration actions by setting the order status in the Zen Cart order administration interface. Changes to AutoDeliver order settings for invoice and payment plan payment methods.
-* 4.0.1  (20131118) Fix for wrong client order id used in request.
-* 4.0.0  (20131112) Rewrite of module to build on Svea php integration package and support the new eu payment flow. Supports ZenCart 1.5.1.

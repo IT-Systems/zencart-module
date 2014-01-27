@@ -2,7 +2,7 @@
 /*
 HOSTED SVEAWEBPAY PAYMENT MODULE FOR ZEN CART
 -----------------------------------------------
-Version 4.1 - Zen Cart
+Version 4.1.2 - Zen Cart
 Kristian Grossman-Madsen, Shaho Ghobadi
 */
 
