@@ -27,7 +27,7 @@ define('ERROR_CODE_27002','Det går ej att delleverera en delbetalning');
 define('ERROR_CODE_27003','Det går ej att kombinera CampaignCode med en fast summa.');
 define('ERROR_CODE_27004','Det går ej att hitta en passande kampanjkod för den angivna summan');
 
-define('ERROR_CODE_30000','Krediteringen nekades');
+define('ERROR_CODE_30000','Kreditupplysningen avslogs');
 define('ERROR_CODE_30001','Kunden är blockerad eller har uppvisat udda köpbeteende.');
 define('ERROR_CODE_30002','Ordern nekades baserat på kreditupplysningen.');
 define('ERROR_CODE_30003','Det går ej att hitta kunden i kreditupplysningen.');
@@ -49,7 +49,7 @@ define('FORM_TEXT_PAYMENT_OPTIONS','Delbetalningsalternativ:');
 define('FORM_TEXT_GET_PAY_OPTIONS','Hämta betalningsalternativ');
 define('FORM_TEXT_SS_NO','Personnummer:');
 define('FORM_TEXT_INITIALS','Initialer');                                
-define('FORM_TEXT_BIRTHDATE','Födelsedatum (YYYYMMDD)');              
+define('FORM_TEXT_BIRTHDATE','Födelsedatum');              
 define('FORM_TEXT_VATNO','Organisationsnummer'); 
 define('FORM_TEXT_PARTPAY_FEE','Uppläggningsavgift tillkommer');
 define('FORM_TEXT_GET_PAYPLAN','Hämta betalningsalternativ:');

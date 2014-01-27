@@ -3,7 +3,7 @@
 /*
   HOSTED SVEAWEBPAY PAYMENT MODULE FOR ZEN CART
   -----------------------------------------------
-  Version 4.1 - Zen Cart
+  Version 4.1.2 - Zen Cart
   Kristian Grossman-Madsen, Shaho Ghobadi
  */
 
@@ -138,7 +138,6 @@ class sveawebpay_invoice extends SveaZencart {
                             '<label><input type="radio" name="sveaIsCompany" value="false" checked>' . FORM_TEXT_PRIVATE . '</label>' .
                             '<label><input type="radio" name="sveaIsCompany" value="true">' . FORM_TEXT_COMPANY . '</label><br />';
 
-
         // these are the countries we support getAddress in (getAddress also depends on sveaSSN being present)
         if( ($customer_country == 'SE') ||
             ($customer_country == 'NO') ||
@@ -149,7 +148,7 @@ class sveawebpay_invoice extends SveaZencart {
         }
 
         // if customer is located in Netherlands, get initials
-        if( $customer_country == 'NL') {
+        if( $customer_country == 'NL' ) {
 
             $sveaInitialsDiv =  '<div id="sveaInitials_div" >' .
                                     '<label for="sveaInitials">' . FORM_TEXT_INITIALS . '</label><br />' .
@@ -184,14 +183,14 @@ class sveawebpay_invoice extends SveaZencart {
             }
             $birthMonth = "<select name='sveaBirthMonth' id='sveaBirthMonth'>$months</select>";
 
-            //Years from 1913 to 1996
+            //Years from 1913 to date('Y')
             $years = '';
-            for($y = 1913; $y <= 1996; $y++){
-                if( $y == 1980 )
-                    $years .= "<option value='$y' selected>$y</option>"; // sensible default
-                else
-                    $years .= "<option value='$y'>$y</option>";
-                
+            for($y = 1913; $y <= date('Y'); $y++){
+                $selected = "";
+                if( $y == (date('Y')-30) )      // selected is backdated 30 years
+                    $selected = "selected";
+
+                $years .= "<option value='$y' $selected>$y</option>";
             }
             
             $birthYear = "<select name='sveaBirthYear' id='sveaBirthYear'>$years</select>";
@@ -232,7 +231,11 @@ class sveawebpay_invoice extends SveaZencart {
         }
 
         $sveaError = '<br /><span id="sveaSSN_error_invoice" style="color:red"></span>';
-        if($order->billing['country']['iso_code_2'] == "SE" || $order->billing['country']['iso_code_2'] == "DK"){
+        if(     $order->billing['country']['iso_code_2'] == "SE" ||
+                $order->billing['country']['iso_code_2'] == "DK" ||
+                $order->billing['country']['iso_code_2'] == "NO"        // but don't show button/do getAddress unless customer is company!
+        )
+        {
              $sveaSubmitAddress = '<button id="sveaSubmitGetAddress" type="button">'.FORM_TEXT_GET_ADDRESS.'</button>';
         }
 
@@ -335,6 +338,7 @@ class sveawebpay_invoice extends SveaZencart {
            );
         }
 
+        // creates non-item order rows from Order Total entries
         $swp_order = $this->parseOrderTotals( $order_totals, $swp_order );
 
         // Check if customer is company
@@ -342,7 +346,7 @@ class sveawebpay_invoice extends SveaZencart {
         {
             // create company customer object
             $swp_customer = WebPayItem::companyCustomer();
-
+           
             // set company name
             $swp_customer->setCompanyName( $order->billing['company'] );
 
@@ -373,12 +377,19 @@ class sveawebpay_invoice extends SveaZencart {
                 $swp_customer->setVatNumber( $post_sveaVatNo );
             }
 
-            //Split street address and house no
-            $pattern ="/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*[^\s])?(?:\s)*$/";
-            $myStreetAddress = Array();
-            preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
-            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }
-
+            // set housenumber
+            if( ($user_country == 'NL') ||
+                ($user_country == 'DE') )
+            {
+                $myStreetAddress = Svea\Helper::splitStreetAddress( $order->billing['street_address'] ); // Split street address and house no
+            }
+            else // other countries disregard housenumber field, so put entire address in streetname field     
+            {
+                $myStreetAddress[0] = $order->billing['street_address'];
+                $myStreetAddress[1] = $order->billing['street_address'];
+                $myStreetAddress[2] = "";
+            }
+            
             // set common fields
             $swp_customer
                 ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )
@@ -425,11 +436,18 @@ class sveawebpay_invoice extends SveaZencart {
                 $swp_customer->setInitials($post_sveaInitials);
             }
 
-            //Split street address and house no
-            $pattern ="/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*[^\s])?(?:\s)*$/";
-            $myStreetAddress = Array();
-            preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
-            if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }
+            // set housenumber
+            if( ($user_country == 'NL') ||
+                ($user_country == 'DE') )
+            {
+                $myStreetAddress = Svea\Helper::splitStreetAddress( $order->billing['street_address'] ); // Split street address and house no
+            }
+            else // other countries disregard housenumber field, so put entire address in streetname field     
+            {
+                $myStreetAddress[0] = $order->billing['street_address'];
+                $myStreetAddress[1] = $order->billing['street_address'];
+                $myStreetAddress[2] = "";
+            }
 
             // set common fields
             $swp_customer
@@ -464,7 +482,9 @@ class sveawebpay_invoice extends SveaZencart {
         // retrieve order object set in process_button()
         $swp_order = unserialize($_SESSION["swp_order"]);
 
-        // send payment request to svea, receive response
+//        print_r( $swp_order->useInvoicePayment()->prepareRequest() );
+//        
+        // send payment request to svea, receive response       
         $swp_response = $swp_order->useInvoicePayment()->doRequest();
 
         // payment request failed; handle this by redirecting w/result code as error message

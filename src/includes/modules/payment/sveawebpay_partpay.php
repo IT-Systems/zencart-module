@@ -3,7 +3,7 @@
 /*
   HOSTED SVEAWEBPAY PAYMENT MODULE FOR ZEN CART
   -----------------------------------------------
-  Version 4.1 - Zen Cart
+  Version 4.1.2 - Zen Cart
   Kristian Grossman-Madsen, Shaho Ghobadi
  */
 
@@ -189,14 +189,14 @@ class sveawebpay_partpay extends SveaZencart{
             }
             $birthMonth = "<select name='sveaBirthMonthPP' id='sveaBirthMonthPP'>$months</select>";
 
-            //Years from 1913 to 1996
+            //Years from 1913 to date('Y')
             $years = '';
-            for($y = 1913; $y <= 1996; $y++){
-                if( $y == 1980 )
-                    $years .= "<option value='$y' selected>$y</option>"; // sensible default
-                else
-                    $years .= "<option value='$y'>$y</option>";
-                
+            for($y = 1913; $y <= date('Y'); $y++){
+                $selected = "";
+                if( $y == (date('Y')-30) )      // selected is backdated 30 years
+                    $selected = "selected";
+
+                $years .= "<option value='$y' $selected>$y</option>";
             }
             $birthYear = "<select name='sveaBirthYearPP' id='sveaBirthYearPP'>$years</select>";
 
@@ -361,6 +361,7 @@ class sveawebpay_partpay extends SveaZencart{
             );
         }
 
+        // creates non-item order rows from Order Total entries
         $swp_order = $this->parseOrderTotals( $order_totals, $swp_order );
         
         // customer is always private individual with partpay
@@ -396,12 +397,19 @@ class sveawebpay_partpay extends SveaZencart{
             $swp_customer->setInitials($post_sveaInitials);
         }
 
-        //Split street address and house no
-        $pattern ="/^(?:\s)*([0-9]*[A-ZÄÅÆÖØÜßäåæöøüa-z]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]+)(?:\s*)([0-9]*\s*[A-ZÄÅÆÖØÜßäåæöøüa-z]*[^\s])?(?:\s)*$/";
-        $myStreetAddress = Array();
-        preg_match( $pattern, $order->billing['street_address'], $myStreetAddress  );
-        if( !array_key_exists( 2, $myStreetAddress ) ) { $myStreetAddress[2] = ""; }
-
+        // set housenumber
+        if( ($user_country == 'NL') ||
+            ($user_country == 'DE') )
+        {
+            $myStreetAddress = Svea\Helper::splitStreetAddress( $order->billing['street_address'] ); // Split street address and house no
+        }
+        else // other countries disregard housenumber field, so put entire address in streetname field     
+        {
+            $myStreetAddress[0] = $order->billing['street_address'];
+            $myStreetAddress[1] = $order->billing['street_address'];
+            $myStreetAddress[2] = "";
+        }
+            
         // set common fields
         $swp_customer
             ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )  // street, housenumber

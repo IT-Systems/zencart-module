@@ -31,7 +31,7 @@ define('ERROR_CODE_40001','Maatunnusta ei tueta');
 define('ERROR_CODE_40002','Väärä asiakastieto');
 define('ERROR_CODE_40004','Tälle asiakkaalle ei löydy osoitetta');
 
-define('ERROR_CODE_50000','Tälle asiakkaalle ei löydy osoitetta');
+define('ERROR_CODE_50000','Asiakkaalla ei ole oikeutta käyttää tätä menetelmää.');
 
 //invoice specific
 define('ERROR_CODE_24000','Laskun summa ylittää valtuutetun summan');
@@ -45,7 +45,7 @@ define('FORM_TEXT_GET_ADDRESS','Hae osoite');
 
 define('FORM_TEXT_SS_NO','Henkilötunnus:');
 define('FORM_TEXT_INITIALS','Tunnukset');                                
-define('FORM_TEXT_BIRTHDATE','Syntymäaika (YYYYMMDD)');               
+define('FORM_TEXT_BIRTHDATE','Syntymäaika');               
 define('FORM_TEXT_VATNO','ALV'); 
 
 //Form on checkout

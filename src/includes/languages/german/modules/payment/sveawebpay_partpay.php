@@ -48,7 +48,7 @@ define('FORM_TEXT_PAYMENT_OPTIONS','Zahlungsmöglichkeiten:');
 define('FORM_TEXT_GET_PAY_OPTIONS','Zahlungsmöglichkeiten holen');
 define('FORM_TEXT_SS_NO','Sozialversicherungsnummer:');
 define('FORM_TEXT_INITIALS','Initialen');                                
-define('FORM_TEXT_BIRTHDATE','Geburtsdatum (YYYYMMDD)');              
+define('FORM_TEXT_BIRTHDATE','Geburtsdatum');              
 define('FORM_TEXT_VATNO','MwSt'); 
 define('FORM_TEXT_PARTPAY_FEE','Ausgangsgebühr hinzukommen');
 define('FORM_TEXT_GET_PAYPLAN','Adresse bekommen');

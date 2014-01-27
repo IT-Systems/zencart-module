@@ -44,7 +44,7 @@ define('FORM_TEXT_COMPANY','Company');
 define('FORM_TEXT_PRIVATE','Private');
 define('FORM_TEXT_GET_ADDRESS','Get Address');
 
-define('FORM_TEXT_SS_NO','Social Security No (YYYYMMDD-XXXX):');
+define('FORM_TEXT_SS_NO','Social Security No:');
 define('FORM_TEXT_INITIALS','Initials');                                
 define('FORM_TEXT_BIRTHDATE','Date of Birth');              
 define('FORM_TEXT_VATNO','Vat Number');
