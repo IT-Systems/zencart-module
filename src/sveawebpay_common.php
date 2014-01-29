@@ -744,7 +744,7 @@ class SveaZencart {
                         }
                         $hf_taxrate =   zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS,
                                         $order->delivery['country']['id'], $order->delivery['zone_id']);
-
+                        
                         // add WebPayItem::invoiceFee to swp_order object
                         $svea_order->addFee(
                                 WebPayItem::invoiceFee()
