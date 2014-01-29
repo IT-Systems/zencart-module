@@ -733,10 +733,10 @@ class SveaZencart {
                         // handlingfee expressed as percentage?
                         if (substr($this->handling_fee, -1) == '%') {
 
-                            // sum of products + shipping * handling_fee as percentage
+                            // sum of products * handling_fee as percentage
                             $hf_percentage = floatval(substr($this->handling_fee, 0, -1));
 
-                            $hf_price = ($order->info['subtotal'] + $order->info['shipping_cost']) * ($hf_percentage / 100.0);
+                            $hf_price = $order->info['subtotal'] * ($hf_percentage / 100.0);
                         }
                         // handlingfee expressed as absolute amount (incl. tax)
                         else {
