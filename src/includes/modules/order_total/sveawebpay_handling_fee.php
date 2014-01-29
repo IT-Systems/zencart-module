@@ -2,6 +2,9 @@
 
 class sveawebpay_handling_fee {
 
+    /**
+     * constructor, initialises object from config settings values (in uppercase)
+     */
     function sveawebpay_handling_fee() {
         $this->code = 'sveawebpay_handling_fee';
         $this->title = MODULE_ORDER_TOTAL_SWPHANDLING_NAME;
@@ -9,24 +12,26 @@ class sveawebpay_handling_fee {
         $this->enabled = MODULE_ORDER_TOTAL_SWPHANDLING_STATUS == 'true' ? true : false;
         $this->sort_order = MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER;
         $this->output = array();
-        $this->tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
+        $this->tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;      
+        $this->handling_fee = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE') ? MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE : 0.0;        
     }
 
     function process() {
         global $order, $currencies;
+
+        // get svea payment module from session 
         if (isset($_SESSION['SWP_CODE']))
-            $payment_module = $_SESSION['SWP_CODE'];
+            $payment_module = $_SESSION['SWP_CODE'];        // TODO: still needed?
 
-        // calculate handling fee
-        if (isset($payment_module) && isset($GLOBALS[$payment_module])) {
-            if (isset($GLOBALS[$payment_module]->handling_fee) && zen_not_null($GLOBALS[$payment_module]->handling_fee)) {
-                $paymentfee_cost = $GLOBALS[$payment_module]->handling_fee;
-                // if percentage, calculate from order total
-                if (substr($paymentfee_cost, -1) == '%')
-                    $paymentfee_cost = (float) ((substr($paymentfee_cost, 0, -1) / 100) * $order->info['subtotal']);
-            }
+        // calculate handling fee total
+        $paymentfee_cost = $this->handling_fee;
+        
+        // if percentage, calculate fee based on order subtotal
+        if (substr($paymentfee_cost, -1) == '%')
+        {
+            $paymentfee_cost = (float) ((substr($paymentfee_cost, 0, -1) / 100) * $order->info['subtotal']);
         }
-
+      
         // calculate tax and add cost to order total and tax
         if ($paymentfee_cost) {
             $paymentfee_tax = 0;
@@ -51,9 +56,15 @@ class sveawebpay_handling_fee {
                     'value' => $paymentfee_cost);
             }
         }
+        print_r( $paymentfee_cost );
+        print_r( $paymentfee_tax );
     }
-
+    
     // standard functions below
+    
+    /**
+     * return true if module is enabled (i.e. installed)
+     */
     function check() {
         global $db;
         if (!isset($this->_check)) {
@@ -70,8 +81,7 @@ class sveawebpay_handling_fee {
 
         $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Fee', 'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE', '29', 'This handling fee will be applied to all orders using the invoice payment method. The figure can either be set to a specific amount, eg. <b>5.00</b>, or set to a percentage of the order total, by ensuring the last character is a \'%\' eg <b>5.00%</b>.', '6', '0', now())");
         $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, use_function, set_function, date_added) values ('Tax Class', 'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS', '0', 'Use the following tax class on the payment handling fee.', '6', '0', 'zen_get_tax_class_title', 'zen_cfg_pull_down_tax_classes(', now())");
-
-
+        
         $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Fee"." (NO)"."', 'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE"."_NO"."', '29', '', '6', '0', now())");
         $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, use_function, set_function, date_added) values ('Tax Class"." (NO)"."', 'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS"."_NO"."', '0', '', '6', '0', 'zen_get_tax_class_title', 'zen_cfg_pull_down_tax_classes(', now())");
 
@@ -87,7 +97,7 @@ class sveawebpay_handling_fee {
             'MODULE_ORDER_TOTAL_SWPHANDLING_STATUS',    
             'MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER',
 
-            'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE',  // no suffix = SE
+            'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE',      // no suffix = SE
             'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS',
             
             'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_NO',
