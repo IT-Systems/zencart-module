@@ -67,8 +67,14 @@ class sveawebpay_handling_fee {
         global $db;
         $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('This module is installed', 'MODULE_ORDER_TOTAL_SWPHANDLING_STATUS', 'true', '', '6', '1','zen_cfg_select_option(array(\'true\'), ', now())");
         $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Sort Order', 'MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER', '299', 'Sort order of display.', '6', '3', now())");
-        $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, use_function, set_function, date_added) values ('Tax Class', 'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS', '0', 'Use the following tax class on the payment handling fee.', '6', '0', 'zen_get_tax_class_title', 'zen_cfg_pull_down_tax_classes(', now())");
+
         $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Fee', 'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE', '29', 'This handling fee will be applied to all orders using the invoice payment method. The figure can either be set to a specific amount, eg. <b>5.00</b>, or set to a percentage of the order total, by ensuring the last character is a \'%\' eg <b>5.00%</b>.', '6', '0', now())");
+        $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, use_function, set_function, date_added) values ('Tax Class', 'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS', '0', 'Use the following tax class on the payment handling fee.', '6', '0', 'zen_get_tax_class_title', 'zen_cfg_pull_down_tax_classes(', now())");
+
+
+        $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Fee"." (NO)"."', 'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE"."_NO"."', '29', '', '6', '0', now())");
+        $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, use_function, set_function, date_added) values ('Tax Class"." (NO)"."', 'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS"."_NO"."', '0', '', '6', '0', 'zen_get_tax_class_title', 'zen_cfg_pull_down_tax_classes(', now())");
+
     }
 
     function remove() {
@@ -77,11 +83,36 @@ class sveawebpay_handling_fee {
     }
 
     function keys() {
-        global $db;
-        return array('MODULE_ORDER_TOTAL_SWPHANDLING_STATUS',
-            'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS',
+        return array(
+            'MODULE_ORDER_TOTAL_SWPHANDLING_STATUS',    
             'MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER',
-            'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE');
+
+            'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE',  // no suffix = SE
+            'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS',
+            
+            'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_NO',
+            'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS_NO'
+            
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_STATUS_DK',
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS_DK',
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER_DK',
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_DK',
+//            
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_STATUS_FI',
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS_FI',
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER_FI',
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_FI',
+//            
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_STATUS_NL',
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS_NL',
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER_NL',
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_NL',
+//            
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_STATUS_DE',
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS_DE',
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER_DE',
+//            'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_DE'
+        );
     }
 
 }
