@@ -31,9 +31,17 @@ class sveawebpay_handling_fee {
         $this->output = array();
     }
 
+    /**
+     * process() populates the output array with order total row information
+     */
     function process() {
         global $order, $currencies;
-
+   
+        // only add to order total rows if the invoice payment method has been selected
+        if( $_SESSION['payment'] != "sveawebpay_invoice" ) {
+            return;
+        }    
+        
         // get customer country from order
         $countryCode = $order->customer['country']['iso_code_2'];
 
@@ -78,7 +86,7 @@ class sveawebpay_handling_fee {
                     'value' => $fee_cost);
             }
             // unfortunately 'tax' doesn't seem to get passed along to the order total, only 'value' which is used by zencart when displaying order totals
-        }
+        }       
     }
     
     // standard functions below
