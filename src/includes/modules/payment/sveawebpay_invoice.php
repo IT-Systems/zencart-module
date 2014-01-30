@@ -15,20 +15,21 @@ require_once(DIR_FS_CATALOG . 'sveawebpay_common.php');     // zencart module co
 
 class sveawebpay_invoice extends SveaZencart {
     
+
+    /**
+     * constructor, initialises object from config settings values (in uppercase)
+     */
     function sveawebpay_invoice() {
         global $order;
 
         $this->code = 'sveawebpay_invoice';
-        $this->version = 4;
-
-        $_SESSION['SWP_CODE'] = $this->code;
+        $this->version = 4.1;
 
         $this->title = MODULE_PAYMENT_SWPINVOICE_TEXT_TITLE;
         $this->description = MODULE_PAYMENT_SWPINVOICE_TEXT_DESCRIPTION;
         $this->enabled = ((MODULE_PAYMENT_SWPINVOICE_STATUS == 'True') ? true : false);
         $this->sort_order = MODULE_PAYMENT_SWPINVOICE_SORT_ORDER;
         $this->sveawebpay_url = MODULE_PAYMENT_SWPINVOICE_URL;
-        $this->handling_fee = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE') ? MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE : 0.0;
         $this->default_currency = MODULE_PAYMENT_SWPINVOICE_DEFAULT_CURRENCY;
         $this->allowed_currencies = explode(',', MODULE_PAYMENT_SWPINVOICE_ALLOWED_CURRENCIES);
         $this->display_images = ((MODULE_PAYMENT_SWPINVOICE_IMAGES == 'True') ? true : false);
