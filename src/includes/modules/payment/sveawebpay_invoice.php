@@ -3,7 +3,6 @@
 /*
   HOSTED SVEAWEBPAY PAYMENT MODULE FOR ZEN CART
   -----------------------------------------------
-  Version 4.1.2 - Zen Cart
   Kristian Grossman-Madsen, Shaho Ghobadi
  */
 
@@ -23,7 +22,7 @@ class sveawebpay_invoice extends SveaZencart {
         global $order;
 
         $this->code = 'sveawebpay_invoice';
-        $this->version = 4.1;
+        $this->version = 4.2;
 
         $this->title = MODULE_PAYMENT_SWPINVOICE_TEXT_TITLE;
         $this->description = MODULE_PAYMENT_SWPINVOICE_TEXT_DESCRIPTION;

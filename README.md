@@ -9,13 +9,17 @@ This module supports Svea invoice and payment plan payments in Sweden, Finland, 
 
 The module has been tested with Zen Cart and any pre-installed checkout, coupon, voucher and shipping modules, including the Svea invoice fee. The module has been updated to make use of the latest payment systems at Svea, and builds upon the included Svea php integration package.
 
-**NOTE**: If you are upgrading from the previous version 3.x of this module, please contact Svea support before installing the version 4.0 module, your account settings may require updating. Also, all payment methods should be uninstalled and then re-installed when upgrading (please make note of your previous configuration, as you'll have to re-enter your settings after upgrading 4.0). This ensures that all settings are initialised correctly in the new module. 
-
 As always, we strongly recommend that you have a test environment set up, and make a backup of your existing site, database and settings before upgrading.
 
 If you experience technical issues with this module, or if you have feature suggestions, please submit an issue on the Github issue list.
 
 #Installation instructions
+
+## Upgrading from a previous version of the module
+
+* From module version 4.1.x or 4.0.x: The Invoice fee module has been reworked to allow for different invoice fees in different countries. Please uninstall the old module from the admin order total list and then reinstall the module. This ensures that the new settings will be picked up by Zencart. See further under "Setting up the Svea Invoice fee order total module" below.
+
+* From module version 3.x or less: If you are upgrading from the previous version 3.x of this module, please contact Svea support before installing the current module, your account settings may require updating. Also, all payment methods should be uninstalled and then re-installed when upgrading (please make note of your previous configuration, as you'll have to re-enter your settings after upgrading to the current module). This ensures that all settings are initialised correctly in the new module. 
 
 ##Basic installation example using the Svea Invoice payment method
 
@@ -80,7 +84,8 @@ In this example we'll first configure the Svea invoice payment method, instructi
 
 ![Invoice payment settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/invoice_settings_2.PNG "Method invoice settings 2")
 
-#### Next we set up the Svea Invoice fee (used by Svea Invoice payment method )
+#### Setting up the Svea Invoice fee order total module
+The Svea Invoice fee order total module is used to add an invoice fee to the order total when the Svea Invoice payment method is selected during checkout.
 
 * Browse to _Modules -> Order Total_.
 
