@@ -1,5 +1,5 @@
 # Zen Cart - Svea payment module
-## Version 4.1.2
+## Version 4.2.0
 * Supports Zen Cart version 1.5.1 and 1.3.9
 * Requires PHP 5.3 or higher (namespace support)
 
@@ -9,13 +9,17 @@ This module supports Svea invoice and payment plan payments in Sweden, Finland, 
 
 The module has been tested with Zen Cart and any pre-installed checkout, coupon, voucher and shipping modules, including the Svea invoice fee. The module has been updated to make use of the latest payment systems at Svea, and builds upon the included Svea php integration package.
 
-**NOTE**: If you are upgrading from the previous version 3.x of this module, please contact Svea support before installing the version 4.0 module, your account settings may require updating. Also, all payment methods should be uninstalled and then re-installed when upgrading (please make note of your previous configuration, as you'll have to re-enter your settings after upgrading 4.0). This ensures that all settings are initialised correctly in the new module. 
-
 As always, we strongly recommend that you have a test environment set up, and make a backup of your existing site, database and settings before upgrading.
 
 If you experience technical issues with this module, or if you have feature suggestions, please submit an issue on the Github issue list.
 
 #Installation instructions
+
+## Upgrading from a previous version of the module
+
+* From module version 4.1.x or 4.0.x: The Invoice fee module has been reworked to allow for different invoice fees in different countries. Please uninstall the old module from the admin order total list and then reinstall the module. This ensures that the new settings will be picked up by Zencart. See further under "Setting up the Svea Invoice fee order total module" below.
+
+* From module version 3.x or less: If you are upgrading from the previous version 3.x of this module, please contact Svea support before installing the current module, your account settings may require updating. Also, all payment methods should be uninstalled and then re-installed when upgrading (please make note of your previous configuration, as you'll have to re-enter your settings after upgrading to the current module). This ensures that all settings are initialised correctly in the new module. 
 
 ##Basic installation example using the Svea Invoice payment method
 
@@ -80,21 +84,22 @@ In this example we'll first configure the Svea invoice payment method, instructi
 
 ![Invoice payment settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/invoice_settings_2.PNG "Method invoice settings 2")
 
-#### Next we set up the Svea Invoice handling fee (used by Svea Invoice payment method )
+#### Setting up the Svea Invoice fee order total module
+The Svea Invoice fee order total module is used to add an invoice fee to the order total when the Svea Invoice payment method is selected during checkout.
 
 * Browse to _Modules -> Order Total_.
 
-* Select _Svea Invoice handling fee_ in the list, choose _install_ and then _edit_:
+* Select _Svea Invoice handling fee_ from the list, choose _install_ and then _edit_:
 
-* _This module is installed_: Yep. So it is.
+* _Enable Svea Invoice Fee_: If set to false, no invoice fee will be applied to invoice payments in any country. (If you wish to temporarily disable a single country invoice fee, set its fee entry to 0 below and it will not show up in the order total.)
+
+* _Sort order_ determines where in the order total stack the invoice fee will be displayed upon checkout. See recommendations under "Order Total settings" below.
+
+The invoice fee and tax class need to be specified for each country from which you accept invoice payments. (Note that you also need to have the invoice payment method set up to accept customers from these countries. Please contact your Svea account manager if you have further questions.
+
+* _Fee_: Specify the amount excluding tax, in shop default currency. Note that the invoice fee always should be specified excluding tax, and in the shop default currency. The actual amount charged in the customer payment currency will be calculated using the standard zencart currency conversion rules. Also, make sure to use the correct decimal point notation, i.e. a dot (.) when specifying the fee.
 
 * _Tax class_: Select the tax class that will be applied to the invoice fee.
-
-* _Sort order_ determines where in the order total stack the invoice fee will be displayed upon checkout.
-
-* _Fee_: The fee can either be set to a specific amount, i.e. "5.00", or set to a percentage of the order sub-total, by ensuring the last character of the fee is a '%', i.e. "5.00%". Note that the fee always should be specified excluding tax. Also, make sure to use the correct decimal point notation, i.e. a dot (.) when specifying the fee.
-
-Note that the invoice fee is always set in the shop default currency. The actual amount charged in the customer payment currency will be calculated using the standard zencart currency conversion rules.
 
 ![Invoice fee settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/invoice_fee_settings.PNG "Invoice fee settings")
 
@@ -197,8 +202,6 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 * Under _Localisation -> Currencies_, the _Decimal Places_ setting must be set to two (2) for _Euro_.
 
 ### Order Total settings
-* Under _Modules -> Order Total_, in the Svea Invoice handling fee module, _Fee_ must be specified excluding any taxes (VAT).
-
 * The recommended order total modules sort order is: sub-total (lowest), svea invoice fee, shipping, coupon, taxes, store credit, voucher and total.
 
 ## Svea order administration actions
