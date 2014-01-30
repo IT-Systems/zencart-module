@@ -25,8 +25,6 @@ class sveawebpay_invoice extends SveaZencart {
         $this->code = 'sveawebpay_invoice';
         $this->version = 4.1;
 
-        $_SESSION['SWP_CODE'] = $this->code;
-
         $this->title = MODULE_PAYMENT_SWPINVOICE_TEXT_TITLE;
         $this->description = MODULE_PAYMENT_SWPINVOICE_TEXT_DESCRIPTION;
         $this->enabled = ((MODULE_PAYMENT_SWPINVOICE_STATUS == 'True') ? true : false);

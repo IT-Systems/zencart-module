@@ -16,9 +16,7 @@ class sveawebpay_internetbank {
     global $order;
 
     $this->code = 'sveawebpay_internetbank';
-    $this->version = 4;
-
-    $_SESSION['SWP_CODE'] = $this->code;
+    $this->version = 4.1;
 
     $this->form_action_url = (MODULE_PAYMENT_SWPINTERNETBANK_STATUS == 'True') ? 'https://test.sveaekonomi.se/webpay/payment' : 'https://webpay.sveaekonomi.se/webpay/payment';
     $this->title = MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE;

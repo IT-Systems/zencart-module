@@ -34,10 +34,6 @@ class sveawebpay_handling_fee {
     function process() {
         global $order, $currencies;
 
-        // get svea payment module from session 
-        if (isset($_SESSION['SWP_CODE']))
-            $payment_module = $_SESSION['SWP_CODE'];        // TODO: still needed?
-
         // get customer country from order
         $countryCode = $order->customer['country']['iso_code_2'];
 
@@ -67,14 +63,16 @@ class sveawebpay_handling_fee {
             
             if (DISPLAY_PRICE_WITH_TAX == 'true') //tax included in value
             {
-                $this->output[] = array('title' => sprintf(MODULE_ORDER_TOTAL_SWPHANDLING_LABEL, $GLOBALS[$payment_module]->title),
+                $this->output[] = array(
+                    'title' => MODULE_ORDER_TOTAL_SWPHANDLING_NAME.":",
                     'text' => $currencies->format($fee_cost + $fee_tax, true, $order->info['currency'], $order->info['currency_value']),
                     'tax' => $fee_tax,
                     'value' => $fee_cost + $fee_tax);
             } 
             else // tax not included in value 
             {
-                $this->output[] = array('title' => sprintf(MODULE_ORDER_TOTAL_SWPHANDLING_LABEL, $GLOBALS[$payment_module]->title),
+                $this->output[] = array(
+                    'title' => MODULE_ORDER_TOTAL_SWPHANDLING_NAME.":",
                     'text' => $currencies->format($fee_cost, true, $order->info['currency'], $order->info['currency_value']),
                     'tax' => $fee_tax,
                     'value' => $fee_cost);
