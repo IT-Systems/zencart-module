@@ -32,7 +32,7 @@ class sveawebpay_handling_fee {
     }
 
     /**
-     * process() populates the output array with order total row information
+     * process() populates $this->output[] array with order total row information
      */
     function process() {
         global $order, $currencies;
@@ -40,7 +40,7 @@ class sveawebpay_handling_fee {
         // only add to order total rows if the invoice payment method has been selected
         if( $_SESSION['payment'] != "sveawebpay_invoice" ) {
             return;
-        }    
+        }
         
         // get customer country from order
         $countryCode = $order->customer['country']['iso_code_2'];
@@ -48,12 +48,6 @@ class sveawebpay_handling_fee {
         // calculate handling fee total
         $fee_cost = $this->handling_fee[$countryCode];
         $tax_class = $this->tax_class[$countryCode];
-        
-        // if percentage, calculate fee based on order subtotal
-        if (substr($fee_cost, -1) == '%')
-        {
-            $fee_cost = (float) ((substr($fee_cost, 0, -1) / 100) * $order->info['subtotal']);
-        }
               
         // calculate tax and add cost to order total and tax
         if ($fee_cost) {
@@ -69,27 +63,27 @@ class sveawebpay_handling_fee {
             }
             $order->info['total'] += $fee_cost + $fee_tax;
             
-            if (DISPLAY_PRICE_WITH_TAX == 'true') //tax included in value
+            // $this->output[] contains fields presented in order total 
+            if (DISPLAY_PRICE_WITH_TAX == 'true') // include tax in value
             {
                 $this->output[] = array(
                     'title' => MODULE_ORDER_TOTAL_SWPHANDLING_NAME.":",
                     'text' => $currencies->format($fee_cost + $fee_tax, true, $order->info['currency'], $order->info['currency_value']),
-                    'tax' => $fee_tax,
+                    //'tax' => $fee_tax, // unfortunately doesn't seem to get passed along to the order total
                     'value' => $fee_cost + $fee_tax);
             } 
-            else // tax not included in value 
+            else // don't include tax in value 
             {
                 $this->output[] = array(
                     'title' => MODULE_ORDER_TOTAL_SWPHANDLING_NAME.":",
                     'text' => $currencies->format($fee_cost, true, $order->info['currency'], $order->info['currency_value']),
-                    'tax' => $fee_tax,
+                    //'tax' => $fee_tax, // unfortunately doesn't seem to get passed along to the order total
                     'value' => $fee_cost);
             }
-            // unfortunately 'tax' doesn't seem to get passed along to the order total, only 'value' which is used by zencart when displaying order totals
         }       
     }
     
-    // standard functions below
+    // standard zencart module functions below
     
     /**
      * return true if module is enabled (i.e. installed)
@@ -107,8 +101,8 @@ class sveawebpay_handling_fee {
         global $db;
         $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, set_function, date_added) values ('This module is installed', 'MODULE_ORDER_TOTAL_SWPHANDLING_STATUS', 'true', '', '6', '1','zen_cfg_select_option(array(\'true\'), ', now())");
         $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Sort Order', 'MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER', '299', 'Sort order of display.', '6', '3', now())");
-        $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Fee"." (SE)"."', 'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE"."_SE"."', '20', 'This handling fee will be applied to all orders using the invoice payment method. The figure can either be set to a specific amount, eg. <b>5.00</b>, or set to a percentage of the order total, by ensuring the last character is a \'%\' eg <b>5.00%</b>.', '6', '0', now())");
-        $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, use_function, set_function, date_added) values ('Tax Class"." (SE)"."', 'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS"."_SE"."', '0', 'Use the following tax class on the payment handling fee.', '6', '0', 'zen_get_tax_class_title', 'zen_cfg_pull_down_tax_classes(', now())");     
+        $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Fee"." (SE)"."', 'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE"."_SE"."', '20', 'Invoice fee will be applied to orders using the invoice payment method. Specify amount excluding tax, in shop default currency.', '6', '0', now())");
+        $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, use_function, set_function, date_added) values ('Tax Class"." (SE)"."', 'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS"."_SE"."', '0', 'Tax class for invoice fee.', '6', '0', 'zen_get_tax_class_title', 'zen_cfg_pull_down_tax_classes(', now())");     
         $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added) values ('Fee"." (NO)"."', 'MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE"."_NO"."', '0.0', '', '6', '0', now())");
         $db->Execute("insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, use_function, set_function, date_added) values ('Tax Class"." (NO)"."', 'MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS"."_NO"."', '0', '', '6', '0', 'zen_get_tax_class_title', 'zen_cfg_pull_down_tax_classes(', now())");
 
