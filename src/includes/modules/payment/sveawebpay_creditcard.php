@@ -15,7 +15,7 @@ class sveawebpay_creditcard {
     global $order;
 
     $this->code = 'sveawebpay_creditcard';
-    $this->version = 4.2;
+    $this->version = "4.2.1";
 
     $this->form_action_url = (MODULE_PAYMENT_SWPCREDITCARD_STATUS == 'True') ? 'https://test.sveaekonomi.se/webpay/payment' : 'https://webpay.sveaekonomi.se/webpay/payment';
     $this->title = MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE;

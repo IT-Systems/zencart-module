@@ -18,7 +18,7 @@ class sveawebpay_partpay extends SveaZencart{
         global $order;
 
         $this->code = 'sveawebpay_partpay';
-        $this->version = 4.2;
+        $this->version = "4.2.1";
 
         $this->title = MODULE_PAYMENT_SWPPARTPAY_TEXT_TITLE;
         $this->description = MODULE_PAYMENT_SWPPARTPAY_TEXT_DESCRIPTION;
