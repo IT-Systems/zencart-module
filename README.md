@@ -1,5 +1,5 @@
 # Zen Cart - Svea payment module
-## Version 4.2.0
+## Version 4.2.1
 * Supports Zen Cart version 1.5.1 and 1.3.9
 * Requires PHP 5.3 or higher (namespace support)
 
