@@ -445,9 +445,14 @@ class sveawebpay_partpay extends SveaZencart{
 
         //
         // send payment request to svea, receive response
-        $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
-
-        $swp_response = $swp_order->usePaymentPlanPayment($_SESSION['sveaPaymentOptionsPP'])->doRequest();
+        $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();     
+        try {
+            $swp_response = $swp_order->usePaymentPlanPayment($_SESSION['sveaPaymentOptionsPP'])->doRequest();
+        }
+        catch (Exception $e){  
+            // hack together a fake response object containing the error & errormessage
+            $swp_response = (object) array( "accepted" => false, "resultcode" => 1000, "errormessage" => $e->getMessage() ); //new "error" 1000
+        }
 
         // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {
