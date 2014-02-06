@@ -485,15 +485,21 @@ class sveawebpay_invoice extends SveaZencart {
 //        print_r( $swp_order->useInvoicePayment()->prepareRequest() );
 //        
         // send payment request to svea, receive response       
-        $swp_response = $swp_order->useInvoicePayment()->doRequest();
-
+        try {
+            $swp_response = $swp_order->useInvoicePayment()->doRequest();
+        }
+        catch (Exception $e){  
+            // hack together a fake response object containing the error & errormessage
+            $swp_response = (object) array( "accepted" => false, "resultcode" => 1000, "errormessage" => $e->getMessage() ); //new "error" 1000
+        }
+        
         // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {
             $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->resultcode,$swp_response->errormessage);
             $payment_error_return = 'payment_error=sveawebpay_invoice';
             zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return)); // error handled in selection() above
         }
-
+      
         //
         // payment request succeded, store response in session
         if ($swp_response->accepted == true) {
