@@ -35,17 +35,13 @@ class sveawebpay_partpay extends SveaZencart{
             $this->update_status();
         //when user click "edit" paymentplan payment we update params table
         if(isset($_GET['action']) && $_GET['action'] == "edit" &&  $_GET['set'] == "payment" &&  $_GET['module'] == "sveawebpay_partpay"){
-           // $this->svea_update_params();
+            $this->svea_update_params();
 
         }
     }
 
-    function svea_update_params(){
-         $params = $this->sveaGetPaymentPlanParamsFromServer();
-         print_r($params);
-    }
 
-    function sveaGetPaymentPlanParamsFromServer(){
+    function svea_update_params(){
         $countryCode = array("SE","NO","FI","DK","NL","DE");
 
           for($i=0;$i<sizeof($countryCode);$i++){
@@ -55,26 +51,105 @@ class sveawebpay_partpay extends SveaZencart{
               try {
                    $svea_params = $svea_params
                           ->setCountryCode($countryCode[$i])
-                              ->prepareRequest();
-                    print_r($svea_params);
+                              ->doRequest();
+
               } catch (Exception $e) {
                   //TODO: handle exception. Also refactor the rest of the module for try and catch
                       return NULL;
               }
+                if(isset($svea_params->errormessage) == FALSE){
+                   $formatted_params = $this->sveaFormatParams($svea_params);
+                   if($formatted_params !=NULL){
+                        $this->insertPaymentPlanParams($formatted_params,$countryCode[$i]);
+                   }
+                }
 
-                print_r('<br>');
             }
 
-          }
-          die;
+        }
 
-            if(isset($svea_params->errormessage)){
-                return $svea_params->resultcode . " : " . $svea_params->errormessage;
 
-            }else{
-                return $this->sveaFormatParams($svea_params);
-            }
+
     }
+
+        protected function insertPaymentPlanParams($params,$countryCode) {
+            global $db;
+            foreach ($params as $param) {
+                //$query = $db->getQuery(true);
+                $q = "INSERT INTO `svea_params_table`
+                        (   `campaignCode` ,
+                            `description`,
+                            `paymentPlanType`,
+                            `contractLengthInMonths`,
+                            `monthlyAnnuityFactor`,
+                            `initialFee`,
+                            `notificationFee`,
+                            `interestRatePercent`,
+                            `numberOfInterestFreeMonths`,
+                            `numberOfPaymentFreeMonths`,
+                            `fromAmount`,
+                            `toAmount`,
+                            `timestamp`,
+                            `countryCode`)
+                            VALUES(";
+                foreach ($param as $key => $value)
+                    $q .= "'".$value."',";
+
+                $q .= time().",";
+                $q .= "'".$countryCode."'";
+                $q .= ")";
+                try{
+                   $db->Execute($q);
+                }catch (Exception $e) {
+
+                }
+
+            }
+
+
+    }
+
+          protected function sveaFormatParams($response){
+            $result = array();
+            if ($response == null) {
+                return $result;
+            } else {
+                foreach ($response->campaignCodes as $responseResultItem) {
+                    try {
+                        $campaignCode = (isset($responseResultItem->campaignCode)) ? $responseResultItem->campaignCode : "";
+                        $description = (isset($responseResultItem->description)) ? $responseResultItem->description : "";
+                        $paymentplantype = (isset($responseResultItem->paymentPlanType)) ? $responseResultItem->paymentPlanType : "";
+                        $contractlength = (isset($responseResultItem->contractLengthInMonths)) ? $responseResultItem->contractLengthInMonths : "";
+                        $monthlyannuityfactor = (isset($responseResultItem->monthlyAnnuityFactor)) ? $responseResultItem->monthlyAnnuityFactor : "";
+                        $initialfee = (isset($responseResultItem->initialFee)) ? $responseResultItem->initialFee : "";
+                        $notificationfee = (isset($responseResultItem->notificationFee)) ? $responseResultItem->notificationFee : "";
+                        $interestratepercentage = (isset($responseResultItem->interestRatePercent)) ? $responseResultItem->interestRatePercent : "";
+                        $interestfreemonths = (isset($responseResultItem->numberOfInterestFreeMonths)) ? $responseResultItem->numberOfInterestFreeMonths : "";
+                        $paymentfreemonths = (isset($responseResultItem->numberOfPaymentFreeMonths)) ? $responseResultItem->numberOfPaymentFreeMonths : "";
+                        $fromamount = (isset($responseResultItem->fromAmount)) ? $responseResultItem->fromAmount : "";
+                        $toamount = (isset($responseResultItem->toAmount)) ? $responseResultItem->toAmount : "";
+
+                        $result[] = Array(
+                            "campaignCode" => $campaignCode,
+                            "description" => $description,
+                            "paymentPlanType" => $paymentplantype,
+                            "contractLengthInMonths" => $contractlength,
+                            "monthlyAnnuityFactor" => $monthlyannuityfactor,
+                            "initialFee" => $initialfee,
+                            "notificationFee" => $notificationfee,
+                            "interestRatePercent" => $interestratepercentage,
+                            "numberOfInterestFreeMonths" => $interestfreemonths,
+                            "numberOfPaymentFreeMonths" => $paymentfreemonths,
+                            "fromAmount" => $fromamount,
+                            "toAmount" => $toamount
+                        );
+                    } catch (Exception $e) {
+                       $this->log->write($e->getMessage());
+                    }
+                }
+            }
+            return $result;
+        }
 
     function update_status() {
         global $db, $order, $currencies, $messageStack;
