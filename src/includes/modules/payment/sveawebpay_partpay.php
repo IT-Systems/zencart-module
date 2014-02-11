@@ -35,9 +35,45 @@ class sveawebpay_partpay extends SveaZencart{
             $this->update_status();
         //when user click "edit" paymentplan payment we update params table
         if(isset($_GET['action']) && $_GET['action'] == "edit" &&  $_GET['set'] == "payment" &&  $_GET['module'] == "sveawebpay_partpay"){
-            print_r("editera mig");
+           // $this->svea_update_params();
 
         }
+    }
+
+    function svea_update_params(){
+         $params = $this->sveaGetPaymentPlanParamsFromServer();
+         print_r($params);
+    }
+
+    function sveaGetPaymentPlanParamsFromServer(){
+        $countryCode = array("SE","NO","FI","DK","NL","DE");
+
+          for($i=0;$i<sizeof($countryCode);$i++){
+            if(constant('MODULE_PAYMENT_SWPPARTPAY_USERNAME_'.$countryCode[$i]) != "" && constant('MODULE_PAYMENT_SWPPARTPAY_PASSWORD_'.$countryCode[$i]) != "" && constant('MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_'.$countryCode[$i]) != ""){
+                 $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+                $svea_params = WebPay::getPaymentPlanParams($sveaConfig);
+              try {
+                   $svea_params = $svea_params
+                          ->setCountryCode($countryCode[$i])
+                              ->prepareRequest();
+                    print_r($svea_params);
+              } catch (Exception $e) {
+                  //TODO: handle exception. Also refactor the rest of the module for try and catch
+                      return NULL;
+              }
+
+                print_r('<br>');
+            }
+
+          }
+          die;
+
+            if(isset($svea_params->errormessage)){
+                return $svea_params->resultcode . " : " . $svea_params->errormessage;
+
+            }else{
+                return $this->sveaFormatParams($svea_params);
+            }
     }
 
     function update_status() {
