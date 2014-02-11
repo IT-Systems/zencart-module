@@ -563,7 +563,7 @@ class sveawebpay_invoice extends SveaZencart {
                     'orders_id' => $new_order_id,
                     'orders_status_id' => SVEA_ORDERSTATUS_DELIVERED_ID,              
                     'date_added' => 'now()',
-                    'customer_notified' => 0,  // 0 for "no email" (open lock symbol) in order status history
+                    'customer_notified' => 0,  // 0 for "no email" (open lock symbol) in order status history   //TODO use card SEND_MAIL behaviour
                     'comments' => $comment
                 );
                 zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
