@@ -17,7 +17,9 @@ class sveawebpay_creditcard {
     $this->code = 'sveawebpay_creditcard';
     $this->version = "4.2.1";
 
-    $this->form_action_url = (MODULE_PAYMENT_SWPCREDITCARD_STATUS == 'True') ? 'https://test.sveaekonomi.se/webpay/payment' : 'https://webpay.sveaekonomi.se/webpay/payment';
+    // used by card, directbank when posting form in checkout_confirmation.php
+    $this->form_action_url = (MODULE_PAYMENT_SWPCREDITCARD_MODE == 'Test') ? Svea\SveaConfig::SWP_TEST_URL : Svea\SveaConfig::SWP_PROD_URL;
+     
     $this->title = MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE;
     $this->description = MODULE_PAYMENT_SWPCREDITCARD_TEXT_DESCRIPTION;
     $this->enabled = ((MODULE_PAYMENT_SWPCREDITCARD_STATUS == 'True') ? true : false);
