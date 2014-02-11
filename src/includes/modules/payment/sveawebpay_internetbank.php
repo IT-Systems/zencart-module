@@ -24,10 +24,6 @@ class sveawebpay_internetbank {
     $this->description = MODULE_PAYMENT_SWPINTERNETBANK_TEXT_DESCRIPTION;
     $this->enabled = ((MODULE_PAYMENT_SWPINTERNETBANK_STATUS == 'True') ? true : false);
     $this->sort_order = MODULE_PAYMENT_SWPINTERNETBANK_SORT_ORDER;
-    /*
-    $this->sveawebpay_url = MODULE_PAYMENT_SWPCREDITCARD_URL;
-    $this->handling_fee = MODULE_PAYMENT_SWPCREDITCARD_HANDLING_FEE;
-    */
     $this->default_currency = MODULE_PAYMENT_SWPINTERNETBANK_DEFAULT_CURRENCY;
     $this->allowed_currencies = explode(',', MODULE_PAYMENT_SWPINTERNETBANK_ALLOWED_CURRENCIES);
     $this->display_images = ((MODULE_PAYMENT_SWPINTERNETBANK_IMAGES == 'True') ? true : false);
@@ -95,20 +91,21 @@ class sveawebpay_internetbank {
 
     $fields = array();
 
-    // image
-        if($order->customer['country']['iso_code_2'] == "SE"){
-             $fields[] = array('title' => '<img src=images/Svea/SVEADIRECTBANK_SE.png />', 'field' => '');
-        }  else {
-            $fields[] = array('title' => '<img src=images/Svea/SVEADIRECTBANK.png />', 'field' => '');
-        }
+    // show bank logo
+    if($order->customer['country']['iso_code_2'] == "SE"){
+         $fields[] = array('title' => '<img src=images/Svea/SVEADIRECTBANK_SE.png />', 'field' => '');
+    }  
+    else {
+        $fields[] = array('title' => '<img src=images/Svea/SVEADIRECTBANK.png />', 'field' => '');
+    }
 
     if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_internetbank') { // is set in before_process() on failed payment
         $fields[] = array('title' => '<span style="color:red">' . $_SESSION['SWP_ERROR'] . '</span>', 'field' => '');
     }
 
     // insert svea js
-    $sveaJs = '<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
-            <script type="text/javascript" src="' . $this->web_root . 'includes/modules/payment/svea.js"></script>';
+    $sveaJs =   '<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>' .
+                '<script type="text/javascript" src="' . $this->web_root . 'includes/modules/payment/svea.js"></script>';
     $fields[] = array('title' => '', 'field' => $sveaJs);
 
     // customer country is taken from customer settings
@@ -124,21 +121,8 @@ class sveawebpay_internetbank {
 
     $fields[] = array('title' => '', 'field' => '<br />' . $sveaField);
 
-    // handling fee
-    if (isset($this->handling_fee) && $this->handling_fee > 0) {
-      $paymentfee_cost = $this->handling_fee;
-      if (substr($paymentfee_cost, -1) == '%')
-        $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPINTERNETBANK_HANDLING_APPLIES, $paymentfee_cost), 'field' => '');
-      else
-      {
-        $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
-        if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0)
-          $paymentfee_tax = $paymentfee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
-        $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPINTERNETBANK_HANDLING_APPLIES, $currencies->format($paymentfee_cost+$paymentfee_tax)), 'field' => '');
-      }
-    }
-
-    $_SESSION["swp_order_info_pre_coupon"]  = serialize($order->info);  // store order info needed to reconstruct amount pre coupon later
+    // store order info needed to reconstruct amount pre coupon later
+    $_SESSION["swp_order_info_pre_coupon"]  = serialize($order->info);
 
     return array( 'id'      => $this->code,
                   'module'  => $this->title,
@@ -181,33 +165,31 @@ class sveawebpay_internetbank {
         $currency = $this->default_currency;
     }
 
+    // Create and initialize order object, using either test or production configuration
     $sveaConfig = (MODULE_PAYMENT_SWPINTERNETBANK_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
-    // Create and initialize order object, using either test or production configuration
     $swp_order = WebPay::createOrder( $sveaConfig )
         ->setCountryCode( $user_country )
-        ->setCurrency($currency)                       //Required for card & direct payment and PayPage payment.
-        ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
-        ->setOrderDate(date('c'))                      //Required for synchronous payments
+        ->setCurrency($currency)                     
+        ->setClientOrderNumber($client_order_number)   
+        ->setOrderDate(date('c'))                 
     ;
 
+    // for each item in cart, create WebPayItem::orderRow objects and add to order
+    foreach ($order->products as $productId => $product) {
+
+        // convert_to_currency
+        $amount_ex_vat = floatval( $this->convert_to_currency( round($product['final_price'], 2), $currency ) );
+        $swp_order->addOrderRow(
+                WebPayItem::orderRow()
+                        ->setQuantity(intval($product['qty'])) 
+                        ->setAmountExVat($amount_ex_vat)       
+                        ->setVatPercent(intval($product['tax']))
+                        ->setDescription($product['name'])   
+       );
+    }
+
         // for each item in cart, create WebPayItem::orderRow objects and add to order
-        foreach ($order->products as $productId => $product) {
-
-            // convert_to_currency
-            $amount_ex_vat = floatval(  $this->convert_to_currency( round($product['final_price'], 2), $currency ) );
-            $swp_order->addOrderRow(
-                    WebPayItem::orderRow()
-                            ->setQuantity($product['qty'])          //Required
-                            ->setAmountExVat($amount_ex_vat)          //Optional, see info above
-                            ->setVatPercent(intval($product['tax']))  //Optional, see info above
-                            ->setDescription($product['name'])        //Optional
-           );
-        }
-
-        //
-        // handle order total modules
-        // i.e shipping fee, handling fee items
         foreach ($order_totals as $ot_id => $order_total) {
 
             switch ($order_total['code']) {
@@ -395,7 +377,6 @@ class sveawebpay_internetbank {
             }
         }
 
-        // set up direct bank via paypage
         // localization parameters
         if( isset( $order->billing['country']['iso_code_2'] ) ) {
             $user_country = $order->billing['country']['iso_code_2']; 
@@ -449,12 +430,16 @@ class sveawebpay_internetbank {
 
     if ($_REQUEST['response']){
 
-        // Include Svea php integration package files
-        require_once(DIR_FS_CATALOG . 'svea/Includes.php');
-
         // localization parameters
-        $user_country = $order->billing['country']['iso_code_2'];
-
+        if (isset($order->billing['country']['iso_code_2'])) {
+            $user_country = $order->billing['country']['iso_code_2'];
+        }
+        // no billing address set, fallback to session country_id
+        else {
+            $country = tep_get_countries_with_iso_codes($_SESSION['customer_country_id']);
+            $user_country = $country['countries_iso_code_2'];
+        }
+        
         // Create and initialize order object, using either test or production configuration
         $sveaConfig = (MODULE_PAYMENT_SWPINTERNETBANK_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
@@ -468,6 +453,7 @@ class sveawebpay_internetbank {
 
         // response ok, check if payment accepted
         else {
+            
              // handle failed payments
             if ( $swp_response->accepted === 0 ){
 
@@ -547,21 +533,21 @@ class sveawebpay_internetbank {
        global $insert_id, $order;
 
        // retrieve response object from before_process()
-       require_once(DIR_FS_CATALOG . 'svea/Includes.php');
        $swp_response = unserialize($_SESSION["swp_response"]);
 
        // insert zencart order into database
-       $sql_data_array = array('orders_id' => $insert_id,
-           'orders_status_id' => $order->info['order_status'],
-           'date_added' => 'now()',
-           'customer_notified' => 0,
-            'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . 
-                isset( $swp_response->sveaOrderId ) ? 
-                $swp_response->sveaOrderId : $swp_response->transactionId //if request to webservice, use sveaOrderId, if hosted use transactionId
+        $customer_notification = (SEND_EMAILS == 'true') ? '1' : '0';
+        $sql_data_array = array(
+            'orders_id' => $insert_id,
+            'orders_status_id' => $order->info['order_status'],
+            'date_added' => 'now()',
+            'customer_notified' => $customer_notification,
+            'comments' => 
+                'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $swp_response->transactionId .
+                " ". $order->info['comments']            
         );
        zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
-       //
        // clean up our session variables set during checkout   //$SESSION[swp_*
        unset($_SESSION['swp_order']);
        unset($_SESSION['swp_response']);
@@ -571,8 +557,9 @@ class sveawebpay_internetbank {
 
   // sets error message to the GET error value
   function get_error() {
-    return array('title' => ERROR_MESSAGE_PAYMENT_FAILED,
-                 'error' => stripslashes(urldecode($_GET['error'])));
+    return array(
+        'title' => ERROR_MESSAGE_PAYMENT_FAILED,
+        'error' => stripslashes(urldecode($_GET['error'])));
   }
 
   // standard check if installed function
@@ -611,18 +598,20 @@ class sveawebpay_internetbank {
 
   // must perfectly match keys inserted in install function
   function keys() {
-    return array( 'MODULE_PAYMENT_SWPINTERNETBANK_STATUS',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_SW',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID_TEST',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_SW_TEST',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_MODE',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_ALLOWED_CURRENCIES',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_DEFAULT_CURRENCY',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_ORDER_STATUS_ID',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_IGNORE',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_ZONE',
-                  'MODULE_PAYMENT_SWPINTERNETBANK_SORT_ORDER');
+    return array( 
+        'MODULE_PAYMENT_SWPINTERNETBANK_STATUS',
+        'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID',
+        'MODULE_PAYMENT_SWPINTERNETBANK_SW',
+        'MODULE_PAYMENT_SWPINTERNETBANK_MERCHANT_ID_TEST',
+        'MODULE_PAYMENT_SWPINTERNETBANK_SW_TEST',
+        'MODULE_PAYMENT_SWPINTERNETBANK_MODE',
+        'MODULE_PAYMENT_SWPINTERNETBANK_ALLOWED_CURRENCIES',
+        'MODULE_PAYMENT_SWPINTERNETBANK_DEFAULT_CURRENCY',
+        'MODULE_PAYMENT_SWPINTERNETBANK_ORDER_STATUS_ID',
+        'MODULE_PAYMENT_SWPINTERNETBANK_IGNORE',
+        'MODULE_PAYMENT_SWPINTERNETBANK_ZONE',
+        'MODULE_PAYMENT_SWPINTERNETBANK_SORT_ORDER'
+    );
   }
 
  /**
