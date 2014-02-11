@@ -33,6 +33,11 @@ class sveawebpay_partpay extends SveaZencart{
             $this->order_status = MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID;
         if (is_object($order))
             $this->update_status();
+        //when user click "edit" paymentplan payment we update params table
+        if(isset($_GET['action']) && $_GET['action'] == "edit" &&  $_GET['set'] == "payment" &&  $_GET['module'] == "sveawebpay_partpay"){
+            print_r("editera mig");
+
+        }
     }
 
     function update_status() {
@@ -626,6 +631,27 @@ class sveawebpay_partpay extends SveaZencart{
             $db->Execute( $sql );
         }
 
+
+        //create params table
+         $sql = ' CREATE TABLE IF NOT EXISTS `svea_params_table`
+                (`id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                `campaignCode` VARCHAR( 100 ) NOT NULL,
+                `description` VARCHAR( 100 ) NOT NULL ,
+                `paymentPlanType` VARCHAR( 100 ) NOT NULL ,
+                `contractLengthInMonths` INT NOT NULL ,
+                `monthlyAnnuityFactor` DOUBLE NOT NULL ,
+                `initialFee` DOUBLE NOT NULL ,
+                `notificationFee` DOUBLE NOT NULL ,
+                `interestRatePercent` INT NOT NULL ,
+                `numberOfInterestFreeMonths` INT NOT NULL ,
+                `numberOfPaymentFreeMonths` INT NOT NULL ,
+                `fromAmount` DOUBLE NOT NULL ,
+                `toAmount` DOUBLE NOT NULL ,
+                `timestamp` INT UNSIGNED NOT NULL,
+                `countryCode` VARCHAR( 100 ) NOT NULL
+                ) ENGINE=MyISAM DEFAULT CHARSET=utf8 AUTO_INCREMENT=1
+                ';
+            $db->Execute( $sql );
         // insert svea order statuses into table order_status, if not exists already
         $res = $db->Execute('SELECT COUNT(*) FROM ' . TABLE_ORDERS_STATUS . ' WHERE orders_status_name = "'. SVEA_ORDERSTATUS_CLOSED .'"');
         if( $res->fields["COUNT(*)"] == 0 ) {
