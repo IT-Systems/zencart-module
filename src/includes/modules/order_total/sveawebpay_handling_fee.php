@@ -11,7 +11,7 @@ class sveawebpay_handling_fee {
         $this->description = MODULE_ORDER_TOTAL_SWPHANDLING_DESCRIPTION;
 
         //common
-        $this->enabled = MODULE_ORDER_TOTAL_SWPHANDLING_STATUS == 'true' ? true : false;
+        $this->enabled = MODULE_ORDER_TOTAL_SWPHANDLING_STATUS == 'True' ? true : false;
         $this->sort_order = MODULE_ORDER_TOTAL_SWPHANDLING_SORT_ORDER;
         
         //country specific

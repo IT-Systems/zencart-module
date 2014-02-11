@@ -405,7 +405,7 @@ class sveawebpay_creditcard {
         $swp_respObj = new SveaResponse( $_REQUEST, $user_country, $sveaConfig ); // returns HostedPaymentResponse
 		$swp_response = $swp_respObj->response;
         // check for bad response
-        if( $swp_response->resultcode == '0' ) {
+        if( $swp_response->resultcode === 0 ) {
             die('Response failed authorization. AC not valid or Response is not recognized');  
         }
 
@@ -413,7 +413,7 @@ class sveawebpay_creditcard {
         else {
 
             // handle failed payments
-            if ( !$swp_response->accepted === true ){
+            if ( $swp_response->accepted === 0 ){
 
                 switch ($swp_response->resultcode) {
                     case 100:
@@ -470,7 +470,7 @@ class sveawebpay_creditcard {
             else{
 
                 // payment request succeded, store response in session
-                if ($swp_response->accepted === true) {
+                if ($swp_response->accepted === 1 ) {
 
                     if (isset($_SESSION['SWP_ERROR'])) {
                         unset($_SESSION['SWP_ERROR']);

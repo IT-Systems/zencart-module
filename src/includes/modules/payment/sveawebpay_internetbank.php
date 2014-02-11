@@ -100,7 +100,6 @@ class sveawebpay_internetbank {
             $fields[] = array('title' => '<img src=images/Svea/SVEADIRECTBANK.png />', 'field' => '');
         }
 
-
     if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_internetbank') { // is set in before_process() on failed payment
         $fields[] = array('title' => '<span style="color:red">' . $_SESSION['SWP_ERROR'] . '</span>', 'field' => '');
     }
@@ -454,20 +453,21 @@ class sveawebpay_internetbank {
         // localization parameters
         $user_country = $order->billing['country']['iso_code_2'];
 
-        // put response into responsehandler
+        // Create and initialize order object, using either test or production configuration
         $sveaConfig = (MODULE_PAYMENT_SWPINTERNETBANK_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
         $swp_respObj = new SveaResponse( $_REQUEST, $user_country, $sveaConfig ); // returns HostedPaymentResponse
-		$swp_response = $swp_respObj->response;
+        $swp_response = $swp_respObj->response;
+                
         // check for bad response
-        if( $swp_response->resultcode === '0' ) {
+        if( $swp_response->resultcode === 0 ) {
             die('Response failed authorization. AC not valid or Response is not recognized');
         }
 
         // response ok, check if payment accepted
         else {
              // handle failed payments
-            if ( !$swp_response->accepted === true){
+            if ( $swp_response->accepted === 0 ){
 
                 switch( $swp_response->resultcode ) { // will autoconvert from string, matching initial numeric part
                 case 100:
@@ -524,7 +524,7 @@ class sveawebpay_internetbank {
             else{
 
                 // payment request succeded, store response in session
-                if ($swp_response->accepted === true) {
+                if( $swp_response->accepted === 1 ) {
 
                     if (isset($_SESSION['SWP_ERROR'])) {
                         unset($_SESSION['SWP_ERROR']);

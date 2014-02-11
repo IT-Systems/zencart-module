@@ -22,7 +22,7 @@ define('ERROR_CODE_20006','InvalidAmount ');
 define('ERROR_CODE_20013',' ');
 
 define('ERROR_CODE_27000','The provided campaigncode-amount combination does not match any campaign code attached to this client ');
-define('ERROR_CODE_27001','Can not deliver order since the specified pdf template is missing. Contact SveaWebPay´s support ');
+define('ERROR_CODE_27001','Can not deliver order since the specified pdf template is missing. Contact SveaWebPayï¿½s support ');
 define('ERROR_CODE_27002','Can not partial deliver a PaymentPlan ');
 define('ERROR_CODE_27003','Can not mix CampaignCode with a fixed Monthly Amount. ');
 define('ERROR_CODE_27004','Can not find a suitable CampaignCode for the Monthly Amount ');
@@ -50,7 +50,7 @@ define('FORM_TEXT_SS_NO','Social Security No (YYYYMMDD-XXXX):');
 define('FORM_TEXT_INITIALS','Initials');                                
 define('FORM_TEXT_BIRTHDATE','Date of Birth');              
 define('FORM_TEXT_VATNO','Vat Number'); 
-define('FORM_TEXT_PARTPAY_FEE','initial fee will be added ');
+define('FORM_TEXT_PARTPAY_FEE','Initial fee will be added.');
 define('FORM_TEXT_GET_PAYPLAN','Get address:');
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');
