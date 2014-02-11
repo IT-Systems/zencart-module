@@ -119,7 +119,7 @@ function sveaAjaxGetAddresses( $ssn, $country, $isCompany, $paymentType ) {
 
     // error?
     if( $response->accepted == false) {
-        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $response->errormessage) ); 
+        echo( sprintf('<option id="address_0" value="swp_not_set">%s</option>', $response->errormessage) );
     }
     // if not, show addresses and store response in session
     else {
