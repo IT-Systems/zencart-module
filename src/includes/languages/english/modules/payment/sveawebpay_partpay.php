@@ -38,7 +38,7 @@ define('ERROR_CODE_40002','Invalid Customer information');
 define('ERROR_CODE_40004','Could not find any addresses for this customer ');
 
 define('ERROR_CODE_50000','Client is not authorized for this method');
-
+define('ERROR_CODE_DEFAULT','Svea Error: ');
 define('DD_NO_CAMPAIGN_ON_AMOUNT','Can not find a suitable CampaignCode for the given amount');
 
 // used in payment credentials form
@@ -52,7 +52,8 @@ define('FORM_TEXT_BIRTHDATE','Date of Birth');
 define('FORM_TEXT_VATNO','Vat Number'); 
 define('FORM_TEXT_PARTPAY_FEE','Initial fee will be added.');
 define('FORM_TEXT_GET_PAYPLAN','Get address:');
+define('FORM_TEXT_FROM','From');
+define('FORM_TEXT_MONTH','month');
 
-define('ERROR_CODE_DEFAULT','Svea Error: ');
 
 ?>

@@ -52,6 +52,8 @@ define('FORM_TEXT_BIRTHDATE','Syntymäaika');
 define('FORM_TEXT_VATNO','ALV'); 
 define('FORM_TEXT_PARTPAY_FEE','Perustamiskulu lisätään');
 define('FORM_TEXT_GET_PAYPLAN','Hae osoite');
+define('FORM_TEXT_FROM','Alkaen');
+define('FORM_TEXT_MONTH','kuukausi');
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');
 
