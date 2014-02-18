@@ -15,15 +15,13 @@ class sveawebpay_creditcard {
     global $order;
 
     $this->code = 'sveawebpay_creditcard';
-    $this->version = "4.2.1";
+    $this->version = "4.3.2";
 
     $this->form_action_url = (MODULE_PAYMENT_SWPCREDITCARD_STATUS == 'True') ? 'https://test.sveaekonomi.se/webpay/payment' : 'https://webpay.sveaekonomi.se/webpay/payment';
     $this->title = MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE;
     $this->description = MODULE_PAYMENT_SWPCREDITCARD_TEXT_DESCRIPTION;
     $this->enabled = ((MODULE_PAYMENT_SWPCREDITCARD_STATUS == 'True') ? true : false);
     $this->sort_order = MODULE_PAYMENT_SWPCREDITCARD_SORT_ORDER;
-    $this->default_currency = MODULE_PAYMENT_SWPCREDITCARD_DEFAULT_CURRENCY;
-    $this->allowed_currencies = explode(',', MODULE_PAYMENT_SWPCREDITCARD_ALLOWED_CURRENCIES);
     $this->display_images = ((MODULE_PAYMENT_SWPCREDITCARD_IMAGES == 'True') ? true : false);
     $this->ignore_list = explode(',', MODULE_PAYMENT_SWPCREDITCARD_IGNORE);
     if ((int)MODULE_PAYMENT_SWPCREDITCARD_ORDER_STATUS_ID > 0)
@@ -32,25 +30,7 @@ class sveawebpay_creditcard {
   }
 
   function update_status() {
-    global $db, $order, $currencies, $messageStack;
-
-    // update internal currency
-    $this->default_currency = MODULE_PAYMENT_SWPCREDITCARD_DEFAULT_CURRENCY;
-    $this->allowed_currencies = explode(',', MODULE_PAYMENT_SWPCREDITCARD_ALLOWED_CURRENCIES);
-
-    // do not use this module if any of the allowed currencies are not set in osCommerce
-    foreach($this->allowed_currencies as $currency) {
-      if(!is_array($currencies->currencies[strtoupper($currency)])) {
-        $this->enabled = false;
-        $messageStack->add('header', ERROR_ALLOWED_CURRENCIES_NOT_DEFINED, 'error');
-      }
-    }
-
-    // do not use this module if the default currency is not among the allowed
-    if (!in_array($this->default_currency, $this->allowed_currencies)) {
-      $this->enabled = false;
-      $messageStack->add('header', ERROR_DEFAULT_CURRENCY_NOT_ALLOWED, 'error');
-    }
+    global $db, $order;
 
     // do not use this module if the geograhical zone is set and we are not in it
     if ( ($this->enabled == true) && ((int)MODULE_PAYMENT_SWPCREDITCARD_ZONE > 0) ) {
@@ -145,12 +125,7 @@ class sveawebpay_creditcard {
     $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
     $user_language = $user_language->fields['code'];
 
-
-    // switch to default currency if the customers currency is not supported
     $currency = $order->info['currency'];
-    if (!in_array($currency, $this->allowed_currencies)) {
-        $currency = $this->default_currency;
-    }
 
     $sveaConfig = (MODULE_PAYMENT_SWPCREDITCARD_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
@@ -178,7 +153,6 @@ class sveawebpay_creditcard {
             );
         }
 
-        //
         // handle order total modules
         // i.e shipping fee, handling fee items
         foreach ($order_totals as $ot_id => $order_total) {
@@ -216,7 +190,6 @@ class sveawebpay_creditcard {
                     );
                 break;
 
-                //
                 // if handling fee applies, create WebPayItem::invoiceFee object and add to order
                 case 'sveawebpay_handling_fee' :
 
@@ -505,7 +478,6 @@ class sveawebpay_creditcard {
         );
     zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
-    //
     // clean up our session variables set during checkout   //$SESSION[swp_*
     unset($_SESSION['swp_order']);
     unset($_SESSION['swp_response']);
@@ -539,8 +511,6 @@ class sveawebpay_creditcard {
     $db->Execute($common . ") values ('Svea Card Test Merchant ID', 'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID_TEST', '', 'The Merchant ID', '6', '0', now())");
     $db->Execute($common . ") values ('Svea Card Test Secret Word', 'MODULE_PAYMENT_SWPCREDITCARD_SW_TEST', '', 'The Secret word', '6', '0', now())");
     $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPCREDITCARD_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
-    $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPCREDITCARD_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
-    $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPCREDITCARD_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
     $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPCREDITCARD_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
      $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPCREDITCARD_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
     $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPCREDITCARD_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
@@ -561,8 +531,6 @@ class sveawebpay_creditcard {
                   'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID_TEST',
                   'MODULE_PAYMENT_SWPCREDITCARD_SW_TEST',
                   'MODULE_PAYMENT_SWPCREDITCARD_MODE',
-                  'MODULE_PAYMENT_SWPCREDITCARD_ALLOWED_CURRENCIES',
-                  'MODULE_PAYMENT_SWPCREDITCARD_DEFAULT_CURRENCY',
                   'MODULE_PAYMENT_SWPCREDITCARD_ORDER_STATUS_ID',
                   'MODULE_PAYMENT_SWPCREDITCARD_IGNORE',
                   'MODULE_PAYMENT_SWPCREDITCARD_ZONE',
