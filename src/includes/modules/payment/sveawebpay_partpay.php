@@ -18,14 +18,13 @@ class sveawebpay_partpay extends SveaZencart{
         global $order;
 
         $this->code = 'sveawebpay_partpay';
-        $this->version = "4.2.1";
+        $this->version = "4.3.2";
 
         $this->title = MODULE_PAYMENT_SWPPARTPAY_TEXT_TITLE;
         $this->description = MODULE_PAYMENT_SWPPARTPAY_TEXT_DESCRIPTION;
         $this->enabled = ((MODULE_PAYMENT_SWPPARTPAY_STATUS == 'True') ? true : false);
         $this->sort_order = MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER;
         $this->sveawebpay_url = MODULE_PAYMENT_SWPPARTPAY_URL;
-        $this->allowed_currencies = $this->getPartpayCurrencies();
         $this->display_images = ((MODULE_PAYMENT_SWPPARTPAY_IMAGES == 'True') ? true : false);
         $this->ignore_list = explode(',', MODULE_PAYMENT_SWPPARTPAY_IGNORE);
         if ((int)MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID > 0)
@@ -36,13 +35,10 @@ class sveawebpay_partpay extends SveaZencart{
 
     function update_status() {
         global $db, $order, $currencies, $messageStack;
-
-        // update internal currency
-        $this->allowed_currencies = $this->getPartpayCurrencies();
-
+      
         // do not use this module if any of the allowed currencies are not set in osCommerce
-        foreach ($this->allowed_currencies as $currency) {
-            if (!is_array($currencies->currencies[strtoupper($currency)])) {
+        foreach ($this->getPartpayCurrencies() as $currency) {
+            if (!is_array($currencies->currencies[strtoupper($currency)])) {        
                 $this->enabled = false;
                 $messageStack->add('header', ERROR_ALLOWED_CURRENCIES_NOT_DEFINED, 'error');
             }
