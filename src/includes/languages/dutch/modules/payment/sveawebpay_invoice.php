@@ -41,7 +41,7 @@ define('ERROR_CODE_24000','Het factuurbedrag is hoger dan de toegestane limiet')
 define('FORM_TEXT_INVOICE_ADDRESS','Factuuradres');
 define('FORM_TEXT_INVOICE_FEE','Factuurkosten:');
 define('FORM_TEXT_COMPANY','Bedrijf');
-define('FORM_TEXT_PRIVATE','Privé');
+define('FORM_TEXT_PRIVATE','PrivÃ©');
 define('FORM_TEXT_GET_ADDRESS','Adresgegevens ophalen');
 
 define('FORM_TEXT_SS_NO','Sofi-nummer:');
