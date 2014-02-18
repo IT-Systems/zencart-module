@@ -25,8 +25,7 @@ class sveawebpay_partpay extends SveaZencart{
         $this->enabled = ((MODULE_PAYMENT_SWPPARTPAY_STATUS == 'True') ? true : false);
         $this->sort_order = MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER;
         $this->sveawebpay_url = MODULE_PAYMENT_SWPPARTPAY_URL;
-        $this->default_currency = MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY;
-        $this->allowed_currencies = explode(',', MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES);
+        $this->allowed_currencies = $this->getPartpayCurrencies();
         $this->display_images = ((MODULE_PAYMENT_SWPPARTPAY_IMAGES == 'True') ? true : false);
         $this->ignore_list = explode(',', MODULE_PAYMENT_SWPPARTPAY_IGNORE);
         if ((int)MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID > 0)
@@ -39,22 +38,14 @@ class sveawebpay_partpay extends SveaZencart{
         global $db, $order, $currencies, $messageStack;
 
         // update internal currency
-        $this->default_currency = MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY;
-        $this->allowed_currencies = explode(',', MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES);
+        $this->allowed_currencies = $this->getPartpayCurrencies();
 
-// TODO remove comment
-//        // do not use this module if any of the allowed currencies are not set in osCommerce
-//        foreach ($this->allowed_currencies as $currency) {
-//            if (!is_array($currencies->currencies[strtoupper($currency)])) {
-//                $this->enabled = false;
-//                $messageStack->add('header', ERROR_ALLOWED_CURRENCIES_NOT_DEFINED, 'error');
-//            }
-//        }
-
-        // do not use this module if the default currency is not among the allowed
-        if (!in_array($this->default_currency, $this->allowed_currencies)) {
-            $this->enabled = false;
-            $messageStack->add('header', ERROR_DEFAULT_CURRENCY_NOT_ALLOWED, 'error');
+        // do not use this module if any of the allowed currencies are not set in osCommerce
+        foreach ($this->allowed_currencies as $currency) {
+            if (!is_array($currencies->currencies[strtoupper($currency)])) {
+                $this->enabled = false;
+                $messageStack->add('header', ERROR_ALLOWED_CURRENCIES_NOT_DEFINED, 'error');
+            }
         }
 
         // do not use this module if the geograhical zone is set and we are not in it
@@ -280,7 +271,36 @@ class sveawebpay_partpay extends SveaZencart{
                         'fields' => $fields );
     }
 
+    /**
+     * we've selected payment method, so we can set currency to payment method
+     * currency
+     * 
+     */
     function pre_confirmation_check() {
+        global $order, $currency;
+
+        // TODO make sure to update billing address here?
+        
+        $customer_country = $order->customer['country']['iso_code_2'];
+        
+        // did the customer have a different currency selected than the invoice country currency?
+        if( $_SESSION['currency'] != $this->getPartpayCurrency( $customer_country ) )
+        {
+            // set shop currency to the selected payment method currency
+            $order->info['currency'] = $this->getPartpayCurrency( $customer_country );
+            $_SESSION['currency'] = $order->info['currency'];
+
+            // redirect to update order_totals to new currency, making sure to preserve post data
+            $_SESSION['sveapostdata'] = $_POST; 
+            zen_redirect(zen_href_link(FILENAME_CHECKOUT_CONFIRMATION));    // redirect to update order_totals to new currency               
+        }
+        
+        if( isset($_SESSION['sveapostdata']) )
+        {
+            $_POST = $_SESSION['sveapostdata'];
+            unset( $_SESSION['sveapostdata'] );
+        }
+               
         return false;
     }
 
@@ -332,7 +352,7 @@ class sveawebpay_partpay extends SveaZencart{
         $user_language = $user_language->fields['code'];
 
          // switch to default currency if the customers currency is not supported
-        $currency = $this->getCurrency($order->info['currency']);
+        $currency = $order->info['currency'];
 
         $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
@@ -612,8 +632,6 @@ class sveawebpay_partpay extends SveaZencart{
 
 
         $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPPARTPAY_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
-        $db->Execute($common . ") values ('Accepted Currencies', 'MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES','SEK,NOK,DKK,EUR', 'The accepted currencies, separated by commas.  These <b>MUST</b> exist within your currencies table, along with the correct exchange rates.','6','0',now())");
-        $db->Execute($common . ", set_function) values ('Default Currency', 'MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY', 'SEK', 'Default currency used, if the customer uses an unsupported currency it will be converted to this. This should also be in the supported currencies list.', '6', '0', now(), 'zen_cfg_select_option(array(\'SEK\',\'NOK\',\'DKK\',\'EUR\'), ')");
         $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value (but see AutoDeliver option below).', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
         $db->Execute($common . ", set_function) values ('Auto Deliver Order', 'MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER', '3', 'AutoDeliver: When the order status of an order is set to this value, it will be delivered to Svea. Use in conjunction with Set Order Status above to autodeliver orders.', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(')");
         $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPPARTPAY_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
@@ -681,8 +699,6 @@ class sveawebpay_partpay extends SveaZencart{
             'MODULE_PAYMENT_SWPPARTPAY_MIN_DE',
             'MODULE_PAYMENT_SWPPARTPAY_MAX_DE',
             'MODULE_PAYMENT_SWPPARTPAY_MODE',
-            'MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES',
-            'MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY',
             'MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID',
             'MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER',
             'MODULE_PAYMENT_SWPPARTPAY_IGNORE',
@@ -950,6 +966,52 @@ class sveawebpay_partpay extends SveaZencart{
         {
             $this->insertOrdersStatus( $oID, $status, $comment );
         }
+    }
+    
+    /**
+     * Returns the currency used for an partpay country. 
+     */
+    function getPartpayCurrency( $country ) 
+    {
+        $country_currencies = array(
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_SV' => 'SEK',
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NO' => 'NOK',
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_FI' => 'EUR',
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DK' => 'DKK',
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NL' => 'EUR',
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DE' => 'EUR'
+        );
+
+        $method = "MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_" . $country;
+        
+        return $country_currencies[$method];
+    }
+    
+    /**
+     * Returns the currencies used in all countries where an partpay payment 
+     * method has been configured (i.e. clientno is set for country in config). 
+     * Used in partpay to determine currencies which must be set.
+     * 
+     * @return array - currencies for countries with ug clientno set in config 
+     */
+    function getPartpayCurrencies() 
+    {
+        $country_currencies = array(
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_SE' => 'SEK',
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NO' => 'NOK',
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_FI' => 'EUR',
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DK' => 'DKK',
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NL' => 'EUR',
+            'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DE' => 'EUR'
+        );
+
+        $currencies = array();
+        foreach( $country_currencies as $country => $currency )
+        {
+            if( constant($country)!=NULL ) $currencies[] = $currency;
+        }
+        
+        return array_unique( $currencies );
     }
 }
 ?>

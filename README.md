@@ -62,8 +62,6 @@ In this example we'll first configure the Svea invoice payment method, instructi
 
 * _Transaction mode_: Determines whether payments using this method go to Svea's test or production servers. Until you have been giving the go ahead by Svea, this should be set to Test. Then, in order to receive payments for production orders, this should be switched over to its Production setting.
 
-* _Default Currency_: If the customer ha an unsupported currency selected it will be converted to the default currency upon customer checkout. The default currency must also be present in the _Accepted Currencies_ list (above).
-
 * _Set Order Status_: The Zen Cart order status given to orders after the customer has completed checkout.
 
 * _Auto Deliver Order_: Order invoices will be delivered (sent out) to the customer by Svea if an order's status is set to this status. This may be done manually through the Zen Cart order admin, or you may use the Set Over Status (above) to this and the order will be autodelivered upon creation.
@@ -120,10 +118,6 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 
 * _Transaction mode_: Determines whether payments using this method go to Svea's test or production servers. Until you have been giving the go ahead by Svea, this should be set to Test. Then, in order to receive payments for production orders, this should be switched over to its Production setting.
 
-* _Accepted Currencies_: The list of currencies which you accept as payment. These must all be defined in your Zen Cart settings, see "Localisation and additional Zen Cart configuration requirements" below.
-
-* _Default Currency_: If the customer has an unsupported currency selected it will be converted to the default currency upon customer checkout. The default currency must also be present in the _Accepted Currencies_ list (above).
-
 * _Set Order Status_: The Zen Cart order status given to orders after the customer has completed checkout.
 
 * _Auto Deliver Order_: Order payment plan will be delivered (sent out) to the customer by Svea if an order's status is set to this status. This may be done manually through the Zen Cart order admin, or you may use the Set Over Status (above) to this and the order will be autodelivered upon creation.
@@ -135,6 +129,8 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 * _Sort order of display_: determines the order in which payment methods are presented to the customer on checkout. The method are listed in ascending order on the payment method selection page.
 
 * Finally, remember to _save_ your settings.
+
+Also, make sure you have defined all relevant currencies for countries you accept payment plan payments from. See "Localisation and additional Zen Cart configuration requirements" below.
 
 #### Svea Card configuration
 
