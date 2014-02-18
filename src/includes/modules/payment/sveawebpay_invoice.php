@@ -275,12 +275,22 @@ class sveawebpay_invoice extends SveaZencart {
         
         $customer_country = $order->customer['country']['iso_code_2'];
         
+        // did the customer have a different currency selected than the invoice country currency?
         if( $_SESSION['currency'] != $this->getInvoiceCurrency( $customer_country ) )
         {
             // set shop currency to the selected payment method currency
             $order->info['currency'] = $this->getInvoiceCurrency( $customer_country );
             $_SESSION['currency'] = $order->info['currency'];
+
+            // redirect to update order_totals to new currency, making sure to preserve post data
+            $_SESSION['sveapostdata'] = $_POST; 
             zen_redirect(zen_href_link(FILENAME_CHECKOUT_CONFIRMATION));    // redirect to update order_totals to new currency               
+        }
+        
+        if( isset($_SESSION['sveapostdata']) )
+        {
+            $_POST = $_SESSION['sveapostdata'];
+            unset( $_SESSION['sveapostdata'] );
         }
                
         return false;
