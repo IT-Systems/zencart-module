@@ -982,7 +982,7 @@ class sveawebpay_invoice extends SveaZencart {
     }
     
     /**
-     * @return array currencies for all countries with ug clientno set in config 
+     * @return array - currencies for countries with ug clientno set in config 
      */
     function getCountryCurrencies() 
     {
