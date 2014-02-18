@@ -38,15 +38,6 @@ class SveaZencart {
                                                                     $currencies->currencies[$currency]['decimal_point'],
                                                                     $currencies->currencies[$currency]['thousands_point']);
     }
-   
-    /**
-     *  switch to default currency if the customers currency is not supported
-     * 
-     * @return type -- currency to use
-     */
-    function getCurrency( $customerCurrency ) {
-        return in_array($customerCurrency, $this->allowed_currencies) ? $customerCurrency : $this->default_currency;
-    }
      
     /**
      * Given iso 3166 country code, returns English country name.
@@ -687,7 +678,7 @@ class SveaZencart {
     function parseOrderTotals( $order_totals, &$svea_order ) {
         global $db, $order;
         
-        $currency = $this->getCurrency($order->info['currency']);
+        $currency = $order->info['currency'];  
         
         foreach ($order_totals as $ot_id => $order_total) {
 
