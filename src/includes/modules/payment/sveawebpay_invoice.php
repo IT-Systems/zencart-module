@@ -30,7 +30,7 @@ class sveawebpay_invoice extends SveaZencart {
         $this->sort_order = MODULE_PAYMENT_SWPINVOICE_SORT_ORDER;
         $this->sveawebpay_url = MODULE_PAYMENT_SWPINVOICE_URL;
         $this->default_currency = MODULE_PAYMENT_SWPINVOICE_DEFAULT_CURRENCY;
-        $this->allowed_currencies = $this->getCountryCurrencies(); // TODO explode(',', MODULE_PAYMENT_SWPINVOICE_ALLOWED_CURRENCIES);
+        $this->allowed_currencies = $this->getInvoiceCurrencies(); // TODO explode(',', MODULE_PAYMENT_SWPINVOICE_ALLOWED_CURRENCIES);
         $this->display_images = ((MODULE_PAYMENT_SWPINVOICE_IMAGES == 'True') ? true : false);
         $this->ignore_list = explode(',', MODULE_PAYMENT_SWPINVOICE_IGNORE);
         if ((int)MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID > 0)
@@ -44,9 +44,7 @@ class sveawebpay_invoice extends SveaZencart {
     
         // update internal currency
         $this->default_currency = MODULE_PAYMENT_SWPINVOICE_DEFAULT_CURRENCY;
-        $this->allowed_currencies = $this->getCountryCurrencies(); // todo explode(',', MODULE_PAYMENT_SWPINVOICE_ALLOWED_CURRENCIES);
-
-//print_r( $this->getCountryCurrencies() );       
+        $this->allowed_currencies = $this->getInvoiceCurrencies(); // todo explode(',', MODULE_PAYMENT_SWPINVOICE_ALLOWED_CURRENCIES);
         
         // do not use this module if any of the allowed currencies are not set in osCommerce
         foreach ($this->allowed_currencies as $currency) {
@@ -265,7 +263,26 @@ class sveawebpay_invoice extends SveaZencart {
                         'fields' => $fields );
     }
 
+    /**
+     * we've selected payment method, so we can set currency to payment method
+     * currency
+     * 
+     */
     function pre_confirmation_check() {
+        global $order, $currency;
+
+        // TODO make sure to update billing address here?
+        
+        $customer_country = $order->customer['country']['iso_code_2'];
+        
+        if( $_SESSION['currency'] != $this->getInvoiceCurrency( $customer_country ) )
+        {
+            // set shop currency to the selected payment method currency
+            $order->info['currency'] = $this->getInvoiceCurrency( $customer_country );
+            $_SESSION['currency'] = $order->info['currency'];
+            zen_redirect(zen_href_link(FILENAME_CHECKOUT_CONFIRMATION));    // redirect to update order_totals to new currency               
+        }
+               
         return false;
     }
 
@@ -313,9 +330,11 @@ class sveawebpay_invoice extends SveaZencart {
        
         $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
         $user_language = $user_language->fields['code'];
-                
-        $currency = $this->getCurrency($order->info['currency']);
 
+// TODO fix this
+//        $currency = $this->getCurrency($order->info['currency']);   
+        $currency = $order->info['currency'];
+                
         // Create and initialize order object, using either test or production configuration
         $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
@@ -982,9 +1001,34 @@ class sveawebpay_invoice extends SveaZencart {
     }
     
     /**
+     * Returns the currency used for an invoice country. 
+     */
+    function getInvoiceCurrency( $country ) 
+    {
+        $country_currencies = array(
+            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_SV' => 'SEK',
+            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_NO' => 'NOK',
+            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_FI' => 'EUR',
+            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_DK' => 'DKK',
+            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_NL' => 'EUR',
+            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_DE' => 'EUR'
+        );
+
+        if( $country == "SE" ) $country = "SV"; // hack se => settings sv
+        
+        $method = "MODULE_PAYMENT_SWPINVOICE_CLIENTNO_" . $country;
+        
+        return $country_currencies[$method];
+    }
+    
+    /**
+     * Returns the currencies used in all countries where an invoice payment 
+     * method has been configured (i.e. clientno is set for country in config). 
+     * Used in invoice to determine currencies which must be set.
+     * 
      * @return array - currencies for countries with ug clientno set in config 
      */
-    function getCountryCurrencies() 
+    function getInvoiceCurrencies() 
     {
         $country_currencies = array(
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_SV' => 'SEK',
@@ -1003,6 +1047,5 @@ class sveawebpay_invoice extends SveaZencart {
         
         return array_unique( $currencies );
     }
-    
 }    
 ?>

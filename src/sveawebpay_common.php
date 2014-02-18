@@ -47,7 +47,7 @@ class SveaZencart {
     function getCurrency( $customerCurrency ) {
         return in_array($customerCurrency, $this->allowed_currencies) ? $customerCurrency : $this->default_currency;
     }
-        
+     
     /**
      * Given iso 3166 country code, returns English country name.
      * 
@@ -845,33 +845,6 @@ class SveaZencart {
         }
         
         return $svea_order;
-    }
-    
-    /**
-     * Gets the currencies used in all countries where an invoice or partpayment
-     * payment method has been configured (clientno set in config for country). 
-     * Used in invoice, partpayment to determine currencies which must be set.
-     * 
-     * @return array - currencies for countries with ug clientno set in config 
-     */
-    function getCountryCurrencies() 
-    {
-        $country_currencies = array(
-            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_SV' => 'SEK',
-            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_NO' => 'NOK',
-            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_FI' => 'EUR',
-            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_DK' => 'DKK',
-            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_NL' => 'EUR',
-            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_DE' => 'EUR'
-        );
-
-        $currencies = array();
-        foreach( $country_currencies as $country => $currency )
-        {
-            if( constant($country)!=NULL ) $currencies[] = $currency;
-        }
-        
-        return array_unique( $currencies );
     }
 }
 ?>

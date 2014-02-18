@@ -42,13 +42,14 @@ class sveawebpay_partpay extends SveaZencart{
         $this->default_currency = MODULE_PAYMENT_SWPPARTPAY_DEFAULT_CURRENCY;
         $this->allowed_currencies = explode(',', MODULE_PAYMENT_SWPPARTPAY_ALLOWED_CURRENCIES);
 
-        // do not use this module if any of the allowed currencies are not set in osCommerce
-        foreach ($this->allowed_currencies as $currency) {
-            if (!is_array($currencies->currencies[strtoupper($currency)])) {
-                $this->enabled = false;
-                $messageStack->add('header', ERROR_ALLOWED_CURRENCIES_NOT_DEFINED, 'error');
-            }
-        }
+// TODO remove comment
+//        // do not use this module if any of the allowed currencies are not set in osCommerce
+//        foreach ($this->allowed_currencies as $currency) {
+//            if (!is_array($currencies->currencies[strtoupper($currency)])) {
+//                $this->enabled = false;
+//                $messageStack->add('header', ERROR_ALLOWED_CURRENCIES_NOT_DEFINED, 'error');
+//            }
+//        }
 
         // do not use this module if the default currency is not among the allowed
         if (!in_array($this->default_currency, $this->allowed_currencies)) {
