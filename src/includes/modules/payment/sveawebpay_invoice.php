@@ -608,12 +608,18 @@ class sveawebpay_invoice extends SveaZencart {
         global $db;
         $common = "insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added";
         $db->Execute($common . ", set_function) values ('Enable Svea Invoice Module', 'MODULE_PAYMENT_SWPINVOICE_STATUS', 'True', 'Do you want to accept Svea payments?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
-        $db->Execute($common . ") values ('Svea Username SV', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_SV', '', 'Username for Svea Invoice Sweden', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Password SV', 'MODULE_PAYMENT_SWPINVOICE_PASSWORD_SV', '', 'Password for Svea Invoice Sweden', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Username SE', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_SE', '', 'Username for Svea Invoice Sweden', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Password SE', 'MODULE_PAYMENT_SWPINVOICE_PASSWORD_SE', '', 'Password for Svea Invoice Sweden', '6', '0', now())");
+        $db->Execute($common . ") values ('Lowest payment on invoice: Min amount for SE', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT_SE', '', 'The minimum amount to show this widget on product display. Check with your campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
+
         $db->Execute($common . ") values ('Svea Username NO', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_NO', '', 'Username for Svea Invoice Norway', '6', '0', now())");
         $db->Execute($common . ") values ('Svea Password NO', 'MODULE_PAYMENT_SWPINVOICE_PASSWORD_NO', '', 'Password for Svea Invoice Norway', '6', '0', now())");
+        $db->Execute($common . ") values ('Lowest payment on invoice: Min amount for NO', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT_NO', '', 'The minimum amount to show this widget on product display. Check with your campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
+
         $db->Execute($common . ") values ('Svea Username FI', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_FI', '', 'Username for Svea Invoice Finland', '6', '0', now())");
         $db->Execute($common . ") values ('Svea Password FI', 'MODULE_PAYMENT_SWPINVOICE_PASSWORD_FI', '', 'Password for Svea Invoice Finland', '6', '0', now())");
+        $db->Execute($common . ") values ('Lowest payment on invoice: Min amount for FI', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT_FI', '', 'The minimum amount to show this widget on product display. Check with your campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
+
         $db->Execute($common . ") values ('Svea Username DK', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_DK', '', 'Username for Svea Invoice Denmark', '6', '0', now())");
         $db->Execute($common . ") values ('Svea Password DK', 'MODULE_PAYMENT_SWPINVOICE_PASSWORD_DK', '', 'Password for Svea Invoice Denmark', '6', '0', now())");
         $db->Execute($common . ") values ('Svea Username NL', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_NL', '', 'Username for Svea Invoice Netherlands', '6', '0', now())");
@@ -635,6 +641,7 @@ class sveawebpay_invoice extends SveaZencart {
         $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPINVOICE_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
         $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPINVOICE_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
         $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
+        $db->Execute($common . ", set_function) values ('Activate: Show lowest payment on invoice', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT', 'False', 'Show lowest price to pay on invoice. Widget shows on product page. ', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
 
         // insert svea order table if not exists already
         $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_order';");
@@ -665,15 +672,19 @@ class sveawebpay_invoice extends SveaZencart {
     // must perfectly match keys inserted in install function
     function keys() {
         return array('MODULE_PAYMENT_SWPINVOICE_STATUS',
-            'MODULE_PAYMENT_SWPINVOICE_USERNAME_SV',
-            'MODULE_PAYMENT_SWPINVOICE_PASSWORD_SV',
+            'MODULE_PAYMENT_SWPINVOICE_USERNAME_SE',
+            'MODULE_PAYMENT_SWPINVOICE_PASSWORD_SE',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_SV',
+            'MODULE_PAYMENT_SWPINVOICE_PRODUCT_SE',
             'MODULE_PAYMENT_SWPINVOICE_USERNAME_NO',
             'MODULE_PAYMENT_SWPINVOICE_PASSWORD_NO',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_NO',
+            'MODULE_PAYMENT_SWPINVOICE_PRODUCT_NO',
             'MODULE_PAYMENT_SWPINVOICE_USERNAME_FI',
             'MODULE_PAYMENT_SWPINVOICE_PASSWORD_FI',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_FI',
+            'MODULE_PAYMENT_SWPINVOICE_PRODUCT_FI',
+
             'MODULE_PAYMENT_SWPINVOICE_USERNAME_DK',
             'MODULE_PAYMENT_SWPINVOICE_PASSWORD_DK',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_DK',
@@ -691,7 +702,8 @@ class sveawebpay_invoice extends SveaZencart {
             'MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE',
             'MODULE_PAYMENT_SWPINVOICE_IGNORE',
             'MODULE_PAYMENT_SWPINVOICE_ZONE',
-            'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER');
+            'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER',
+            'MODULE_PAYMENT_SWPINVOICE_PRODUCT');
     }
 
     // Localize Error Responses
