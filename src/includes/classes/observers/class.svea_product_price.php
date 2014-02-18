@@ -36,7 +36,7 @@ class svea_product_price extends base {
             $price_list = array();
             $prices = array();
         //payment plan
-        if(MODULE_PAYMENT_SWPPARTPAY_PRODUCT === "True"){//and Show widget is yes
+        if(MODULE_PAYMENT_SWPPARTPAY_PRODUCT === "True"){
 
             $query = "SELECT `campaignCode`,`description`,`paymentPlanType`,`contractLengthInMonths`,
                             `monthlyAnnuityFactor`,`initialFee`, `notificationFee`,`interestRatePercent`,

@@ -1,7 +1,7 @@
 <?php
-define('ENTRY_TEXT_FROM','fra');
-define('ENTRY_TEXT_MONTH','måned');
+define('ENTRY_TEXT_FROM','Fra');
+define('ENTRY_TEXT_MONTH','mÃ¥ned');
 define('ENTRY_TEXT_SWPPARTPAY','Delbetaling');
 define('ENTRY_TEXT_SWPINVOICE','Faktura');
-define('ENTRY_TEXT_SWPINVOICE_DESCRIPTION','Lägsta belopp ÖVERSÄTT');
+define('ENTRY_TEXT_SWPINVOICE_DESCRIPTION','minstebelÃ¸p Ã¥ betale');
 ?>
