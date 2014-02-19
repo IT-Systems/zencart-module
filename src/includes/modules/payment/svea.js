@@ -2,8 +2,8 @@
  * Svea WebPay Zencart module svea.js
  * javascript used to pass Svea WebPay payment method credentials et al
  *
- * Version 4.0 - Zen Cart
- * Kristian Grossman-Madsen, Shaho Ghobadi
+ * Version 4.2.3 - Zen Cart
+ * Kristian Grossman-Madsen
  */
 var isReady; //global, undefined on first file inclusion
 
@@ -25,6 +25,18 @@ jQuery(document).ready(function (){
         jQuery('#pmt-sveawebpay_internetbank').attr("sveaCustomerCountry",msg);
     });
 
+    // if there are no radio buttons, we have only one payment method, handle that:
+    if( jQuery("input[type=radio][name='payment']").length == 0) {
+
+        if( jQuery("#sveaInvoiceField").length == 1 ) {
+            showInvoiceFields();
+        }
+        if( jQuery("#sveaPartPayField").length == 1 ) {
+            showPartpayFields();
+        }
+        //showPartpayFields();
+    }
+    else {
     // first, uncheck all payment buttons
     jQuery("input[type=radio][name='payment']").prop('checked', false);
 
@@ -36,90 +48,14 @@ jQuery(document).ready(function (){
 
             // Svea invoice payment method selected
             case 'sveawebpay_invoice':
+                showInvoiceFields();           
+            break;
 
-                // get customerCountry
-                var customerCountry = jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry");
-
-                // hide getAddress button
-                if( customerCountry == "NO" ) {       // hide getAddress button for NO (default)
-                    jQuery('#sveaSubmitGetAddress').hide();
-                }
-
-                // hide addresses
-                hideBillingAndInvoiceAddress( customerCountry );
-
-                // show input fields
-                jQuery('#sveaInternetbankField').hide();
-                jQuery('#sveaPartPayField').hide();
-                jQuery('#sveaInvoiceField').show();
-
-                // do getAddresses on button press
-                jQuery("#sveaSubmitGetAddress").click( function(){
-                    getAddresses(   jQuery('#sveaSSN').val(),
-                                    "invoice",
-                                    jQuery('#sveaInvoiceField input[type="radio"]:checked').val(),
-                                    jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry"),
-                                    "sveaAddressSelector"
-                    );
-                });
-
-                // set zencart billing/shipping to match getAddresses selection
-                jQuery('#sveaAddressSelector').change( function() {
-                    jQuery.ajax({
-                        type: "POST",
-                        url: "sveaAjax.php",
-                        data: {
-                            SveaAjaxSetCustomerInvoiceAddress: true,
-                            SveaAjaxAddressSelectorValue: jQuery('#sveaAddressSelector').val()
-                        },
-                        success: function(msg) { msg; }
-                    });
-                });
-            break; //case 'sveawebpay_invoice':
-
-            //
             // Svea partpay payment method selected
             case 'sveawebpay_partpay':
+                showPartpayFields();
+            break;
 
-                // get customerCountry
-                var customerCountry = jQuery('#pmt-sveawebpay_partpay').attr("sveaCustomerCountry");
-
-                // hide addresses
-                hideBillingAndInvoiceAddress( customerCountry );
-
-                // show input fields
-                jQuery('#sveaInternetbankField').hide();
-                jQuery('#sveaPartPayField').show();
-                jQuery('#sveaInvoiceField').hide();
-
-                // force getAddresses & show part payment options on ssn input
-                jQuery("#sveaSubmitPaymentOptions").click( function(){
-                    getAddresses(   jQuery('#sveaSSNPP').val(),
-                                    "paymentplan",
-                                    "false", // partpay not available to companies
-                                    jQuery('#pmt-sveawebpay_partpay').attr("sveaCustomerCountry"),
-                                    "sveaAddressSelectorPP"
-                    );
-                });                
-                
-                // get & show getPaymentOptions
-                getPartPaymentOptions( customerCountry );
-
-                // set zencart billing/shipping to match getAddresses selection
-                jQuery('#sveaAddressSelectorPP').change( function() {
-                    jQuery.ajax({
-                        type: "POST",
-                        url: "sveaAjax.php",
-                        data: {
-                            SveaAjaxSetCustomerInvoiceAddress: true,
-                            SveaAjaxAddressSelectorValue: jQuery('#sveaAddressSelectorPP').val()
-                        },
-                        success: function(msg) { msg; }
-                    });
-                });
-            break; //case 'sveawebpay_partpay':
-
-            //
             // Svea internetbank payment method selected
             case 'sveawebpay_internetbank':
 
@@ -149,8 +85,8 @@ jQuery(document).ready(function (){
             break; //default:
         }
     });
-
-    // show/hide private/company input fields depending on country
+   } 
+   // show/hide private/company input fields depending on country
     jQuery("input[type=radio][name='sveaIsCompany'][value='false']").click( function() {    // show private
         jQuery('#sveaInitials_div').show();
         jQuery('#sveaBirthDate_div').show();
@@ -168,12 +104,95 @@ jQuery(document).ready(function (){
                 
         if( jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry") == "NO" ) {       // show getAddress button
             jQuery('#sveaSubmitGetAddress').show();
-        }
-        
+        }        
     });
 
     } // isReady
 });
+
+function showInvoiceFields() {
+    console.log("showInvoiceField");
+    
+    // get customerCountry
+    var customerCountry = jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry");
+
+    // hide getAddress button
+    if( customerCountry == "NO" ) {       // hide getAddress button for NO (default)
+        jQuery('#sveaSubmitGetAddress').hide();
+    }
+
+    // hide addresses
+    hideBillingAndInvoiceAddress( customerCountry );
+
+    // show input fields
+    jQuery('#sveaInternetbankField').hide();
+    jQuery('#sveaPartPayField').hide();
+    jQuery('#sveaInvoiceField').show();
+
+    // do getAddresses on button press
+    jQuery("#sveaSubmitGetAddress").click( function(){
+        getAddresses(   jQuery('#sveaSSN').val(),
+                        "invoice",
+                        jQuery('#sveaInvoiceField input[type="radio"]:checked').val(),
+                        jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry"),
+                        "sveaAddressSelector"
+        );
+    });
+
+    // set zencart billing/shipping to match getAddresses selection
+    jQuery('#sveaAddressSelector').change( function() {
+        jQuery.ajax({
+            type: "POST",
+            url: "sveaAjax.php",
+            data: {
+                SveaAjaxSetCustomerInvoiceAddress: true,
+                SveaAjaxAddressSelectorValue: jQuery('#sveaAddressSelector').val()
+            },
+            success: function(msg) { msg; }
+        });
+    });
+}
+
+function showPartpayFields() {
+    console.log("showPartpayFields");
+    
+    // get customerCountry
+    var customerCountry = jQuery('#pmt-sveawebpay_partpay').attr("sveaCustomerCountry");
+
+    // hide addresses
+    hideBillingAndInvoiceAddress( customerCountry );
+
+    // show input fields
+    jQuery('#sveaInternetbankField').hide();
+    jQuery('#sveaPartPayField').show();
+    jQuery('#sveaInvoiceField').hide();
+
+    // force getAddresses & show part payment options on ssn input
+    jQuery("#sveaSubmitPaymentOptions").click( function(){
+        getAddresses(   jQuery('#sveaSSNPP').val(),
+                        "paymentplan",
+                        "false", // partpay not available to companies
+                        jQuery('#pmt-sveawebpay_partpay').attr("sveaCustomerCountry"),
+                        "sveaAddressSelectorPP"
+        );
+    });                
+
+    // get & show getPaymentOptions
+    getPartPaymentOptions( customerCountry );
+
+    // set zencart billing/shipping to match getAddresses selection
+    jQuery('#sveaAddressSelectorPP').change( function() {
+        jQuery.ajax({
+            type: "POST",
+            url: "sveaAjax.php",
+            data: {
+                SveaAjaxSetCustomerInvoiceAddress: true,
+                SveaAjaxAddressSelectorValue: jQuery('#sveaAddressSelectorPP').val()
+            },
+            success: function(msg) { msg; }
+        });
+    });
+}
 
 // hide billing, invoice address fields in getAddress countries
 function hideBillingAndInvoiceAddress( country ) {
