@@ -52,6 +52,9 @@ define('FORM_TEXT_BIRTHDATE','Fødselsdato');
 define('FORM_TEXT_VATNO','CVR-nummer'); 
 define('FORM_TEXT_PARTPAY_FEE','Indledende gebyr vil blive tilføjet.');
 define('FORM_TEXT_GET_PAYPLAN','Hente adresse:');
+define('FORM_TEXT_FROM','Fra');
+define('FORM_TEXT_MONTH','måned');
+
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');
 ?>

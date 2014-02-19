@@ -37,10 +37,7 @@ class ZenCartSveaConfigBase {
         $country = strtoupper($country);
 
         switch( $country ) {
-        case "SE": // for compatibility w/module 3.0 db entries fix
-            $country = "SV";
-            break;
-
+        case "SE":
         case "NO":
         case "DK":
         case "FI":
@@ -57,7 +54,6 @@ class ZenCartSveaConfigBase {
 
     public function getClientNumber($type, $country) {
 
-        // validate also handles SE => SV
         $country = $this->validateCountry( $country );
         if( !$country ) throw new Svea\InvalidCountryException('Invalid country. Accepted countries: SE, NO, DK, FI, NL, DE');
 
@@ -82,7 +78,6 @@ class ZenCartSveaConfigBase {
     * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
     */
     public function getPassword($type, $country) {
-        // validate also handles SE => SV
         $country = $this->validateCountry( $country );
          if( !$country ) throw new Svea\InvalidCountryException('Invalid country. Accepted countries: SE, NO, DK, FI, NL, DE');
 
@@ -107,8 +102,6 @@ class ZenCartSveaConfigBase {
     * $param $country CountryCode eg. SE, NO, DK, FI, NL, DE
     */
     public function getUsername($type, $country) {
-
-        // validate also handles SE => SV
         $country = $this->validateCountry( $country );
       if( !$country ) throw new Svea\InvalidCountryException('Invalid country. Accepted countries: SE, NO, DK, FI, NL, DE');
 

@@ -13,7 +13,7 @@ require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');     // sveaConfig implem
 require_once(DIR_FS_CATALOG . 'sveawebpay_common.php');     // zencart module common functions
 
 class sveawebpay_invoice extends SveaZencart {
-    
+
 
     /**
      * constructor, initialises object from config settings values (in uppercase)
@@ -192,7 +192,7 @@ class sveawebpay_invoice extends SveaZencart {
 
                 $years .= "<option value='$y' $selected>$y</option>";
             }
-            
+
             $birthYear = "<select name='sveaBirthYear' id='sveaBirthYear'>$years</select>";
 
             $sveaBirthDateDiv = '<div id="sveaBirthDate_div" >' .
@@ -301,17 +301,17 @@ class sveawebpay_invoice extends SveaZencart {
 
         // localization parameters
         if( isset( $order->billing['country']['iso_code_2'] ) ) {
-            $user_country = $order->billing['country']['iso_code_2']; 
+            $user_country = $order->billing['country']['iso_code_2'];
         }
         // no billing address set, fallback to session country_id
         else {
             $country = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );
             $user_country =  $country['countries_iso_code_2'];
         }
-       
+
         $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
         $user_language = $user_language->fields['code'];
-                
+
         $currency = $this->getCurrency($order->info['currency']);
 
         // Create and initialize order object, using either test or production configuration
@@ -346,7 +346,7 @@ class sveawebpay_invoice extends SveaZencart {
         {
             // create company customer object
             $swp_customer = WebPayItem::companyCustomer();
-           
+
             // set company name
             $swp_customer->setCompanyName( $order->billing['company'] );
 
@@ -383,13 +383,13 @@ class sveawebpay_invoice extends SveaZencart {
             {
                 $myStreetAddress = Svea\Helper::splitStreetAddress( $order->billing['street_address'] ); // Split street address and house no
             }
-            else // other countries disregard housenumber field, so put entire address in streetname field     
+            else // other countries disregard housenumber field, so put entire address in streetname field
             {
                 $myStreetAddress[0] = $order->billing['street_address'];
                 $myStreetAddress[1] = $order->billing['street_address'];
                 $myStreetAddress[2] = "";
             }
-            
+
             // set common fields
             $swp_customer
                 ->setStreetAddress( $myStreetAddress[1], $myStreetAddress[2] )
@@ -442,7 +442,7 @@ class sveawebpay_invoice extends SveaZencart {
             {
                 $myStreetAddress = Svea\Helper::splitStreetAddress( $order->billing['street_address'] ); // Split street address and house no
             }
-            else // other countries disregard housenumber field, so put entire address in streetname field     
+            else // other countries disregard housenumber field, so put entire address in streetname field
             {
                 $myStreetAddress[0] = $order->billing['street_address'];
                 $myStreetAddress[1] = $order->billing['street_address'];
@@ -483,23 +483,23 @@ class sveawebpay_invoice extends SveaZencart {
         $swp_order = unserialize($_SESSION["swp_order"]);
 
 //        print_r( $swp_order->useInvoicePayment()->prepareRequest() );
-//        
-        // send payment request to svea, receive response       
+//
+        // send payment request to svea, receive response
         try {
             $swp_response = $swp_order->useInvoicePayment()->doRequest();
         }
-        catch (Exception $e){  
+        catch (Exception $e){
             // hack together a fake response object containing the error & errormessage
             $swp_response = (object) array( "accepted" => false, "resultcode" => 1000, "errormessage" => $e->getMessage() ); //new "error" 1000
         }
-        
+
         // payment request failed; handle this by redirecting w/result code as error message
         if ($swp_response->accepted === false) {
             $_SESSION['SWP_ERROR'] = $this->responseCodes($swp_response->resultcode,$swp_response->errormessage);
             $payment_error_return = 'payment_error=sveawebpay_invoice';
             zen_redirect(zen_href_link(FILENAME_CHECKOUT_PAYMENT, $payment_error_return)); // error handled in selection() above
         }
-      
+
         //
         // payment request succeded, store response in session
         if ($swp_response->accepted == true) {
@@ -539,7 +539,7 @@ class sveawebpay_invoice extends SveaZencart {
         global $insert_id, $order, $db;
 
         $new_order_id = $insert_id;  // $insert_id contains the new order orders_id
-        
+
         // retrieve response object from before_process()
         $createOrderResponse = unserialize($_SESSION["swp_response"]);
 
@@ -550,18 +550,18 @@ class sveawebpay_invoice extends SveaZencart {
             'createorder_object' => $_SESSION["swp_order"]      // session data is already serialized
         );
         zen_db_perform("svea_order", $sql_data_array);
-        
+
         // if autodeliver order status matches the new order status, deliver the order
-        if( $this->getCurrentOrderStatus( $new_order_id ) == MODULE_PAYMENT_SWPINVOICE_AUTODELIVER ) 
+        if( $this->getCurrentOrderStatus( $new_order_id ) == MODULE_PAYMENT_SWPINVOICE_AUTODELIVER )
         {
             $deliverResponse = $this->doDeliverOrderInvoice($new_order_id);
             if( $deliverResponse->accepted == true )
-            {                    
-                $comment = 'Order AutoDelivered. (SveaOrderId: ' .$this->getSveaOrderId( $new_order_id ). ')';                
+            {
+                $comment = 'Order AutoDelivered. (SveaOrderId: ' .$this->getSveaOrderId( $new_order_id ). ')';
                 //$this->insertOrdersStatus( $new_order_id, SVEA_ORDERSTATUS_DELIVERED_ID, $comment );
                 $sql_data_array = array(
                     'orders_id' => $new_order_id,
-                    'orders_status_id' => SVEA_ORDERSTATUS_DELIVERED_ID,              
+                    'orders_status_id' => SVEA_ORDERSTATUS_DELIVERED_ID,
                     'date_added' => 'now()',
                     'customer_notified' => 0,  // 0 for "no email" (open lock symbol) in order status history   //TODO use card SEND_MAIL behaviour
                     'comments' => $comment
@@ -570,17 +570,17 @@ class sveawebpay_invoice extends SveaZencart {
 
                 $db->Execute(   "update " . TABLE_ORDERS . " " .
                                 "set orders_status = " . SVEA_ORDERSTATUS_DELIVERED_ID . " " .
-                                "where orders_id = " . $new_order_id 
+                                "where orders_id = " . $new_order_id
                 );
             }
-            else 
+            else
             {
                 $comment =  'WARNING: AutoDeliver failed, status not changed. ' .
                             'Error: ' . $deliverResponse->errormessage . ' (SveaOrderId: ' .$this->getSveaOrderId( $new_order_id ). ')';
                 $this->insertOrdersStatus( $new_order_id, $this->getCurrentOrderStatus( $new_order_id ), $comment );
-            }          
+            }
         }
-         
+
         // clean up our session variables set during checkout   //$SESSION[swp_*
         unset($_SESSION['swp_order']);
         unset($_SESSION['swp_response']);
@@ -608,12 +608,18 @@ class sveawebpay_invoice extends SveaZencart {
         global $db;
         $common = "insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added";
         $db->Execute($common . ", set_function) values ('Enable Svea Invoice Module', 'MODULE_PAYMENT_SWPINVOICE_STATUS', 'True', 'Do you want to accept Svea payments?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
-        $db->Execute($common . ") values ('Svea Username SV', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_SV', '', 'Username for Svea Invoice Sweden', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Password SV', 'MODULE_PAYMENT_SWPINVOICE_PASSWORD_SV', '', 'Password for Svea Invoice Sweden', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Username SE', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_SE', '', 'Username for Svea Invoice Sweden', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Password SE', 'MODULE_PAYMENT_SWPINVOICE_PASSWORD_SE', '', 'Password for Svea Invoice Sweden', '6', '0', now())");
+        $db->Execute($common . ") values ('Lowest payment on invoice: Min amount for SE', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT_SE', '', 'The minimum amount to show this widget on product display. Check with your campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
+
         $db->Execute($common . ") values ('Svea Username NO', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_NO', '', 'Username for Svea Invoice Norway', '6', '0', now())");
         $db->Execute($common . ") values ('Svea Password NO', 'MODULE_PAYMENT_SWPINVOICE_PASSWORD_NO', '', 'Password for Svea Invoice Norway', '6', '0', now())");
+        $db->Execute($common . ") values ('Lowest payment on invoice: Min amount for NO', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT_NO', '', 'The minimum amount to show this widget on product display. Check with your campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
+
         $db->Execute($common . ") values ('Svea Username FI', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_FI', '', 'Username for Svea Invoice Finland', '6', '0', now())");
         $db->Execute($common . ") values ('Svea Password FI', 'MODULE_PAYMENT_SWPINVOICE_PASSWORD_FI', '', 'Password for Svea Invoice Finland', '6', '0', now())");
+        $db->Execute($common . ") values ('Lowest payment on invoice: Min amount for FI', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT_FI', '', 'The minimum amount to show this widget on product display. Check with your campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
+
         $db->Execute($common . ") values ('Svea Username DK', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_DK', '', 'Username for Svea Invoice Denmark', '6', '0', now())");
         $db->Execute($common . ") values ('Svea Password DK', 'MODULE_PAYMENT_SWPINVOICE_PASSWORD_DK', '', 'Password for Svea Invoice Denmark', '6', '0', now())");
         $db->Execute($common . ") values ('Svea Username NL', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_NL', '', 'Username for Svea Invoice Netherlands', '6', '0', now())");
@@ -635,45 +641,50 @@ class sveawebpay_invoice extends SveaZencart {
         $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPINVOICE_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
         $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPINVOICE_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
         $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
-        
+        $db->Execute($common . ", set_function) values ('Activate: Show lowest payment on invoice', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT', 'False', 'Show lowest price to pay on invoice. Widget shows on product page. ', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
+
         // insert svea order table if not exists already
         $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_order';");
         if( $res->fields["COUNT(*)"] != 1 ) {
             $sql = "CREATE TABLE svea_order (orders_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, sveaorderid INT NOT NULL, createorder_object BLOB, invoice_id INT )";
             $db->Execute( $sql );
-        }     
-        
+        }
+
         // insert svea order statuses into table order_status, if not exists already
         $res = $db->Execute('SELECT COUNT(*) FROM ' . TABLE_ORDERS_STATUS . ' WHERE orders_status_name = "'. SVEA_ORDERSTATUS_CLOSED .'"');
         if( $res->fields["COUNT(*)"] == 0 ) {
             $sql =  'INSERT INTO ' . TABLE_ORDERS_STATUS . ' (`orders_status_id`, `language_id`, `orders_status_name`) VALUES ' .
                     '(' . SVEA_ORDERSTATUS_CLOSED_ID . ', 1, "' . SVEA_ORDERSTATUS_CLOSED . '"), ' .
                     '(' . SVEA_ORDERSTATUS_CREDITED_ID . ', 1, "' . SVEA_ORDERSTATUS_CREDITED . '"), ' .
-                    '(' . SVEA_ORDERSTATUS_DELIVERED_ID . ', 1, "' . SVEA_ORDERSTATUS_DELIVERED . '")' 
-            ;          
+                    '(' . SVEA_ORDERSTATUS_DELIVERED_ID . ', 1, "' . SVEA_ORDERSTATUS_DELIVERED . '")'
+            ;
             $db->Execute( $sql );
-        } 
+        }
     }
     // standard uninstall function
     function remove() {
         global $db;
         $db->Execute("delete from " . TABLE_CONFIGURATION . " where configuration_key in ('" . implode("', '", $this->keys()) . "')");
-        
-        // we don't delete svea_order tables, as data may be needed by other payment modules and to admin orders etc.        
+
+        // we don't delete svea_order tables, as data may be needed by other payment modules and to admin orders etc.
     }
 
     // must perfectly match keys inserted in install function
     function keys() {
         return array('MODULE_PAYMENT_SWPINVOICE_STATUS',
-            'MODULE_PAYMENT_SWPINVOICE_USERNAME_SV',
-            'MODULE_PAYMENT_SWPINVOICE_PASSWORD_SV',
+            'MODULE_PAYMENT_SWPINVOICE_USERNAME_SE',
+            'MODULE_PAYMENT_SWPINVOICE_PASSWORD_SE',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_SV',
+            'MODULE_PAYMENT_SWPINVOICE_PRODUCT_SE',
             'MODULE_PAYMENT_SWPINVOICE_USERNAME_NO',
             'MODULE_PAYMENT_SWPINVOICE_PASSWORD_NO',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_NO',
+            'MODULE_PAYMENT_SWPINVOICE_PRODUCT_NO',
             'MODULE_PAYMENT_SWPINVOICE_USERNAME_FI',
             'MODULE_PAYMENT_SWPINVOICE_PASSWORD_FI',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_FI',
+            'MODULE_PAYMENT_SWPINVOICE_PRODUCT_FI',
+
             'MODULE_PAYMENT_SWPINVOICE_USERNAME_DK',
             'MODULE_PAYMENT_SWPINVOICE_PASSWORD_DK',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_DK',
@@ -691,9 +702,10 @@ class sveawebpay_invoice extends SveaZencart {
             'MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE',
             'MODULE_PAYMENT_SWPINVOICE_IGNORE',
             'MODULE_PAYMENT_SWPINVOICE_ZONE',
-            'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER');
+            'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER',
+            'MODULE_PAYMENT_SWPINVOICE_PRODUCT');
     }
-    
+
     // Localize Error Responses
     function responseCodes($err,$msg = NULL) {
         switch ($err) {
@@ -762,30 +774,30 @@ class sveawebpay_invoice extends SveaZencart {
                 return sprintf("Svea error %s: %s", $err, ERROR_CODE_DEFAULT . " " . $err . " - " . $msg);     // $err here is the response->resultcode
                 break;
         }
-    } 
+    }
 
     /**
      * Given an orderID, reconstruct the svea order object and send deliver order request, return response
-     * 
+     *
      * @param int $oID -- $oID is the order id
      * @return Svea\DeliverOrderResult
      */
-    function doDeliverOrderInvoice($oID) {   
+    function doDeliverOrderInvoice($oID) {
         global $db;
 
         // get zencart order from db
-        $order = new order($oID); 
-        
+        $order = new order($oID);
+
         // get svea order id reference returned in createOrder request result
         $sveaOrderId = $this->getSveaOrderId( $oID );
         $swp_order = $this->getSveaCreateOrderObject( $oID );
-        
+
         // Create and initialize order object, using either test or production configuration
         $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
         $swp_deliverOrder = WebPay::deliverOrder( $sveaConfig )
             ->setInvoiceDistributionType( MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE )
-            ->setOrderId($sveaOrderId)                                  
+            ->setOrderId($sveaOrderId)
         ;
 
         // TODO create helper functions in integration package that transforms createOrder -> deliverOrder -> closeOrder etc. (see INTG-324)
@@ -800,103 +812,103 @@ class sveawebpay_invoice extends SveaZencart {
         $swp_deliverOrder->countryCode = $swp_order->countryCode;
         // /hack
 
-        $swp_deliverResponse = $swp_deliverOrder->deliverInvoiceOrder()->doRequest(); 
+        $swp_deliverResponse = $swp_deliverOrder->deliverInvoiceOrder()->doRequest();
 
         // if deliverorder accepted, update svea_order table with Svea invoiceId
-        if( $swp_deliverResponse->accepted == true ) 
+        if( $swp_deliverResponse->accepted == true )
         {
-            $db->Execute(   
+            $db->Execute(
                 "update svea_order " .
                 "set invoice_id = " . $swp_deliverResponse->invoiceId . " " .
                 "where orders_id = " . (int)$oID )
-            ; 
+            ;
         }
         // return deliver order response
         return $swp_deliverResponse;
-    }   
+    }
 
     /**
      * Called from admin/orders.php when admin chooses to edit an order and updates its order status
-     * 
+     *
      * @param int $oID
      * @param type $status
      * @param type $comments
      * @param type $customer_notified
      * @param type $old_orders_status
      */
-    function _doStatusUpdate($oID, $status, $comments, $customer_notified, $old_orders_status) {       
+    function _doStatusUpdate($oID, $status, $comments, $customer_notified, $old_orders_status) {
         global $db;
 
         //if this is a legacy order (i.e. it isn't in table svea_order), fail gracefully: reset status to old status if needed
         if( ! $this->getSveaOrderId( $oID ) )
-        {        
+        {
             $comment =  'WARNING: Unable to administrate orders created with Svea payment module < version 4.1.';
             if( $status == SVEA_ORDERSTATUS_CLOSED_ID || $status == SVEA_ORDERSTATUS_CREDITED_ID || $status == SVEA_ORDERSTATUS_DELIVERED_ID )
             {
                 $comment = $comment . " Status not changed.";
                 $status = $old_orders_status;
             }
-            $this->updateOrdersStatus( $oID, $status, $comment );   
-                     
+            $this->updateOrdersStatus( $oID, $status, $comment );
+
             return; //exit _doStatusUpdate
         }
 
-        
-        switch( $status ) 
-        { 
+
+        switch( $status )
+        {
         case $old_orders_status:
             // do nothing
             break;
-            
-        case MODULE_PAYMENT_SWPINVOICE_AUTODELIVER:  
+
+        case MODULE_PAYMENT_SWPINVOICE_AUTODELIVER:
             // deliver if new status == autodeliver status setting
         case SVEA_ORDERSTATUS_DELIVERED_ID:
             $deliverResult = $this->doDeliverOrderInvoice($oID);
-            
-            if( $deliverResult->accepted == true ) 
-            {               
+
+            if( $deliverResult->accepted == true )
+            {
                 $comment = 'Delivered by status update. (SveaOrderId: ' . $this->getSveaOrderId( $oID ) . ')';
                 $status = SVEA_ORDERSTATUS_DELIVERED_ID;  // override set status
             }
             else // deliverOrder failed, so reset status to old status & state order closed in comment
             {
-                $comment =  'WARNING: Deliver order failed, status not changed. ' . 
+                $comment =  'WARNING: Deliver order failed, status not changed. ' .
                             'Error: ' . $deliverResult->errormessage . ' (SveaOrderId: ' .  $this->getSveaOrderId( $oID ) . ')';
                 $status = $old_orders_status;
             }
-            $this->updateOrdersStatus( $oID, $status, $comment );   
+            $this->updateOrdersStatus( $oID, $status, $comment );
             break;
-            
+
         case SVEA_ORDERSTATUS_CLOSED_ID:
             $this->_doVoid( $oID, $old_orders_status );
             break;
-        
+
         case SVEA_ORDERSTATUS_CREDITED_ID:
             $this->_doRefund( $oID, $old_orders_status );
             break;
-        
+
         default:
             break;
         }
     }
-    
+
     // called when we want to refund a delivered order (i.e. invoice)
-    function _doRefund($oID, $from_doStatusUpdate = false ) {      
+    function _doRefund($oID, $from_doStatusUpdate = false ) {
         global $db;
-        
+
         // get svea invoice id reference returned with deliverOrder request result
         $sveaOrderId = $this->getSveaOrderId( $oID );
         $invoiceId = $this->getSveaInvoiceId( $oID );
         $swp_order = $this->getSveaCreateOrderObject( $oID );
-        
+
         // Create and initialize order object, using either test or production configuration
         $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
         $swp_creditInvoice = WebPay::deliverOrder($sveaConfig)
                 ->setInvoiceDistributionType( MODULE_PAYMENT_SWPINVOICE_DISTRIBUTIONTYPE )
-                ->setOrderId($sveaOrderId)                                                  //Required, received when creating an order     
+                ->setOrderId($sveaOrderId)                                                  //Required, received when creating an order
         ;
-     
+
         // ~hack, exploits CreateOrderRow objects having public properties...
         $swp_creditInvoice->orderRows = $swp_order->orderRows;
         $swp_creditInvoice->shippingFeeRows = $swp_order->shippingFeeRows;
@@ -906,21 +918,21 @@ class sveawebpay_invoice extends SveaZencart {
         $swp_creditInvoice->countryCode = $swp_order->countryCode;
         // /hack
 
-        $swp_creditResponse = $swp_creditInvoice->setCreditInvoice($invoiceId)->deliverInvoiceOrder()->doRequest();       
-        
+        $swp_creditResponse = $swp_creditInvoice->setCreditInvoice($invoiceId)->deliverInvoiceOrder()->doRequest();
+
         if( $swp_creditResponse->accepted == true )
-        {    
+        {
             $comment = 'Svea invoice credited. ' . '(Svea invoiceId: ' . $invoiceId . ')';
             $status = SVEA_ORDERSTATUS_CREDITED_ID;
 
         }
         else    // creditOrder failed, insert error in history
         {
-            $comment =  'WARNING: Credit invoice failed, status not changed. ' . 
-                        'Error: ' . $swp_creditResponse->errormessage . ". (InvoiceId: " . $invoiceId  . ')'; 
+            $comment =  'WARNING: Credit invoice failed, status not changed. ' .
+                        'Error: ' . $swp_creditResponse->errormessage . ". (InvoiceId: " . $invoiceId  . ')';
             $status = ($from_doStatusUpdate == false) ? $this->getCurrentOrderStatus($oID) : $from_doStatusUpdate;     // use current/old order status
         }
-        
+
         if( $from_doStatusUpdate == true )  // update status inserted before _doStatusUpdate
         {
             $this->updateOrdersStatus( $oID, $status, $comment );
@@ -930,21 +942,21 @@ class sveawebpay_invoice extends SveaZencart {
             $this->insertOrdersStatus( $oID, $status, $comment );
         }
     }
-    
+
     // called when we want to cancel (close) an undelivered order
-    function _doVoid($oID, $from_doStatusUpdate = false ) {      
+    function _doVoid($oID, $from_doStatusUpdate = false ) {
         global $db;
-        
+
         $sveaOrderId = $this->getSveaOrderId( $oID );
         $swp_order = $this->getSveaCreateOrderObject( $oID );
-        
+
         // Create and initialize order object, using either test or production configuration
         $sveaConfig = (MODULE_PAYMENT_SWPINVOICE_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
         $swp_closeOrder = WebPay::closeOrder($sveaConfig)
-            ->setOrderId($sveaOrderId) 
+            ->setOrderId($sveaOrderId)
         ;
-     
+
         // this really exploits CreateOrderRow objects having public properties...
         // ~hack
         $swp_closeOrder->orderRows = $swp_order->orderRows;
@@ -955,20 +967,20 @@ class sveawebpay_invoice extends SveaZencart {
         $swp_closeOrder->countryCode = $swp_order->countryCode;
         // /hack
 
-        $swp_closeResponse = $swp_closeOrder->closeInvoiceOrder()->doRequest();       
+        $swp_closeResponse = $swp_closeOrder->closeInvoiceOrder()->doRequest();
 
-        if( $swp_closeResponse->accepted == true ) 
+        if( $swp_closeResponse->accepted == true )
         {
-            $comment = 'Svea order closed. ' . '(SveaOrderId: ' . $sveaOrderId . ')';    
+            $comment = 'Svea order closed. ' . '(SveaOrderId: ' . $sveaOrderId . ')';
             $status = SVEA_ORDERSTATUS_CLOSED_ID;
         }
         else    // close order failed, insert error in history
         {
-            $comment =  'WARNING: Close order request failed, status not changed. ' . 
-                        'Error: ' . $swp_closeResponse->errormessage . ' (SveaOrderId: ' . $sveaOrderId . ')';               
+            $comment =  'WARNING: Close order request failed, status not changed. ' .
+                        'Error: ' . $swp_closeResponse->errormessage . ' (SveaOrderId: ' . $sveaOrderId . ')';
             $status = ($from_doStatusUpdate == false) ? $this->getCurrentOrderStatus($oID) : $from_doStatusUpdate;     // use current/old order status
-        }    
-        
+        }
+
         if( $from_doStatusUpdate == true )  // update status inserted before _doStatusUpdate
         {
             $this->updateOrdersStatus( $oID, $status, $comment );
@@ -976,7 +988,7 @@ class sveawebpay_invoice extends SveaZencart {
         else    // insert status
         {
             $this->insertOrdersStatus( $oID, $status, $comment );
-        }       
+        }
     }
-}    
+}
 ?>

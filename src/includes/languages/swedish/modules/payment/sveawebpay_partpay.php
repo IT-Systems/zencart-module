@@ -52,7 +52,9 @@ define('FORM_TEXT_INITIALS','Initialer');
 define('FORM_TEXT_BIRTHDATE','Födelsedatum');              
 define('FORM_TEXT_VATNO','Organisationsnummer'); 
 define('FORM_TEXT_PARTPAY_FEE','Uppläggningsavgift tillkommer');
-define('FORM_TEXT_GET_PAYPLAN','Hämta betalningsalternativ:');
+define('FORM_TEXT_GET_PAYPLAN','Hämta adress:');
+define('FORM_TEXT_FROM','Från');
+define('FORM_TEXT_MONTH','månad');
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');
 

@@ -55,7 +55,8 @@ define('FORM_TEXT_GET_PAY_OPTIONS','Betalingsmogelijkheden ontvangen');
 define('FORM_TEXT_INITIALS','');   
 define('FORM_TEXT_PARTPAY_FEE','');
 define('FORM_TEXT_GET_PAYPLAN','Adresgegevens ophalen');
-
+define('FORM_TEXT_FROM','Van');
+define('FORM_TEXT_MONTH','maand');
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');
 
