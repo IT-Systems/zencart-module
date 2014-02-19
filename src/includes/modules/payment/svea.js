@@ -34,7 +34,9 @@ jQuery(document).ready(function (){
         if( jQuery("#sveaPartPayField").length == 1 ) {
             showPartpayFields();
         }
-        //showPartpayFields();
+        if( jQuery("#sveaInternetbankField").length == 1 ) {
+            showInternetbankFields();
+        }
     }
     else {
     // first, uncheck all payment buttons
@@ -58,23 +60,11 @@ jQuery(document).ready(function (){
 
             // Svea internetbank payment method selected
             case 'sveawebpay_internetbank':
-
-                // get customerCountry
-                var customerCountry = jQuery('#pmt-sveawebpay_internetbank').attr("sveaCustomerCountry");
-
-                // show input fields
-                jQuery('#sveaInternetbankField').show();
-                jQuery('#sveaPartPayField').hide();
-                jQuery('#sveaInvoiceField').hide();
-
-                // get & show getBankPaymentOptions
-                getBankPaymentOptions( customerCountry );
-
-            break; //case 'sveawebpay_internetbank':
+                showInternetbankFields();                
+            break;
 
             //If other payment methods are selected, hide all svea related
             default:
-
                 // show billing address if hidden
                 showBillingAndInvoiceAddress();
 
@@ -111,7 +101,6 @@ jQuery(document).ready(function (){
 });
 
 function showInvoiceFields() {
-    console.log("showInvoiceField");
     
     // get customerCountry
     var customerCountry = jQuery('#pmt-sveawebpay_invoice').attr("sveaCustomerCountry");
@@ -154,7 +143,6 @@ function showInvoiceFields() {
 }
 
 function showPartpayFields() {
-    console.log("showPartpayFields");
     
     // get customerCountry
     var customerCountry = jQuery('#pmt-sveawebpay_partpay').attr("sveaCustomerCountry");
@@ -192,6 +180,20 @@ function showPartpayFields() {
             success: function(msg) { msg; }
         });
     });
+}
+
+function showInternetbankFields() {   
+    
+    // get customerCountry
+    var customerCountry = jQuery('#pmt-sveawebpay_internetbank').attr("sveaCustomerCountry");
+
+    // show input fields
+    jQuery('#sveaInternetbankField').show();
+    jQuery('#sveaPartPayField').hide();
+    jQuery('#sveaInvoiceField').hide();
+
+    // get & show getBankPaymentOptions
+    getBankPaymentOptions( customerCountry );
 }
 
 // hide billing, invoice address fields in getAddress countries
