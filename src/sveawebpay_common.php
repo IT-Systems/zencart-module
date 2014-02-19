@@ -680,12 +680,12 @@ class SveaZencart {
             
         foreach( $order_products as $productId => $product ) 
         {
-            $amount_ex_vat = floatval( $this->convertToCurrency(round($product['final_price'], 2), $currency) );
+            $amountExVat = floatval( $this->convertToCurrency(round($product['final_price'], 2), $currency) );
 
             $svea_order->addOrderRow(
                 WebPayItem::orderRow()
                     ->setQuantity(intval($product['qty']))
-                    ->setAmountExVat($amount_ex_vat)      
+                    ->setAmountExVat($amountExVat)      
                     ->setVatPercent(intval($product['tax']))
                     ->setDescription($product['name'])
             );
@@ -725,12 +725,14 @@ class SveaZencart {
                     // makes use of zencart $order-info[] shipping information to populate object
                     // shop shows prices including tax, take this into accord when calculating tax
                     if (DISPLAY_PRICE_WITH_TAX == 'false') {
-                        $amountExVat = $order->info['shipping_cost'];
-                        $amountIncVat = $order->info['shipping_cost'] + $order->info['shipping_tax'];
+                        //$amountExVat = $order->info['shipping_cost'];
+                        $amountExVat = floatval($this->convertToCurrency(round($order->info['shipping_cost'], 2), $currency));
+                        //$amountIncVat = $order->info['shipping_cost'] + $order->info['shipping_tax'];
+                        $amountIncVat = floatval($this->convertToCurrency(round(($order->info['shipping_cost'] + $order->info['shipping_tax']), 2), $currency));
                     }
                     else {
-                        $amountExVat = $order->info['shipping_cost'] - $order->info['shipping_tax'];
-                        $amountIncVat = $order->info['shipping_cost'] ;
+                        $amountExVat = floatval($this->convertToCurrency(round(($order->info['shipping_cost'] - $order->info['shipping_tax']), 2), $currency));
+                        $amountIncVat = floatval($this->convertToCurrency(round($order->info['shipping_cost'], 2), $currency));
                     }
 
                     // add WebPayItem::shippingFee to swp_order object
@@ -804,7 +806,7 @@ class SveaZencart {
                         {
                             $svea_order->addDiscount(
                                 WebPayItem::fixedDiscount()
-                                    ->setAmountIncVat( $order_total['value'] )
+                                    ->setAmountIncVat( floatval($this->convertToCurrency(round($order_total['value'], 2), $currency)) )
                                     ->setDescription( $order_total['title'] )
                             );
                         }
