@@ -22,7 +22,7 @@ define('ERROR_CODE_20006','De som van alle orderrijen kan geen nul of negatief z
 define('ERROR_CODE_20013','De order is in afwachting');
 
 define('ERROR_CODE_27000','The provided campaigncode-amount combination does not match any campaign code attached to this client ');
-define('ERROR_CODE_27001','Can not deliver order since the specified pdf template is missing. Contact SveaWebPay´s support ');
+define('ERROR_CODE_27001','Can not deliver order since the specified pdf template is missing. Contact SveaWebPayÂ´s support ');
 define('ERROR_CODE_27002','Can not partial deliver a PaymentPlan ');
 define('ERROR_CODE_27003','Can not mix CampaignCode with a fixed Monthly Amount. ');
 define('ERROR_CODE_27004','Can not find a suitable CampaignCode for the Monthly Amount ');

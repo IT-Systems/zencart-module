@@ -1,5 +1,5 @@
 # Zen Cart - Svea payment module
-## Version 4.2.1
+## Version 4.2.3
 * Supports Zen Cart version 1.5.1 and 1.3.9
 * Requires PHP 5.3 or higher (namespace support)
 
@@ -62,10 +62,6 @@ In this example we'll first configure the Svea invoice payment method, instructi
 
 * _Transaction mode_: Determines whether payments using this method go to Svea's test or production servers. Until you have been giving the go ahead by Svea, this should be set to Test. Then, in order to receive payments for production orders, this should be switched over to its Production setting.
 
-* _Accepted Currencies_: The list of currencies which you accept as payment. These must all be defined in your Zen Cart settings, see "Localisation and additional Zen Cart configuration requirements" below.
-
-* _Default Currency_: If the customer ha an unsupported currency selected it will be converted to the default currency upon customer checkout. The default currency must also be present in the _Accepted Currencies_ list (above).
-
 * _Set Order Status_: The Zen Cart order status given to orders after the customer has completed checkout.
 
 * _Auto Deliver Order_: Order invoices will be delivered (sent out) to the customer by Svea if an order's status is set to this status. This may be done manually through the Zen Cart order admin, or you may use the Set Over Status (above) to this and the order will be autodelivered upon creation.
@@ -84,6 +80,8 @@ In this example we'll first configure the Svea invoice payment method, instructi
 
 ![Invoice payment settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/invoice_settings_2.PNG "Method invoice settings 2")
 
+Also, make sure you have defined all relevant currencies for countries you accept invoice payments from. See "Localisation and additional Zen Cart configuration requirements" below.
+ 
 #### Setting up the Svea Invoice fee order total module
 The Svea Invoice fee order total module is used to add an invoice fee to the order total when the Svea Invoice payment method is selected during checkout.
 
@@ -120,10 +118,6 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 
 * _Transaction mode_: Determines whether payments using this method go to Svea's test or production servers. Until you have been giving the go ahead by Svea, this should be set to Test. Then, in order to receive payments for production orders, this should be switched over to its Production setting.
 
-* _Accepted Currencies_: The list of currencies which you accept as payment. These must all be defined in your Zen Cart settings, see "Localisation and additional Zen Cart configuration requirements" below.
-
-* _Default Currency_: If the customer has an unsupported currency selected it will be converted to the default currency upon customer checkout. The default currency must also be present in the _Accepted Currencies_ list (above).
-
 * _Set Order Status_: The Zen Cart order status given to orders after the customer has completed checkout.
 
 * _Auto Deliver Order_: Order payment plan will be delivered (sent out) to the customer by Svea if an order's status is set to this status. This may be done manually through the Zen Cart order admin, or you may use the Set Over Status (above) to this and the order will be autodelivered upon creation.
@@ -135,6 +129,8 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 * _Sort order of display_: determines the order in which payment methods are presented to the customer on checkout. The method are listed in ascending order on the payment method selection page.
 
 * Finally, remember to _save_ your settings.
+
+Also, make sure you have defined all relevant currencies for countries you accept payment plan payments from. See "Localisation and additional Zen Cart configuration requirements" below.
 
 #### Svea Card configuration
 
@@ -149,10 +145,6 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 * _Svea Card Test Merchant ID_ and _Svea Card Test Secret Word_: enter your provided test merchant ID and secret word. Test credentials will be provided to you by Svea upon request.
 
 * _Transaction mode_: Determines whether payments using this method go to Svea's test or production servers. Until you have been giving the go ahead by Svea, this should be set to Test. Then, in order to receive payments for production orders, this should be switched over to its Production setting.
-
-* _Accepted Currencies_: The list of currencies which you accept as payment. These must all be defined in your Zen Cart settings, see "Localisation and additional Zen Cart configuration requirements" below.
-
-* _Default Currency_: If the customer has an unsupported currency selected it will be converted to the default currency upon customer checkout. The default currency must also be present in the _Accepted Currencies_ list (above).
 
 * _Set Order Status_: The Zen Cart order status given to orders after the customer has completed checkout. This will be overridden by _Auto Deliver Order_, if set (see below).
 
@@ -177,10 +169,6 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 
 * _Transaction mode_: Determines whether payments using this method go to Svea's test or production servers. Until you have been giving the go ahead by Svea, this should be set to Test. Then, in order to receive payments for production orders, this should be switched over to its Production setting.
 
-* _Accepted Currencies_: The list of currencies which you accept as payment. These must all be defined in your Zen Cart settings, see "Localisation and additional Zen Cart configuration requirements" below.
-
-* _Default Currency_: If the customer ha an unsupported currency selected it will be converted to the default currency upon customer checkout. The default currency must also be present in the _Accepted Currencies_ list (above).
-
 * _Set Order Status_: The Zen Cart order status given to orders after the customer has completed checkout. This will be overridden by _Auto Deliver Order_, if set (see below).
 
 * _Ignore OT list_: if you experience problems with i.e. incompatible order total modules, the module name(s) may be entered here and will then be ignored by the invoice payment module.
@@ -197,7 +185,7 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 * In NL and GE stores, the postal code needs to be set to required for customer registrations. It is used by the invoice and payment plan modules for credit check information et al.
 
 ### Currencies settings
-* Under _Localisation -> Currencies_, all currencies from the various modules _Accepted Currencies_ lists must be defined or the modules will not work properly.
+* Under _Localisation -> Currencies_, all currencies used in countries where you accept invoice or payment plan payments must be defined or the customer will see warning message and your module will not work. The following is a list of countries and their respective currencies: SE (SEK), DK (DKK), NO (NOK), FI (EUR), DE (EUR), NL (EUR).
 
 * Under _Localisation -> Currencies_, the _Decimal Places_ setting must be set to two (2) for _Euro_.
 
