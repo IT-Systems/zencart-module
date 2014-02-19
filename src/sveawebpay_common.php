@@ -38,16 +38,7 @@ class SveaZencart {
                                                                     $currencies->currencies[$currency]['decimal_point'],
                                                                     $currencies->currencies[$currency]['thousands_point']);
     }
-   
-    /**
-     *  switch to default currency if the customers currency is not supported
-     * 
-     * @return type -- currency to use
-     */
-    function getCurrency( $customerCurrency ) {
-        return in_array($customerCurrency, $this->allowed_currencies) ? $customerCurrency : $this->default_currency;
-    }
-        
+     
     /**
      * Given iso 3166 country code, returns English country name.
      * 
@@ -675,6 +666,33 @@ class SveaZencart {
         return $historyResult->fields["orders_status_id"];
     }
    
+    
+    /**
+     * for each item in cart, create WebPayItem::orderRow objects and add to order
+     * @param type $order_totals
+     * @param type $svea_order
+     */
+    function parseOrderProducts( $order_products, &$svea_order )
+    {
+        global $order;
+        
+        $currency = $order->info['currency'];  
+            
+        foreach( $order_products as $productId => $product ) 
+        {
+            $amountExVat = floatval( $this->convertToCurrency(round($product['final_price'], 2), $currency) );
+
+            $svea_order->addOrderRow(
+                WebPayItem::orderRow()
+                    ->setQuantity(intval($product['qty']))
+                    ->setAmountExVat($amountExVat)      
+                    ->setVatPercent(intval($product['tax']))
+                    ->setDescription($product['name'])
+            );
+        }
+        return $svea_order;
+    }
+    
     /**
      * parseOrderTotals() goes through the zencart order order_totals for diverse non-product
      * order rows and updates the svea order object with the appropriate shipping, handling
@@ -687,7 +705,7 @@ class SveaZencart {
     function parseOrderTotals( $order_totals, &$svea_order ) {
         global $db, $order;
         
-        $currency = $this->getCurrency($order->info['currency']);
+        $currency = $order->info['currency'];  
         
         foreach ($order_totals as $ot_id => $order_total) {
 
@@ -707,12 +725,14 @@ class SveaZencart {
                     // makes use of zencart $order-info[] shipping information to populate object
                     // shop shows prices including tax, take this into accord when calculating tax
                     if (DISPLAY_PRICE_WITH_TAX == 'false') {
-                        $amountExVat = $order->info['shipping_cost'];
-                        $amountIncVat = $order->info['shipping_cost'] + $order->info['shipping_tax'];
+                        //$amountExVat = $order->info['shipping_cost'];
+                        $amountExVat = floatval($this->convertToCurrency(round($order->info['shipping_cost'], 2), $currency));
+                        //$amountIncVat = $order->info['shipping_cost'] + $order->info['shipping_tax'];
+                        $amountIncVat = floatval($this->convertToCurrency(round(($order->info['shipping_cost'] + $order->info['shipping_tax']), 2), $currency));
                     }
                     else {
-                        $amountExVat = $order->info['shipping_cost'] - $order->info['shipping_tax'];
-                        $amountIncVat = $order->info['shipping_cost'] ;
+                        $amountExVat = floatval($this->convertToCurrency(round(($order->info['shipping_cost'] - $order->info['shipping_tax']), 2), $currency));
+                        $amountIncVat = floatval($this->convertToCurrency(round($order->info['shipping_cost'], 2), $currency));
                     }
 
                     // add WebPayItem::shippingFee to swp_order object
@@ -770,7 +790,7 @@ class SveaZencart {
                     if (DISPLAY_PRICE_WITH_TAX == 'false') {
                         $svea_order->addDiscount(
                             WebPayItem::fixedDiscount()
-                                ->setAmountExVat( $order_total['value'] ) // $amountExVat works iff display prices with tax = false in shop
+                                ->setAmountExVat( floatval($this->convertToCurrency(round($order_total['value'], 2), $currency)) ) // $amountExVat works iff display prices with tax = false in shop
                                 ->setDescription( $order_total['title'] )
                         );
                     }
@@ -786,7 +806,7 @@ class SveaZencart {
                         {
                             $svea_order->addDiscount(
                                 WebPayItem::fixedDiscount()
-                                    ->setAmountIncVat( $order_total['value'] )
+                                    ->setAmountIncVat( floatval($this->convertToCurrency(round($order_total['value'], 2), $currency)) )
                                     ->setDescription( $order_total['title'] )
                             );
                         }
@@ -794,16 +814,17 @@ class SveaZencart {
                         // if coupon specified as a fixed amount, ZenCart's vat calculation does not fit Svea's, so we just pass on shop values as is 
                         elseif( $coupon->fields['coupon_type'] == 'F')
                         {                          
-                            $discountExVat = (int)$coupon->fields['coupon_amount'];
-                            $discountIncVat = $order_total['value'];
-                            
+//                            $discountExVat = (int)$coupon->fields['coupon_amount'];
+//                            $discountIncVat = $order_total['value'];
+                            $discountExVat = floatval($this->convertToCurrency(round( (int)$coupon->fields['coupon_amount'], 2), $currency));
+                            $discountIncVat = floatval($this->convertToCurrency(round( $order_total['value'], 2), $currency));
+                                                        
                             // calculate the vatpercent from zencart's amount: discount vat/discount amount ex vat
                             $zencartDiscountVatPercent = ($discountIncVat-$discountExVat)/$discountExVat *100;
                             
                             // split $zencartDiscountVatPercent into allowed values
                             $taxRates = Svea\Helper::getTaxRatesInOrder($svea_order);
-                            $discountRows = Svea\Helper::splitMeanToTwoTaxRates( $coupon->fields['coupon_amount'],
-                                    $zencartDiscountVatPercent, $order_total['title'], $order_total['title'], $taxRates );
+                            $discountRows = Svea\Helper::splitMeanToTwoTaxRates( $discountExVat, $zencartDiscountVatPercent, $order_total['title'], $order_total['title'], $taxRates );
                             
                             // add the discount split over the valid taxrates
                             foreach($discountRows as $row) {
