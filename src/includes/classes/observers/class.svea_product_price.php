@@ -138,15 +138,12 @@ class svea_product_price extends base {
 
 //--></script>';
 
-
-
-        $logo = "<img width='90' src=images/Svea/sveawebpay.png />";
         $line = "<img width='163' height='1' src='images/Svea/grey_line.png' />";
         $arrow = "<img src='images/Svea/blue_arrow.png' />";
 
         echo '<div id="svea_price_box"
                 style=" width: 53%;
-                height:77px;
+                height:50px;
                 float:left;
                 margin:5px 5px;">
                     <div style="position:relative; z-index:1">';
@@ -165,7 +162,7 @@ class svea_product_price extends base {
                            position:absolute;
                             z-index:2;
                             left: -5px;
-                            top:43px;
+                            top:26px;
                           margin: 7px -10px 3px 17px;
                           ">'.$arrow.'
                         </div>
@@ -173,7 +170,7 @@ class svea_product_price extends base {
                        position:absolute;
                         z-index:2;
                         left:29px;
-                        top:43px;
+                        top:26px;
                        color: #002A46;
                        width:auto;
                        padding: 3px;
@@ -196,7 +193,7 @@ class svea_product_price extends base {
                         border: 0.5px solid #bdbdbd;
                         z-index: 10;
                         position: absolute;
-                        top:67px;
+                        top:50px;
                         padding: 3px 3px 0px 0px;
                     ">';
                        foreach ($price_list as $value) {
