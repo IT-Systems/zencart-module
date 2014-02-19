@@ -790,7 +790,7 @@ class SveaZencart {
                     if (DISPLAY_PRICE_WITH_TAX == 'false') {
                         $svea_order->addDiscount(
                             WebPayItem::fixedDiscount()
-                                ->setAmountExVat( $order_total['value'] ) // $amountExVat works iff display prices with tax = false in shop
+                                ->setAmountExVat( floatval($this->convertToCurrency(round($order_total['value'], 2), $currency)) ) // $amountExVat works iff display prices with tax = false in shop
                                 ->setDescription( $order_total['title'] )
                         );
                     }
@@ -814,16 +814,17 @@ class SveaZencart {
                         // if coupon specified as a fixed amount, ZenCart's vat calculation does not fit Svea's, so we just pass on shop values as is 
                         elseif( $coupon->fields['coupon_type'] == 'F')
                         {                          
-                            $discountExVat = (int)$coupon->fields['coupon_amount'];
-                            $discountIncVat = $order_total['value'];
-                            
+//                            $discountExVat = (int)$coupon->fields['coupon_amount'];
+//                            $discountIncVat = $order_total['value'];
+                            $discountExVat = floatval($this->convertToCurrency(round( (int)$coupon->fields['coupon_amount'], 2), $currency));
+                            $discountIncVat = floatval($this->convertToCurrency(round( $order_total['value'], 2), $currency));
+                                                        
                             // calculate the vatpercent from zencart's amount: discount vat/discount amount ex vat
                             $zencartDiscountVatPercent = ($discountIncVat-$discountExVat)/$discountExVat *100;
                             
                             // split $zencartDiscountVatPercent into allowed values
                             $taxRates = Svea\Helper::getTaxRatesInOrder($svea_order);
-                            $discountRows = Svea\Helper::splitMeanToTwoTaxRates( $coupon->fields['coupon_amount'],
-                                    $zencartDiscountVatPercent, $order_total['title'], $order_total['title'], $taxRates );
+                            $discountRows = Svea\Helper::splitMeanToTwoTaxRates( $discountExVat, $zencartDiscountVatPercent, $order_total['title'], $order_total['title'], $taxRates );
                             
                             // add the discount split over the valid taxrates
                             foreach($discountRows as $row) {
