@@ -265,7 +265,7 @@ class sveawebpay_invoice extends SveaZencart {
         
         // did the customer have a different currency selected than the invoice country currency?
         if( $_SESSION['currency'] != $this->getInvoiceCurrency( $customer_country ) )
-        {
+        {         
             // set shop currency to the selected payment method currency
             $order->info['currency'] = $this->getInvoiceCurrency( $customer_country );
             $_SESSION['currency'] = $order->info['currency'];
@@ -277,10 +277,9 @@ class sveawebpay_invoice extends SveaZencart {
         
         if( isset($_SESSION['sveapostdata']) )
         {
-            $_POST = $_SESSION['sveapostdata'];
+            $_POST = array_merge( $_POST, $_SESSION['sveapostdata'] );
             unset( $_SESSION['sveapostdata'] );
-        }
-               
+        }               
         return false;
     }
 
@@ -341,20 +340,9 @@ class sveawebpay_invoice extends SveaZencart {
             ->setOrderDate(date('c'))                      //Required for synchronous payments
         ;
 
-        // for each item in cart, create WebPayItem::orderRow objects and add to order
-        foreach ($order->products as $productId => $product) {
-
-            $amount_ex_vat = floatval( $this->convertToCurrency(round($product['final_price'], 2), $currency) );
-
-            $swp_order->addOrderRow(
-                    WebPayItem::orderRow()
-                            ->setQuantity($product['qty'])          //Required
-                            ->setAmountExVat($amount_ex_vat)          //Optional, see info above
-                            ->setVatPercent(intval($product['tax']))  //Optional, see info above
-                            ->setDescription($product['name'])        //Optional
-           );
-        }
-
+        // create product order rows from each item in cart
+        $swp_order = $this->parseOrderProducts( $order->products, $swp_order );       
+        
         // creates non-item order rows from Order Total entries
         $swp_order = $this->parseOrderTotals( $order_totals, $swp_order );
 

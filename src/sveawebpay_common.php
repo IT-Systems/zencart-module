@@ -666,6 +666,33 @@ class SveaZencart {
         return $historyResult->fields["orders_status_id"];
     }
    
+    
+    /**
+     * for each item in cart, create WebPayItem::orderRow objects and add to order
+     * @param type $order_totals
+     * @param type $svea_order
+     */
+    function parseOrderProducts( $order_products, &$svea_order )
+    {
+        global $order;
+        
+        $currency = $order->info['currency'];  
+            
+        foreach( $order_products as $productId => $product ) 
+        {
+            $amount_ex_vat = floatval( $this->convertToCurrency(round($product['final_price'], 2), $currency) );
+
+            $svea_order->addOrderRow(
+                WebPayItem::orderRow()
+                    ->setQuantity(intval($product['qty']))
+                    ->setAmountExVat($amount_ex_vat)      
+                    ->setVatPercent(intval($product['tax']))
+                    ->setDescription($product['name'])
+            );
+        }
+        return $svea_order;
+    }
+    
     /**
      * parseOrderTotals() goes through the zencart order order_totals for diverse non-product
      * order rows and updates the svea order object with the appropriate shipping, handling
