@@ -31,7 +31,123 @@ class sveawebpay_partpay extends SveaZencart{
             $this->order_status = MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID;
         if (is_object($order))
             $this->update_status();
+        //when user click "edit" paymentplan payment we update params table
+        if(isset($_GET['action']) && $_GET['action'] == "edit" &&  $_GET['set'] == "payment" &&  $_GET['module'] == "sveawebpay_partpay"){
+            $this->svea_update_params();
+
+        }
     }
+
+
+    function svea_update_params(){
+        $countryCode = array("SE","NO","FI","DK","NL","DE");
+
+          for($i=0;$i<sizeof($countryCode);$i++){
+            if(constant('MODULE_PAYMENT_SWPPARTPAY_USERNAME_'.$countryCode[$i]) != "" && constant('MODULE_PAYMENT_SWPPARTPAY_PASSWORD_'.$countryCode[$i]) != "" && constant('MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_'.$countryCode[$i]) != ""){
+                 $sveaConfig = (MODULE_PAYMENT_SWPPARTPAY_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
+                $svea_params = WebPay::getPaymentPlanParams($sveaConfig);
+              try {
+                   $svea_params = $svea_params
+                          ->setCountryCode($countryCode[$i])
+                              ->doRequest();
+
+              } catch (Exception $e) {
+                  //TODO: handle exception. Also refactor the rest of the module for try and catch
+                      return NULL;
+              }
+                if(isset($svea_params->errormessage) == FALSE){
+                   $formatted_params = $this->sveaFormatParams($svea_params);
+                   if($formatted_params !=NULL){
+                        $this->insertPaymentPlanParams($formatted_params,$countryCode[$i]);
+                   }
+                }
+
+            }
+
+        }
+
+
+
+    }
+
+        protected function insertPaymentPlanParams($params,$countryCode) {
+            global $db;
+            foreach ($params as $param) {
+                //$query = $db->getQuery(true);
+                $q = "INSERT INTO `svea_params_table`
+                        (   `campaignCode` ,
+                            `description`,
+                            `paymentPlanType`,
+                            `contractLengthInMonths`,
+                            `monthlyAnnuityFactor`,
+                            `initialFee`,
+                            `notificationFee`,
+                            `interestRatePercent`,
+                            `numberOfInterestFreeMonths`,
+                            `numberOfPaymentFreeMonths`,
+                            `fromAmount`,
+                            `toAmount`,
+                            `timestamp`,
+                            `countryCode`)
+                            VALUES(";
+                foreach ($param as $key => $value)
+                    $q .= "'".$value."',";
+
+                $q .= time().",";
+                $q .= "'".$countryCode."'";
+                $q .= ")";
+                try{
+                   $db->Execute($q);
+                }catch (Exception $e) {
+
+                }
+
+            }
+
+
+    }
+
+          protected function sveaFormatParams($response){
+            $result = array();
+            if ($response == null) {
+                return $result;
+            } else {
+                foreach ($response->campaignCodes as $responseResultItem) {
+                    try {
+                        $campaignCode = (isset($responseResultItem->campaignCode)) ? $responseResultItem->campaignCode : "";
+                        $description = (isset($responseResultItem->description)) ? $responseResultItem->description : "";
+                        $paymentplantype = (isset($responseResultItem->paymentPlanType)) ? $responseResultItem->paymentPlanType : "";
+                        $contractlength = (isset($responseResultItem->contractLengthInMonths)) ? $responseResultItem->contractLengthInMonths : "";
+                        $monthlyannuityfactor = (isset($responseResultItem->monthlyAnnuityFactor)) ? $responseResultItem->monthlyAnnuityFactor : "";
+                        $initialfee = (isset($responseResultItem->initialFee)) ? $responseResultItem->initialFee : "";
+                        $notificationfee = (isset($responseResultItem->notificationFee)) ? $responseResultItem->notificationFee : "";
+                        $interestratepercentage = (isset($responseResultItem->interestRatePercent)) ? $responseResultItem->interestRatePercent : "";
+                        $interestfreemonths = (isset($responseResultItem->numberOfInterestFreeMonths)) ? $responseResultItem->numberOfInterestFreeMonths : "";
+                        $paymentfreemonths = (isset($responseResultItem->numberOfPaymentFreeMonths)) ? $responseResultItem->numberOfPaymentFreeMonths : "";
+                        $fromamount = (isset($responseResultItem->fromAmount)) ? $responseResultItem->fromAmount : "";
+                        $toamount = (isset($responseResultItem->toAmount)) ? $responseResultItem->toAmount : "";
+
+                        $result[] = Array(
+                            "campaignCode" => $campaignCode,
+                            "description" => $description,
+                            "paymentPlanType" => $paymentplantype,
+                            "contractLengthInMonths" => $contractlength,
+                            "monthlyAnnuityFactor" => $monthlyannuityfactor,
+                            "initialFee" => $initialfee,
+                            "notificationFee" => $notificationfee,
+                            "interestRatePercent" => $interestratepercentage,
+                            "numberOfInterestFreeMonths" => $interestfreemonths,
+                            "numberOfPaymentFreeMonths" => $paymentfreemonths,
+                            "fromAmount" => $fromamount,
+                            "toAmount" => $toamount
+                        );
+                    } catch (Exception $e) {
+                       $this->log->write($e->getMessage());
+                    }
+                }
+            }
+            return $result;
+        }
 
     function update_status() {
         global $db, $order, $currencies, $messageStack;
@@ -574,46 +690,42 @@ class sveawebpay_partpay extends SveaZencart{
         global $db;
         $common = "insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added";
         $db->Execute($common . ", set_function) values ('Enable Svea Payment Plan Module', 'MODULE_PAYMENT_SWPPARTPAY_STATUS', 'True', '', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
-        $db->Execute($common . ") values ('Svea Username SE', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_SE', 'sverigetest', 'Username for Svea Payment Plan Sweden', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Password SE', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_SE', 'sverigetest', 'Password for Svea Payment Plan Sweden', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Client No SE', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_SE', '59999', '', '6', '0', now())");
+
+        $db->Execute($common . ") values ('Svea Username SE', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_SE', '', 'Username for Svea Payment Plan Sweden', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Password SE', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_SE', '', 'Password for Svea Payment Plan Sweden', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Client No SE', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_SE', '', '', '6', '0', now())");
         $db->Execute($common . ") values ('Min amount for SE in SEK', 'MODULE_PAYMENT_SWPPARTPAY_MIN_SE', '', 'The minimum amount for use of this payment. Check with your Svea campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
         $db->Execute($common . ") values ('Max amount for SE in SEK', 'MODULE_PAYMENT_SWPPARTPAY_MAX_SE', '', 'The maximum amount for use of this payment. Check with your Svea campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
 
-        $db->Execute($common . ") values ('Svea Username NO', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_NO', 'norgetest2', 'Username for Svea Payment Plan Norway', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Password NO', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_NO', 'norgetest2', 'Password for Svea Payment Plan Norway', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Client no NO', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NO', '32503', '', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Username NO', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_NO', '', 'Username for Svea Payment Plan Norway', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Password NO', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_NO', '', 'Password for Svea Payment Plan Norway', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Client no NO', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NO', '', '', '6', '0', now())");
         $db->Execute($common . ") values ('Min amount for NO in NOK', 'MODULE_PAYMENT_SWPPARTPAY_MIN_NO', '', 'The minimum amount for use of this payment. Check with your Svea campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
         $db->Execute($common . ") values ('Max amount for NO in NOK', 'MODULE_PAYMENT_SWPPARTPAY_MAX_NO', '', 'The maximum amount for use of this payment. Check with your Svea campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
 
-
-        $db->Execute($common . ") values ('Svea Username FI', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_FI', 'finlandtest2', 'Username for Svea Payment Plan Finland', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Password FI', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_FI', 'finlandtest2', 'Password for Svea Payment Plan Finland', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Client no FI', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_FI', '27136', '', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Username FI', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_FI', '', 'Username for Svea Payment Plan Finland', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Password FI', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_FI', '', 'Password for Svea Payment Plan Finland', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Client no FI', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_FI', '', '', '6', '0', now())");
         $db->Execute($common . ") values ('Min amount for FI in EUR', 'MODULE_PAYMENT_SWPPARTPAY_MIN_FI', '', 'The minimum amount for use of this payment. Check with your Svea campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
         $db->Execute($common . ") values ('Max amount for FI in EUR', 'MODULE_PAYMENT_SWPPARTPAY_MAX_FI', '', 'The maximum amount for use of this payment. Check with your Svea campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
 
-
-        $db->Execute($common . ") values ('Svea Username DK', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_DK', 'danmarktest2', 'Username for Svea Payment Plan Denmark', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Password DK', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_DK', 'danmarktest2', 'Password for Svea Payment Plan Denmark', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Client no DK', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DK', '64008', '', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Username DK', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_DK', '', 'Username for Svea Payment Plan Denmark', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Password DK', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_DK', '', 'Password for Svea Payment Plan Denmark', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Client no DK', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DK', '', '', '6', '0', now())");
         $db->Execute($common . ") values ('Min amount for DK in DKK', 'MODULE_PAYMENT_SWPPARTPAY_MIN_DK', '', 'The minimum amount for use of this payment. Check with your Svea campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
         $db->Execute($common . ") values ('Max amount for DK in DKK', 'MODULE_PAYMENT_SWPPARTPAY_MAX_DK', '', 'The maximum amount for use of this payment. Check with your Svea campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
 
-
-        $db->Execute($common . ") values ('Svea Username NL', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_NL', 'hollandtest', 'Username for Svea Payment Plan Netherlands', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Password NL', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_NL', 'hollandtest', 'Password for Svea Payment Plan Netherlands', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Client no NL', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NL', '86997', '', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Username NL', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_NL', '', 'Username for Svea Payment Plan Netherlands', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Password NL', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_NL', '', 'Password for Svea Payment Plan Netherlands', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Client no NL', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_NL', '', '', '6', '0', now())");
         $db->Execute($common . ") values ('Min amount for NL in EUR', 'MODULE_PAYMENT_SWPPARTPAY_MIN_NL', '', 'The minimum amount for use of this payment. Check with your Svea campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
         $db->Execute($common . ") values ('Max amount for NL in EUR', 'MODULE_PAYMENT_SWPPARTPAY_MAX_NL', '', 'The maximum amount for use of this payment. Check with your Svea campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
 
-
-        $db->Execute($common . ") values ('Svea Username DE', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_DE', 'germanytest', 'Username for Svea Payment Plan Germany', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Password DE', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_DE', 'germanytest', 'Password for Svea Payment Plan Germany', '6', '0', now())");
-        $db->Execute($common . ") values ('Svea Client no DE', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DE', '16997', '', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Username DE', 'MODULE_PAYMENT_SWPPARTPAY_USERNAME_DE', '', 'Username for Svea Payment Plan Germany', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Password DE', 'MODULE_PAYMENT_SWPPARTPAY_PASSWORD_DE', '', 'Password for Svea Payment Plan Germany', '6', '0', now())");
+        $db->Execute($common . ") values ('Svea Client no DE', 'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_DE', '', '', '6', '0', now())");
         $db->Execute($common . ") values ('Min amount for DE in EUR', 'MODULE_PAYMENT_SWPPARTPAY_MIN_DE', '', 'The minimum amount for use of this payment. Check with your Svea campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
         $db->Execute($common . ") values ('Max amount for DE in EUR', 'MODULE_PAYMENT_SWPPARTPAY_MAX_DE', '', 'The maximum amount for use of this payment. Check with your Svea campaign rules. Ask your Svea integration manager if unsure.', '6', '0', now())");
-
 
         $db->Execute($common . ", set_function) values ('Transaction Mode', 'MODULE_PAYMENT_SWPPARTPAY_MODE', 'Test', 'Transaction mode used for processing orders. Production should be used for a live working cart. Test for testing.', '6', '0', now(), 'zen_cfg_select_option(array(\'Production\', \'Test\'), ')");
         $db->Execute($common . ", set_function, use_function) values ('Set Order Status', 'MODULE_PAYMENT_SWPPARTPAY_ORDER_STATUS_ID', '0', 'Set the status of orders made with this payment module to this value (but see AutoDeliver option below).', '6', '0', now(), 'zen_cfg_pull_down_order_statuses(', 'zen_get_order_status_name')");
@@ -621,6 +733,8 @@ class sveawebpay_partpay extends SveaZencart{
         $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPPARTPAY_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
         $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPPARTPAY_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
         $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
+        
+        $db->Execute($common . ", set_function) values ('Show Product Price Widget', 'MODULE_PAYMENT_SWPPARTPAY_PRODUCT', 'False', 'Show lowest price, and monthly costs for every part payment campaign on product pages.', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
 
         // insert svea order table if not exists already
         $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_order';");
@@ -629,6 +743,27 @@ class sveawebpay_partpay extends SveaZencart{
             $db->Execute( $sql );
         }
 
+
+        //create params table
+         $sql = ' CREATE TABLE IF NOT EXISTS `svea_params_table`
+                (`id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                `campaignCode` VARCHAR( 100 ) NOT NULL,
+                `description` VARCHAR( 100 ) NOT NULL ,
+                `paymentPlanType` VARCHAR( 100 ) NOT NULL ,
+                `contractLengthInMonths` INT NOT NULL ,
+                `monthlyAnnuityFactor` DOUBLE NOT NULL ,
+                `initialFee` DOUBLE NOT NULL ,
+                `notificationFee` DOUBLE NOT NULL ,
+                `interestRatePercent` INT NOT NULL ,
+                `numberOfInterestFreeMonths` INT NOT NULL ,
+                `numberOfPaymentFreeMonths` INT NOT NULL ,
+                `fromAmount` DOUBLE NOT NULL ,
+                `toAmount` DOUBLE NOT NULL ,
+                `timestamp` INT UNSIGNED NOT NULL,
+                `countryCode` VARCHAR( 100 ) NOT NULL
+                ) ENGINE=MyISAM DEFAULT CHARSET=utf8 AUTO_INCREMENT=1
+                ';
+            $db->Execute( $sql );
         // insert svea order statuses into table order_status, if not exists already
         $res = $db->Execute('SELECT COUNT(*) FROM ' . TABLE_ORDERS_STATUS . ' WHERE orders_status_name = "'. SVEA_ORDERSTATUS_CLOSED .'"');
         if( $res->fields["COUNT(*)"] == 0 ) {
@@ -687,7 +822,8 @@ class sveawebpay_partpay extends SveaZencart{
             'MODULE_PAYMENT_SWPPARTPAY_AUTODELIVER',
             'MODULE_PAYMENT_SWPPARTPAY_IGNORE',
             'MODULE_PAYMENT_SWPPARTPAY_ZONE',
-            'MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER');
+            'MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER',
+            'MODULE_PAYMENT_SWPPARTPAY_PRODUCT');
     }
 
     //Error Responses
@@ -696,76 +832,76 @@ class sveawebpay_partpay extends SveaZencart{
 
             // EU error codes
             case "20000" :
-                return ERROR_CODE_20000;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_20000);
                 break;
             case "20001" :
-                return ERROR_CODE_20001;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_20001);
                 break;
             case "20002" :
-                return ERROR_CODE_20002;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_20002);
                 break;
             case "20003" :
-                return ERROR_CODE_20003;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_20003);
                 break;
             case "20004" :
-                return ERROR_CODE_20004;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_20004);
                 break;
             case "20005" :
-                return ERROR_CODE_20005;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_20005);
                 break;
             case "20006" :
-                return ERROR_CODE_20006;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_20006);
                 break;
             case "20013" :
-                return ERROR_CODE_20013;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_20013);
                 break;
             case "27000" :
-                return ERROR_CODE_27000;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_27000);
                 break;
             case "27001" :
-                return ERROR_CODE_27001;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_27001);
                 break;
             case "27002" :
-                return ERROR_CODE_27002;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_27002);
                 break;
             case "27003" :
-                return ERROR_CODE_27003;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_27003);
                 break;
             case "27004" :
-                return ERROR_CODE_27004;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_27004);
                 break;
             case "30000" :
-                return ERROR_CODE_30000;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_30000);
                 break;
             case "30001" :
-                return ERROR_CODE_30001;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_30001);
                 break;
             case "30002" :
-                return ERROR_CODE_30002;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_30002);
                 break;
             case "30003" :
-                return ERROR_CODE_30003;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_30003);
                 break;
 
             case "40000" :
-                return ERROR_CODE_40000;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_40000);
                 break;
             case "40001" :
-                return ERROR_CODE_40001;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_40001);
                 break;
             case "40002" :
-                return ERROR_CODE_40002;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_40002);
                 break;
             case "40004" :
-                return ERROR_CODE_40004;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_40004);
                 break;
 
             case "50000" :
-                return ERROR_CODE_50000;
+                return sprintf("Svea error %s: %s", $err, ERROR_CODE_50000);
                 break;
 
             default :
-                 return ERROR_CODE_DEFAULT . " " . $err . " - " . $msg;     // $err here is the response->resultcode
+                 return sprintf("Svea error %s: %s", $err, ERROR_CODE_DEFAULT . " " . $err . " - " . $msg);     // $err here is the response->resultcode
                 break;
         }
     }

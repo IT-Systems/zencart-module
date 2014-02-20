@@ -15,9 +15,11 @@ class sveawebpay_creditcard {
     global $order;
 
     $this->code = 'sveawebpay_creditcard';
-    $this->version = "4.3.2";
+    $this->version = "4.3.0";
 
-    $this->form_action_url = (MODULE_PAYMENT_SWPCREDITCARD_STATUS == 'True') ? 'https://test.sveaekonomi.se/webpay/payment' : 'https://webpay.sveaekonomi.se/webpay/payment';
+    // used by card, directbank when posting form in checkout_confirmation.php
+    $this->form_action_url = (MODULE_PAYMENT_SWPCREDITCARD_MODE == 'Test') ? Svea\SveaConfig::SWP_TEST_URL : Svea\SveaConfig::SWP_PROD_URL;
+     
     $this->title = MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE;
     $this->description = MODULE_PAYMENT_SWPCREDITCARD_TEXT_DESCRIPTION;
     $this->enabled = ((MODULE_PAYMENT_SWPCREDITCARD_STATUS == 'True') ? true : false);
@@ -58,41 +60,34 @@ class sveawebpay_creditcard {
   }
 
   // sets information displayed when choosing between payment options
-  function selection() {
-    global $order, $currencies;
+    function selection() {
+        global $order, $currencies;
 
-    $fields = array();
+        $fields = array();
 
-
-     if($order->customer['country']['iso_code_2'] == "SE"){
-             $fields[] = array('title' => '<img src=images/Svea/SVEACARD_SE.png />', 'field' => '<img src=images/Svea/KORTCERT.png /><img src=images/Svea/AMEX.png /><img src=images/Svea/DINERS.png />');
-        }  else {
-            $fields[] = array('title' => '<img src=images/Svea/SVEACARD.png />', 'field' => '<img src=images/Svea/KORTCERT.png /><img src=images/Svea/AMEX.png /><img src=images/Svea/DINERS.png />');
+        // show card logos
+        if($order->customer['country']['iso_code_2'] == "SE"){
+            $fields[] = array('title' => '<img src=images/Svea/SVEACARD_SE.png />', 
+                'field' => '<img src=images/Svea/KORTCERT.png /><img src=images/Svea/AMEX.png /><img src=images/Svea/DINERS.png />');
+        }  
+        else {
+            $fields[] = array('title' => '<img src=images/Svea/SVEACARD.png />', 
+                'field' => '<img src=images/Svea/KORTCERT.png /><img src=images/Svea/AMEX.png /><img src=images/Svea/DINERS.png />');
         }
 
-    if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_creditcard') { // is set in before_process() on failed payment
-        $fields[] = array('title' => '<span style="color:red">' . $_SESSION['SWP_ERROR'] . '</span>', 'field' => '');
-    }
+        // show error message from failed payment attempt
+        if (isset($_REQUEST['payment_error']) && $_REQUEST['payment_error'] == 'sveawebpay_creditcard') { // is set in before_process()
+            $fields[] = array('title' => '<span style="color:red">' . $_SESSION['SWP_ERROR'] . '</span>', 'field' => '');
+        }
 
-    // handling fee
-    if (isset($this->handling_fee) && $this->handling_fee > 0) {
-      $paymentfee_cost = $this->handling_fee;
-      if (substr($paymentfee_cost, -1) == '%')
-        $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPCREDITCARD_HANDLING_APPLIES, $paymentfee_cost), 'field' => '');
-      else
-      {
-        $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
-        if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0)
-          $paymentfee_tax = $paymentfee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
-        $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPCREDITCARD_HANDLING_APPLIES, $currencies->format($paymentfee_cost+$paymentfee_tax)), 'field' => '');
-      }
-    }
+        // store order info needed to reconstruct amount pre coupon later
+        $_SESSION["swp_order_info_pre_coupon"]  = serialize($order->info);
 
-    $_SESSION["swp_order_info_pre_coupon"]  = serialize($order->info);  // store order info needed to reconstruct amount pre coupon later
-
-    return array( 'id'      => $this->code,
-                  'module'  => $this->title,
-                  'fields'  => $fields);
+        return array( 
+            'id'      => $this->code,
+            'module'  => $this->title,
+            'fields'  => $fields
+        );
   }
 
   function pre_confirmation_check() {
@@ -121,12 +116,14 @@ class sveawebpay_creditcard {
         $country = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );
         $user_country =  $country['countries_iso_code_2'];
     }
-      
+
     $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
     $user_language = $user_language->fields['code'];
 
-    $currency = $order->info['currency'];
 
+    // Create and initialize order object, using either test or production configuration
+    $currency = $order->info['currency'];
+    
     $sveaConfig = (MODULE_PAYMENT_SWPCREDITCARD_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
     // Create and initialize order object, using either test or production configuration
@@ -137,8 +134,6 @@ class sveawebpay_creditcard {
         ->setOrderDate(date('c'))                      //Required for synchronous payments
     ;
 
-
-        //
         // for each item in cart, create WebPayItem::orderRow objects and add to order
         foreach ($order->products as $productId => $product) {
 
@@ -153,8 +148,8 @@ class sveawebpay_creditcard {
             );
         }
 
-        // handle order total modules
-        // i.e shipping fee, handling fee items
+
+        // creates non-item order rows from Order Total entrie
         foreach ($order_totals as $ot_id => $order_total) {
 
             switch ($order_total['code']) {
@@ -166,7 +161,6 @@ class sveawebpay_creditcard {
                     // do nothing
                     break;
 
-                //
                 // if shipping fee, create WebPayItem::shippingFee object and add to order
                 case 'ot_shipping':
 
@@ -189,37 +183,6 @@ class sveawebpay_creditcard {
                                     ->setAmountIncVat( $amountIncVat )
                     );
                 break;
-
-                // if handling fee applies, create WebPayItem::invoiceFee object and add to order
-                case 'sveawebpay_handling_fee' :
-
-                    // is the handling_fee module activated?
-                    if (isset($this->handling_fee) && $this->handling_fee > 0) {
-
-                        // handlingfee expressed as percentage?
-                        if (substr($this->handling_fee, -1) == '%') {
-
-                            // sum of products + shipping * handling_fee as percentage
-                            $hf_percentage = floatval(substr($this->handling_fee, 0, -1));
-
-                            $hf_price = ($order->info['subtotal'] + $order->info['shipping_cost']) * ($hf_percentage / 100.0);
-                        }
-                        // handlingfee expressed as absolute amount (incl. tax)
-                        else {
-                            $hf_price = $this->convert_to_currency(floatval($this->handling_fee), $currency);
-                        }
-                        $hf_taxrate =   zen_get_tax_rate(MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS,
-                                        $order->delivery['country']['id'], $order->delivery['zone_id']);
-
-                        // add WebPayItem::invoiceFee to swp_order object
-                        $swp_order->addFee(
-                                WebPayItem::invoiceFee()
-                                        ->setDescription()
-                                        ->setAmountExVat($hf_price)
-                                        ->setVatPercent($hf_taxrate)
-                        );
-                    }
-                    break;
 
                 case 'ot_coupon':
                    // zencart coupons are made out as either amount x.xx or a percentage y%.
@@ -342,12 +305,13 @@ class sveawebpay_creditcard {
             }
         }
 
+        // get form from order object
         $swp_form =  $swp_order->usePaymentMethod(PaymentMethod::KORTCERT)
            ->setCancelUrl( zen_href_link(FILENAME_CHECKOUT_PAYMENT, '', 'SSL', true) )
            ->setReturnUrl( zen_href_link(FILENAME_CHECKOUT_PROCESS, '', 'SSL') )
            ->getPaymentForm();
 
-        //return $process_button_string;
+        // return $process_button_string;
         return  $swp_form->htmlFormFieldsAsArray['input_merchantId'] .
                 $swp_form->htmlFormFieldsAsArray['input_message'] .
                 $swp_form->htmlFormFieldsAsArray['input_mac'];
@@ -358,9 +322,6 @@ class sveawebpay_creditcard {
     global $order;
 
     if ($_REQUEST['response']){
-
-        // Include Svea php integration package files
-        require_once(DIR_FS_CATALOG . 'svea/Includes.php');
 
         // localization parameters
         if( isset( $order->billing['country']['iso_code_2'] ) ) {
@@ -377,8 +338,9 @@ class sveawebpay_creditcard {
 
         $swp_respObj = new SveaResponse( $_REQUEST, $user_country, $sveaConfig ); // returns HostedPaymentResponse
 		$swp_response = $swp_respObj->response;
+                
         // check for bad response
-        if( $swp_response->resultcode == '0' ) {
+        if( $swp_response->resultcode === 0 ) {
             die('Response failed authorization. AC not valid or Response is not recognized');  
         }
 
@@ -386,48 +348,47 @@ class sveawebpay_creditcard {
         else {
 
             // handle failed payments
-            if ( !$swp_response->accepted === true ){
+            if ( $swp_response->accepted === 0 ){
 
-                switch ($swp_response->resultcode) {
+                switch ($swp_response->resultcode) { // will autoconvert from string, matching initial numeric part
                     case 100:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_100;
+                    $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_100);
                     break;
                 case 105:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_105;
+                    $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_105);
                     break;
                 case 106:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_106;
+                    $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_106);
                     break;
                 case 107:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_107;
+                    $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_107);
                     break;
                 case 108:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_108;
+                    $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_108);
                     break;
                 case 109:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_109;
+                    $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_109);
                     break;
                 case 110:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_110;
+                    $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_110);
                     break;
                 case 113:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_113;
+                    $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_113);
                     break;
                 case 114:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_114;
+                    $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_114);
                     break;
                 case 121:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_121;
+                    $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_121);
                     break;
                 case 124:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_124;
+                    $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_124);
                     break;
                 case 143:
-                    $_SESSION['SWP_ERROR'] = ERROR_CODE_143;
+                    $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_143);
                     break;
                 default:
-                      $_SESSION['SWP_ERROR'] =
-                            ERROR_CODE_DEFAULT . $swp_response->resultcode;
+                      $_SESSION['SWP_ERROR'] = sprintf("Svea error %s: %s", $swp_response->resultcode, ERROR_CODE_DEFAULT . $swp_response->resultcode);
                       break;
                 }
 
@@ -443,14 +404,13 @@ class sveawebpay_creditcard {
             else{
 
                 // payment request succeded, store response in session
-                if ($swp_response->accepted === true) {
+                if ($swp_response->accepted === 1 ) {
 
                     if (isset($_SESSION['SWP_ERROR'])) {
                         unset($_SESSION['SWP_ERROR']);
                     }
 
                     // (with creditcard payments, shipping and billing addresses are unchanged from customer entries)
-
                     // save the response object
                     $_SESSION["swp_response"] = serialize($swp_response);
                 }
@@ -464,18 +424,19 @@ class sveawebpay_creditcard {
     global $insert_id, $order;
 
     // retrieve response object from before_process()
-    require_once(DIR_FS_CATALOG . 'svea/Includes.php');
     $swp_response = unserialize($_SESSION["swp_response"]);
 
     // insert zencart order into database
-    $sql_data_array = array('orders_id' => $insert_id,
+    $customer_notification = (SEND_EMAILS == 'true') ? '1' : '0';               
+    $sql_data_array = array(
+        'orders_id' => $insert_id,
         'orders_status_id' => $order->info['order_status'],
         'date_added' => 'now()',
-        'customer_notified' => 0,
-            'comments' => 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . 
-                isset( $swp_response->sveaOrderId ) ? 
-                $swp_response->sveaOrderId : $swp_response->transactionId //if request to webservice, use sveaOrderId, if hosted use transactionId
-        );
+        'customer_notified' => $customer_notification,
+        'comments' => 
+            'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $swp_response->transactionId .
+            " ". $order->info['comments']
+    );
     zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 
     // clean up our session variables set during checkout   //$SESSION[swp_*
@@ -487,15 +448,17 @@ class sveawebpay_creditcard {
 
   // sets error message to the GET error value
   function get_error() {
-    return array('title' => ERROR_MESSAGE_PAYMENT_FAILED,
-                 'error' => stripslashes(urldecode($_GET['error'])));
+    return array(
+        'title' => ERROR_MESSAGE_PAYMENT_FAILED,
+        'error' => stripslashes(urldecode($_GET['error'])));
   }
 
   // standard check if installed function
   function check() {
     global $db;
     if (!isset($this->_check)) {
-      $check_rs = $db->Execute("select configuration_value from " . TABLE_CONFIGURATION . " where configuration_key = 'MODULE_PAYMENT_SWPCREDITCARD_STATUS'");
+      $check_rs = $db->Execute("select configuration_value from " . TABLE_CONFIGURATION .
+              " where configuration_key = 'MODULE_PAYMENT_SWPCREDITCARD_STATUS'");
       $this->_check = !$check_rs->EOF;
     }
     return $this->_check;
@@ -525,16 +488,19 @@ class sveawebpay_creditcard {
 
   // must perfectly match keys inserted in install function
   function keys() {
-    return array( 'MODULE_PAYMENT_SWPCREDITCARD_STATUS',
-                  'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID',
-                  'MODULE_PAYMENT_SWPCREDITCARD_SW',
-                  'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID_TEST',
-                  'MODULE_PAYMENT_SWPCREDITCARD_SW_TEST',
-                  'MODULE_PAYMENT_SWPCREDITCARD_MODE',
-                  'MODULE_PAYMENT_SWPCREDITCARD_ORDER_STATUS_ID',
-                  'MODULE_PAYMENT_SWPCREDITCARD_IGNORE',
-                  'MODULE_PAYMENT_SWPCREDITCARD_ZONE',
-                  'MODULE_PAYMENT_SWPCREDITCARD_SORT_ORDER');
+
+    return array(
+        'MODULE_PAYMENT_SWPCREDITCARD_STATUS',
+        'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID',
+        'MODULE_PAYMENT_SWPCREDITCARD_SW',
+        'MODULE_PAYMENT_SWPCREDITCARD_MERCHANT_ID_TEST',
+        'MODULE_PAYMENT_SWPCREDITCARD_SW_TEST',
+        'MODULE_PAYMENT_SWPCREDITCARD_MODE',
+        'MODULE_PAYMENT_SWPCREDITCARD_ORDER_STATUS_ID',
+        'MODULE_PAYMENT_SWPCREDITCARD_IGNORE',
+        'MODULE_PAYMENT_SWPCREDITCARD_ZONE',
+        'MODULE_PAYMENT_SWPCREDITCARD_SORT_ORDER'
+    );
   }
 
   /**

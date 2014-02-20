@@ -50,6 +50,8 @@ define('FORM_TEXT_SS_NO','Personnummer:');
 define('FORM_TEXT_INITIALS','Initialer');                                
 define('FORM_TEXT_BIRTHDATE','Födelsedatum');              
 define('FORM_TEXT_VATNO','Organisationsnummer');
+//define('FORM_TEXT_FROM','Fr�n');
+//define('FORM_TEXT_MONTH','m�nad');
 define('FORM_TEXT_PARTPAY_FEE','uppläggningsavgift tillkommer ');
 define('FORM_TEXT_GET_PAYPLAN','Hämta adress:');
 

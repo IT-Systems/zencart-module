@@ -52,6 +52,8 @@ define('FORM_TEXT_BIRTHDATE','Fødselsdato');
 define('FORM_TEXT_VATNO','Organisasjonsnummer'); 
 define('FORM_TEXT_PARTPAY_FEE','Innledende avgift vil bli lagt til');
 define('FORM_TEXT_GET_PAYPLAN','Hent adresse');
+define('FORM_TEXT_FROM','Fra');
+define('FORM_TEXT_MONTH','måned');
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');
 
