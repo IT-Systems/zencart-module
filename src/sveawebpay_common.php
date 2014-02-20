@@ -745,10 +745,10 @@ class SveaZencart {
                     break;
 
                 // Svea handling (i.e. invoice) fee applies, create WebPayItem::invoiceFee object and add to order
-                case 'sveawebpay_handling_fee' :
+                case 'sveawebpay_handling_fee':
 
                     // we need both the fee and the tax rate, but $order_total['value'] only contains the compounded amount 
-                    // we bypass it and go to the configured cost and tax rate for the country.                     
+                    // we bypass it and go to the configured cost and tax rate for the country, thus no currency conversion is needed.       
                     $fee_cost = constant("MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_".$order->delivery['country']['iso_code_2']);
                     $tax_class = constant("MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS_".$order->delivery['country']['iso_code_2']);
                     $tax_rate = zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
@@ -760,7 +760,7 @@ class SveaZencart {
                                     ->setDescription($order_total['text']." (".$order->delivery['country']['iso_code_2'].")")
                                     ->setAmountExVat($fee_cost)
                                     ->setVatPercent($tax_rate)
-                    );                  
+                    );
                     break;
 
                 case 'ot_coupon':
