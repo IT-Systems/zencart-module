@@ -95,7 +95,7 @@ The Svea Invoice fee order total module is used to add an invoice fee to the ord
 
 The invoice fee and tax class need to be specified for each country from which you accept invoice payments. (Note that you also need to have the invoice payment method set up to accept customers from these countries. Please contact your Svea account manager if you have further questions.
 
-* _Fee_: Specify the amount excluding tax, in shop default currency. Note that the invoice fee always should be specified excluding tax, and in the shop default currency. The actual amount charged in the customer payment currency will be calculated using the standard zencart currency conversion rules. Also, make sure to use the correct decimal point notation, i.e. a dot (.) when specifying the fee.
+* _Fee_: Specify the amount excluding tax in the respective country currency. Note that the invoice fee always should be specified excluding tax and in the country currency, not the shop default currency. Also, make sure to use the correct decimal point notation, i.e. a dot (.) when specifying the fee.
 
 * _Tax class_: Select the tax class that will be applied to the invoice fee.
 

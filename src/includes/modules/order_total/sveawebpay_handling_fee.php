@@ -6,6 +6,8 @@ class sveawebpay_handling_fee {
      * constructor, initialises object from config settings values (in uppercase)
      */
     function sveawebpay_handling_fee() {
+        global $currencies;
+//print_r( $currencies) ; die;       
         $this->code = 'sveawebpay_handling_fee';
         $this->title = MODULE_ORDER_TOTAL_SWPHANDLING_NAME;
         $this->description = MODULE_ORDER_TOTAL_SWPHANDLING_DESCRIPTION;
@@ -22,26 +24,39 @@ class sveawebpay_handling_fee {
         $this->tax_class['NL'] = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS_NL;      
         $this->tax_class['DE'] = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS_DE;      
 
-        $this->handling_fee['SE'] = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_SE') ? MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_SE : 0.0;
-        $this->handling_fee['NO'] = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_NO') ? MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_NO : 0.0;  
-        $this->handling_fee['DK'] = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_DK') ? MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_DK : 0.0;    
-        $this->handling_fee['FI'] = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_FI') ? MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_FI : 0.0;    
-        $this->handling_fee['NL'] = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_NL') ? MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_NL : 0.0;    
-        $this->handling_fee['DE'] = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_DE') ? MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_DE : 0.0;    
+        // normally, all values should be configured using the shop default, and
+        // are converted to the order currency when displayed to the user. This
+        // approach leads to non-even handling fee amounts, so we instead wish
+        // to specify the exact amount as it should appear on the invoice. 
+        // 
+        // Thus the "reverse conversion" of the configured handling fee to the
+        // default currency (which always has conversion ratio of 1, hence 1/x).        
+        $this->handling_fee['SE'] = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_SE') ? 
+           MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_SE * (1/$currencies->currencies['SEK']['value']): 0.0; 
+        $this->handling_fee['NO'] = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_NO') ? 
+            MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_NO * (1/$currencies->currencies['NOK']['value']): 0.0;  
+        $this->handling_fee['DK'] = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_DK') ? 
+                MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_DK * (1/$currencies->currencies['DKK']['value']): 0.0;    
+        $this->handling_fee['FI'] = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_FI') ? 
+                MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_FI * (1/$currencies->currencies['EUR']['value']): 0.0;    
+        $this->handling_fee['NL'] = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_NL') ? 
+                MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_NL * (1/$currencies->currencies['EUR']['value']): 0.0;    
+        $this->handling_fee['DE'] = defined('MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_DE') ? 
+                MODULE_ORDER_TOTAL_SWPHANDLING_HANDLING_FEE_DE * (1/$currencies->currencies['EUR']['value']): 0.0;    
         $this->output = array();
     }
 
     /**
      * process() populates $this->output[] array with order total row information
      */
-    function process() {
+    function process() {        
         global $order, $currencies;
-   
+            
         // only add to order total rows if the invoice payment method has been selected
         if( $_SESSION['payment'] != "sveawebpay_invoice" ) {
             return;
         }
-
+      
         // only add to order total rows if the invoice fee is enabled
         if( $this->enabled != "true" ) {
             return;
@@ -59,10 +74,10 @@ class sveawebpay_handling_fee {
 
             $fee_tax = 0;
             if ($tax_class > 0) {
-                $fee_tax = $fee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
+                $fee_tax = $fee_cost * zen_get_tax_rate($tax_class, $order->billing['country']['id'], $order->billing['zone_id']) / 100;
                 if ($fee_tax > 0) {
                     $order->info['tax'] += $fee_tax;
-                    $fee_taxgroup = zen_get_tax_description($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
+                    $fee_taxgroup = zen_get_tax_description($tax_class, $order->billing['country']['id'], $order->billing['zone_id']);
                     $order->info['tax_groups'][$fee_taxgroup] += $fee_tax;
                 }
             }
@@ -75,7 +90,8 @@ class sveawebpay_handling_fee {
                     'title' => MODULE_ORDER_TOTAL_SWPHANDLING_NAME.":",
                     'text' => $currencies->format($fee_cost + $fee_tax, true, $order->info['currency'], $order->info['currency_value']),
                     //'tax' => $fee_tax, // unfortunately doesn't seem to get passed along to the order total
-                    'value' => $fee_cost + $fee_tax);
+                    'value' => $fee_cost + $fee_tax
+                );
             } 
             else // don't include tax in value 
             {
@@ -83,11 +99,12 @@ class sveawebpay_handling_fee {
                     'title' => MODULE_ORDER_TOTAL_SWPHANDLING_NAME.":",
                     'text' => $currencies->format($fee_cost, true, $order->info['currency'], $order->info['currency_value']),
                     //'tax' => $fee_tax, // unfortunately doesn't seem to get passed along to the order total
-                    'value' => $fee_cost);
+                    'value' => $fee_cost
+                );
             }
         }       
     }
-    
+       
     // standard zencart module functions below
     
     function check() {
