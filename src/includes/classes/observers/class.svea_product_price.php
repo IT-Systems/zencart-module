@@ -13,18 +13,25 @@ class svea_product_price extends base {
 
     function update(&$class, $eventID, $paramsArray = array()) {
         global $db, $currencies;
+        
+        // don't use unless configured and in applicable country
+        if( MODULE_PAYMENT_SWPPARTPAY_PRODUCT !== "True" &&
+            MODULE_PAYMENT_SWPINVOICE_PRODUCT !== "True" &&
+            $svea_country_code !== "DE" )
+        {
+            return;
+        }
+        
         //logged in customer, will see campaigns for his country
         if (isset($_SESSION['customer_country_id'])) {
             $svea_countryInfo = zen_get_countries_with_iso_codes($_SESSION['customer_country_id']);
             $svea_country_code = $svea_countryInfo['countries_iso_code_2'];
-            //not logged in customer, will se campaigns for the store country
+        
+        //not logged in customer, will se campaigns for the store country
         } else {
             $q = "SELECT `countries_iso_code_2` FROM `countries` WHERE `countries_id` = " . STORE_COUNTRY . " LIMIT 1";
             $svea_countryInfo = $db->Execute($q);
             $svea_country_code = $svea_countryInfo->fields['countries_iso_code_2'];
-        }
-        if (MODULE_PAYMENT_SWPPARTPAY_PRODUCT !== "True" && MODULE_PAYMENT_SWPINVOICE_PRODUCT !== "True" || $svea_countryInfo == "NL" || $svea_country_code == "DE") {
-            return;
         }
 
         //get product price
@@ -34,6 +41,7 @@ class svea_product_price extends base {
         $currency_decimals = $_SESSION['currency'] == 'EUR' ? 1 : 0;
         $price_list = array();
         $prices = array();
+        
         //payment plan
         if (MODULE_PAYMENT_SWPPARTPAY_PRODUCT === "True") {
 
@@ -73,8 +81,13 @@ class svea_product_price extends base {
                 }
             }
         }
+        
         //invoice
-        if (MODULE_PAYMENT_SWPINVOICE_PRODUCT === "True" && $svea_base_price >= constant(MODULE_PAYMENT_SWPINVOICE_PRODUCT_ . $svea_country_code) && $svea_country_code != "DK") {
+        if( MODULE_PAYMENT_SWPINVOICE_PRODUCT === "True" &&
+            $svea_base_price >= constant(MODULE_PAYMENT_SWPINVOICE_PRODUCT_ . $svea_country_code) && 
+            $svea_country_code != "DK"
+           ) 
+        {
             $lowest_to_pay = $this->svea_get_invoice_lowest($svea_country_code);
             $price_list[] = '<h4 style="display:block;  list-style-position:outside; margin: 5px 10px 10px 10px">' . ENTRY_TEXT_SWPINVOICE . '</h4>';
 
@@ -100,7 +113,6 @@ class svea_product_price extends base {
         //lowest price
         if (sizeof($prices) > 0) {
             $lowest_price = ENTRY_TEXT_FROM . " " . round(min($prices), $currency_decimals) . " " . $_SESSION['currency'] . "/" . ENTRY_TEXT_MONTH;
-
             $this->sveaShowHtml($price_list, $lowest_price);
         }
     }
@@ -130,9 +142,8 @@ class svea_product_price extends base {
                    });
 
                });
-
-
-//--></script>';
+               
+        --></script>';
 
         $line = "<img width='163' height='1' src='images/Svea/grey_line.png' />";
         $arrow = "<img src='images/Svea/blue_arrow.png' />";
@@ -205,6 +216,11 @@ class svea_product_price extends base {
         echo '</div>';
     }
 
+    /**
+     * Returns a lowest value to display in widget for invoice 21-25 payment.
+     * Based on respective invoice country lower limit, which is 100 for the
+     * nordic countries and 10 for euro countries (as of 140220).
+     */
     private function svea_get_invoice_lowest($svea_country_code) {
         switch ($svea_country_code) {
             case "SE":
@@ -218,17 +234,16 @@ class svea_product_price extends base {
                 break;
             case "DK":
                 return 100;
+                break;                
+            case "NL":
+                return 10;
                 break;
-            /** not yew available
-              case "NL":
-              return 100;
-              break;
-              case "DE":
-              return 100;
-              break;
-             *
-             */
+            //not yet available
+//          case "DE":
+//              return 100;
+//              break;
             default:
+                return 100; // catch-all
                 break;
         }
     }
