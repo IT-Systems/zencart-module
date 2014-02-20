@@ -250,7 +250,6 @@ class svea_product_price extends base {
                 break;
         }
     }
-
 }
 
 ?>
