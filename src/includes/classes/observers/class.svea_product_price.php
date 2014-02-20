@@ -1,9 +1,8 @@
 <?php
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+/**
+ * Observer that is triggered from the product_info page header. Used to display
+ * the lowest possible amount to pay/month using Svea Invoice or Payment plan.
  */
-
 class svea_product_price extends base {
     function __construct()
     {
@@ -81,7 +80,7 @@ class svea_product_price extends base {
            if(MODULE_PAYMENT_SWPINVOICE_PRODUCT === "True" && $svea_base_price >= constant(MODULE_PAYMENT_SWPINVOICE_PRODUCT_.$svea_country_code) && $svea_country_code != "DK"){
             $lowest_to_pay = $this->svea_get_invoice_lowest($svea_country_code);
             $price_list[] = '<h4 style="display:block;  list-style-position:outside; margin: 5px 10px 10px 10px">'.ENTRY_TEXT_SWPINVOICE.'</h4>';
-
+          
             //Based on condition to pay 3% of amount or 100
             $price = ($svea_currencyValue * $svea_base_price) * 0.03 < $lowest_to_pay ? $lowest_to_pay : ($svea_currencyValue * $svea_base_price) * 0.03;
 
