@@ -37,7 +37,6 @@ class svea_product_price extends base {
         //get product price
         $svea_currencyValue = $currencies->get_value($_SESSION['currency']);
         $svea_base_price = zen_get_products_base_price((int) $_GET['products_id']);
-        $svea_price = $svea_currencyValue * $svea_base_price;
         $currency_decimals = $_SESSION['currency'] == 'EUR' ? 1 : 0;
         $price_list = array();
         $prices = array();
@@ -109,10 +108,14 @@ class svea_product_price extends base {
                         </div>
                     </div>";
             $prices[] = $price;
-        }
+        }              
         //lowest price
         if (sizeof($prices) > 0) {
-            $lowest_price = ENTRY_TEXT_FROM . " " . round(min($prices), $currency_decimals) . " " . $_SESSION['currency'] . "/" . ENTRY_TEXT_MONTH;
+            $lowest_price = ENTRY_TEXT_FROM . " " . round(min($prices), $currency_decimals) . " " . $_SESSION['currency'];
+            
+            if( min($prices) != $prices[sizeof($prices)-1] ) {
+                $lowest_price = $lowest_price . "/" . ENTRY_TEXT_MONTH;
+            }
             $this->sveaShowHtml($price_list, $lowest_price);
         }
     }
