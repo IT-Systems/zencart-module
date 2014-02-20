@@ -149,7 +149,7 @@ class svea_product_price extends base {
                     <div style="position:relative; z-index:1">';
 
             echo '      <div id="svea_product_price_lowest"
-                            style="display:block;";>';
+                            style="display:block;">';
                     echo "<img width='170' src='images/Svea/svea_background.png'
                         style=' position:absolute;
                         z-index:1;' />";
