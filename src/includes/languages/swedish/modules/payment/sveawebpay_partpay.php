@@ -41,7 +41,6 @@ define('ERROR_CODE_50000','Kunden är ej godkänd för denna metod');
 
 define('DD_NO_CAMPAIGN_ON_AMOUNT','Det går ej att hitta en passande kampanjkod för den angivna summan');
 
-
 // used in payment credentials form
 define('FORM_TEXT_PARTPAY_ADDRESS','Faktureringsadress:');
 define('FORM_TEXT_PAYMENT_OPTIONS','Delbetalningsalternativ:');
@@ -51,16 +50,8 @@ define('FORM_TEXT_SS_NO','Personnummer:');
 define('FORM_TEXT_INITIALS','Initialer');                                
 define('FORM_TEXT_BIRTHDATE','Födelsedatum');              
 define('FORM_TEXT_VATNO','Organisationsnummer'); 
-<<<<<<< HEAD
-define('FORM_TEXT_PARTPAY_FEE','Uppl�ggningsavgift tillkommer');
-define('FORM_TEXT_GET_PAYPLAN','H�mta adress:');
-define('FORM_TEXT_FROM','Fr�n');
-define('FORM_TEXT_MONTH','m�nad');
-=======
 define('FORM_TEXT_PARTPAY_FEE','Uppläggningsavgift tillkommer');
 define('FORM_TEXT_GET_PAYPLAN','Hämta betalningsalternativ:');
->>>>>>> hotfix/4.2.3
-
 define('ERROR_CODE_DEFAULT','Svea Error: ');
 
 ?>

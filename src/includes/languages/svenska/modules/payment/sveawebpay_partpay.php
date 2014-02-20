@@ -50,15 +50,10 @@ define('FORM_TEXT_SS_NO','Personnummer:');
 define('FORM_TEXT_INITIALS','Initialer');                                
 define('FORM_TEXT_BIRTHDATE','FÃ¶delsedatum');              
 define('FORM_TEXT_VATNO','Organisationsnummer');
-<<<<<<< HEAD
-define('FORM_TEXT_PARTPAY_FEE','uppläggningsavgift tillkommer ');
-define('FORM_TEXT_GET_PAYPLAN','Hämta adress:');
-define('FORM_TEXT_FROM','Från');
-define('FORM_TEXT_MONTH','månad');
-=======
+//define('FORM_TEXT_FROM','Frï¿½n');
+//define('FORM_TEXT_MONTH','mï¿½nad');
 define('FORM_TEXT_PARTPAY_FEE','upplÃ¤ggningsavgift tillkommer ');
 define('FORM_TEXT_GET_PAYPLAN','HÃ¤mta adress:');
->>>>>>> hotfix/4.2.3
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');
 ?>
