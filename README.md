@@ -1,5 +1,5 @@
 # Zen Cart - Svea payment module
-## Version 4.2.3
+## Version 4.3.0
 * Supports Zen Cart version 1.5.1 and 1.3.9
 * Requires PHP 5.3 or higher (namespace support)
 
@@ -17,7 +17,7 @@ If you experience technical issues with this module, or if you have feature sugg
 
 ## Upgrading from a previous version of the module
 
-* From module version 4.1.x or 4.0.x: The Invoice fee module has been reworked to allow for different invoice fees in different countries. Please uninstall the old module from the admin order total list and then reinstall the module. This ensures that the new settings will be picked up by Zencart. See further under "Setting up the Svea Invoice fee order total module" below.
+* From module version 4.2.x to 4.0.x: The Invoice fee module has been reworked to allow for different invoice fees in different countries, and now includes a product page widget to display the minimum amount to pay using Svea Invoice or Svea Payment plan. Please uninstall the old module from the admin order total list and then reinstall the module. This ensures that the new settings will be picked up by Zencart. See further below.
 
 * From module version 3.x or less: If you are upgrading from the previous version 3.x of this module, please contact Svea support before installing the current module, your account settings may require updating. Also, all payment methods should be uninstalled and then re-installed when upgrading (please make note of your previous configuration, as you'll have to re-enter your settings after upgrading to the current module). This ensures that all settings are initialised correctly in the new module. 
 
@@ -76,6 +76,10 @@ In this example we'll first configure the Svea invoice payment method, instructi
 
 * _Sort order of display_: determines the order in which payment methods are presented to the customer on checkout. The method are listed in ascending order on the payment method selection page.
 
+* _Show Product Price Widget_: If set to true, the Svea Product Price Widget will be shown on product pages, displaying the minimum invoice amount to pay. Note: Only applicable if Svea buys the invoices, and for private customers. Only applies in Sweden, Norway, Finland and the Netherlands (see Product Price Widget threshold below). Please contact your Svea account manager if you have further questions.
+
+* _Product Price Widget threshold SE_: If _Show Product Price Widget_ is set to true, the Svea Product Price Widget will be displayed if the product price equals or exceeds this amount. If not set, the Product Price Widget will be displayed regardless of product price. 
+
 * Finally, remember to _save_ your settings.
 
 ![Invoice payment settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/invoice_settings_2.PNG "Method invoice settings 2")
@@ -127,6 +131,8 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 * _Payment Zone_: if a zone is selected here, invoice payments will only be accepted from within that zone. See "Localisation and additional Zen Cart configuration requirements" below.
 
 * _Sort order of display_: determines the order in which payment methods are presented to the customer on checkout. The method are listed in ascending order on the payment method selection page.
+
+* _Show Product Price Widget_: If set to true, the Svea Product Price Widget will be shown on product pages, displaying the minimum payment plan amount to pay each month. Only applies in Sweden, Norway, Finland and the Netherlands. Please contact your Svea account manager if you have further questions.
 
 * Finally, remember to _save_ your settings.
 
