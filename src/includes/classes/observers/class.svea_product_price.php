@@ -24,7 +24,7 @@ class svea_product_price extends base {
                 $svea_countryInfo = $db->Execute($q);
                 $svea_country_code = $svea_countryInfo->fields['countries_iso_code_2'];
             }
-        if(MODULE_PAYMENT_SWPPARTPAY_PRODUCT !== "True" && MODULE_PAYMENT_SWPINVOICE_PRODUCT !== "True" || $svea_countryInfo == "NL" || $svea_country_code == "DE"){
+        if(MODULE_PAYMENT_SWPPARTPAY_PRODUCT !== "True" && MODULE_PAYMENT_SWPINVOICE_PRODUCT !== "True" || $svea_country_code == "DE"){
               return;
           }
 
@@ -36,7 +36,7 @@ class svea_product_price extends base {
             $price_list = array();
             $prices = array();
         //payment plan
-        if(MODULE_PAYMENT_SWPPARTPAY_PRODUCT === "True"){
+        if(MODULE_PAYMENT_SWPPARTPAY_PRODUCT === "True" && $svea_countryInfo != "NL"){
 
             $query = "SELECT `campaignCode`,`description`,`paymentPlanType`,`contractLengthInMonths`,
                             `monthlyAnnuityFactor`,`initialFee`, `notificationFee`,`interestRatePercent`,
