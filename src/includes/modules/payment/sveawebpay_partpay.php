@@ -733,7 +733,8 @@ class sveawebpay_partpay extends SveaZencart{
         $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPPARTPAY_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
         $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPPARTPAY_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
         $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
-        $db->Execute($common . ", set_function) values ('Activate: Show monthly price', 'MODULE_PAYMENT_SWPPARTPAY_PRODUCT', 'False', 'Show lowest price, and monthly costs for every campaign. Widget shows on product page.', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
+        
+        $db->Execute($common . ", set_function) values ('Show Product Price Widget', 'MODULE_PAYMENT_SWPPARTPAY_PRODUCT', 'False', 'Show lowest price, and monthly costs for every part payment campaign on product pages.', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
 
         // insert svea order table if not exists already
         $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_order';");
