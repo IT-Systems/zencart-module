@@ -18,7 +18,7 @@ class sveawebpay_partpay extends SveaZencart{
         global $order;
 
         $this->code = 'sveawebpay_partpay';
-        $this->version = "4.3.2";
+        $this->version = "4.3.1";
 
         $this->title = MODULE_PAYMENT_SWPPARTPAY_TEXT_TITLE;
         $this->description = MODULE_PAYMENT_SWPPARTPAY_TEXT_DESCRIPTION;
@@ -151,10 +151,10 @@ class sveawebpay_partpay extends SveaZencart{
 
     function update_status() {
         global $db, $order, $currencies, $messageStack;
-      
+
         // do not use this module if any of the allowed currencies are not set in osCommerce
         foreach ($this->getPartpayCurrencies() as $currency) {
-            if (!is_array($currencies->currencies[strtoupper($currency)])) {        
+            if (!is_array($currencies->currencies[strtoupper($currency)])) {
                 $this->enabled = false;
                 $messageStack->add('header', ERROR_ALLOWED_CURRENCIES_NOT_DEFINED, 'error');
             }
@@ -386,33 +386,33 @@ class sveawebpay_partpay extends SveaZencart{
     /**
      * we've selected payment method, so we can set currency to payment method
      * currency
-     * 
+     *
      */
     function pre_confirmation_check() {
         global $order, $currency;
 
         // TODO make sure to update billing address here?
-        
+
         $customer_country = $order->customer['country']['iso_code_2'];
-        
+
         // did the customer have a different currency selected than the invoice country currency?
         if( $_SESSION['currency'] != $this->getPartpayCurrency( $customer_country ) )
-        {            
+        {
             // set shop currency to the selected payment method currency
             $order->info['currency'] = $this->getPartpayCurrency( $customer_country );
             $_SESSION['currency'] = $order->info['currency'];
 
             // redirect to update order_totals to new currency, making sure to preserve post data
-            $_SESSION['sveapostdata'] = $_POST; 
-            zen_redirect(zen_href_link(FILENAME_CHECKOUT_CONFIRMATION));    // redirect to update order_totals to new currency               
+            $_SESSION['sveapostdata'] = $_POST;
+            zen_redirect(zen_href_link(FILENAME_CHECKOUT_CONFIRMATION));    // redirect to update order_totals to new currency
         }
-        
+
         if( isset($_SESSION['sveapostdata']) )
         {
             $_POST = array_merge( $_POST, $_SESSION['sveapostdata'] );
             unset( $_SESSION['sveapostdata'] );
         }
-               
+
         return false;
     }
 
@@ -475,10 +475,10 @@ class sveawebpay_partpay extends SveaZencart{
             ->setClientOrderNumber($client_order_number)   //Required for card & direct payment, PaymentMethod payment and PayPage payments
             ->setOrderDate(date('c'))                      //Required for synchronous payments
         ;
-       
+
         // create product order rows from each item in cart
-        $swp_order = $this->parseOrderProducts( $order->products, $swp_order );       
-        
+        $swp_order = $this->parseOrderProducts( $order->products, $swp_order );
+
         // creates non-item order rows from Order Total entries
         $swp_order = $this->parseOrderTotals( $order_totals, $swp_order );
 
@@ -733,7 +733,7 @@ class sveawebpay_partpay extends SveaZencart{
         $db->Execute($common . ") values ('Ignore OT list', 'MODULE_PAYMENT_SWPPARTPAY_IGNORE','ot_pretotal', 'Ignore the following order total codes, separated by commas.','6','0',now())");
         $db->Execute($common . ", set_function, use_function) values ('Payment Zone', 'MODULE_PAYMENT_SWPPARTPAY_ZONE', '0', 'If a zone is selected, only enable this payment method for that zone.', '6', '2', now(), 'zen_cfg_pull_down_zone_classes(', 'zen_get_zone_class_title')");
         $db->Execute($common . ") values ('Sort order of display.', 'MODULE_PAYMENT_SWPPARTPAY_SORT_ORDER', '0', 'Sort order of display. Lowest is displayed first.', '6', '0', now())");
-        
+
         $db->Execute($common . ", set_function) values ('Show Product Price Widget', 'MODULE_PAYMENT_SWPPARTPAY_PRODUCT', 'False', 'Show lowest price, and monthly costs for every part payment campaign on product pages.', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
 
         // insert svea order table if not exists already
@@ -1087,11 +1087,11 @@ class sveawebpay_partpay extends SveaZencart{
             $this->insertOrdersStatus( $oID, $status, $comment );
         }
     }
-    
+
     /**
-     * Returns the currency used for an partpay country. 
+     * Returns the currency used for an partpay country.
      */
-    function getPartpayCurrency( $country ) 
+    function getPartpayCurrency( $country )
     {
         $country_currencies = array(
             'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_SE' => 'SEK',
@@ -1103,18 +1103,18 @@ class sveawebpay_partpay extends SveaZencart{
         );
 
         $method = "MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_" . $country;
-        
+
         return $country_currencies[$method];
     }
-    
+
     /**
-     * Returns the currencies used in all countries where an partpay payment 
-     * method has been configured (i.e. clientno is set for country in config). 
+     * Returns the currencies used in all countries where an partpay payment
+     * method has been configured (i.e. clientno is set for country in config).
      * Used in partpay to determine currencies which must be set.
-     * 
-     * @return array - currencies for countries with ug clientno set in config 
+     *
+     * @return array - currencies for countries with ug clientno set in config
      */
-    function getPartpayCurrencies() 
+    function getPartpayCurrencies()
     {
         $country_currencies = array(
             'MODULE_PAYMENT_SWPPARTPAY_CLIENTNO_SE' => 'SEK',
@@ -1130,7 +1130,7 @@ class sveawebpay_partpay extends SveaZencart{
         {
             if( constant($country)!=NULL ) $currencies[] = $currency;
         }
-        
+
         return array_unique( $currencies );
     }
 }

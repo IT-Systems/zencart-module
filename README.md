@@ -1,5 +1,5 @@
 # Zen Cart - Svea payment module
-## Version 4.3.0
+## Version 4.3.1
 * Supports Zen Cart version 1.5.1 and 1.3.9
 * Requires PHP 5.3 or higher (namespace support)
 
@@ -19,7 +19,7 @@ If you experience technical issues with this module, or if you have feature sugg
 
 * From module version 4.2.x to 4.0.x: The Invoice fee module has been reworked to allow for different invoice fees in different countries, and now includes a product page widget to display the minimum amount to pay using Svea Invoice or Svea Payment plan. Please uninstall the old module from the admin order total list and then reinstall the module. This ensures that the new settings will be picked up by Zencart. See further below.
 
-* From module version 3.x or less: If you are upgrading from the previous version 3.x of this module, please contact Svea support before installing the current module, your account settings may require updating. Also, all payment methods should be uninstalled and then re-installed when upgrading (please make note of your previous configuration, as you'll have to re-enter your settings after upgrading to the current module). This ensures that all settings are initialised correctly in the new module. 
+* From module version 3.x or less: If you are upgrading from the previous version 3.x of this module, please contact Svea support before installing the current module, your account settings may require updating. Also, all payment methods should be uninstalled and then re-installed when upgrading (please make note of your previous configuration, as you'll have to re-enter your settings after upgrading to the current module). This ensures that all settings are initialised correctly in the new module.
 
 ##Basic installation example using the Svea Invoice payment method
 
@@ -52,11 +52,11 @@ In this example we'll first configure the Svea invoice payment method, instructi
 
 ![Invoice payment settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/install_payment_method.PNG "Installing payment method")
 
-* You will now see a view of current payment method settings. Select the _edit_ button to the modify the payment method settings. 
+* You will now see a view of current payment method settings. Select the _edit_ button to the modify the payment method settings.
 
 * _Enable Svea Invoice Module_: if set to false, the module is disabled and won't show up in the customer list of available payment methods on checkout.
 
-* _Svea Username_, _Svea Password_ and _Svea Client no_: enter the username and password that corresponds to your client number for the country in question. You can only accept invoice payments from countries for which you have entered credentials, other country fields should be left empty. Test credentials will be provided to you by your Svea integration manager upon request. 
+* _Svea Username_, _Svea Password_ and _Svea Client no_: enter the username and password that corresponds to your client number for the country in question. You can only accept invoice payments from countries for which you have entered credentials, other country fields should be left empty. Test credentials will be provided to you by your Svea integration manager upon request.
 
 ![Invoice payment settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/invoice_settings_1.PNG "Method invoice settings 1")
 
@@ -78,14 +78,14 @@ In this example we'll first configure the Svea invoice payment method, instructi
 
 * _Show Product Price Widget_: If set to true, the Svea Product Price Widget will be shown on product pages, displaying the minimum invoice amount to pay. Note: Only applicable if Svea buys the invoices, and for private customers. Only applies in Sweden, Norway, Finland and the Netherlands (see Product Price Widget threshold below). Please contact your Svea account manager if you have further questions.
 
-* _Product Price Widget threshold SE_: If _Show Product Price Widget_ is set to true, the Svea Product Price Widget will be displayed if the product price equals or exceeds this amount. If not set, the Product Price Widget will be displayed regardless of product price. 
+* _Product Price Widget threshold SE_: If _Show Product Price Widget_ is set to true, the Svea Product Price Widget will be displayed if the product price equals or exceeds this amount. If not set, the Product Price Widget will be displayed regardless of product price.
 
 * Finally, remember to _save_ your settings.
 
 ![Invoice payment settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/invoice_settings_2.PNG "Method invoice settings 2")
 
 Also, make sure you have defined all relevant currencies for countries you accept invoice payments from. See "Localisation and additional Zen Cart configuration requirements" below.
- 
+
 #### Setting up the Svea Invoice fee order total module
 The Svea Invoice fee order total module is used to add an invoice fee to the order total when the Svea Invoice payment method is selected during checkout.
 
@@ -116,7 +116,7 @@ For the other Svea payment methods (payment plan, card payment and direct bank p
 
 * _Enable Svea Payment Plan Module_: if set to false, the module is disabled and won't show up in the customer list of available payment methods on checkout
 
-* _Svea Username <Country>_, _Svea Password <Country>_ and _Svea Client no <Country>_: enter the username and password that corresponds to your client number for the country in question. You can only accept invoice payments from countries for which you have entered credentials, other country fields should be left empty. Test credentials will be provided to you by your Svea integration manager upon request. 
+* _Svea Username <Country>_, _Svea Password <Country>_ and _Svea Client no <Country>_: enter the username and password that corresponds to your client number for the country in question. You can only accept invoice payments from countries for which you have entered credentials, other country fields should be left empty. Test credentials will be provided to you by your Svea integration manager upon request.
 
 * _Min amount for <Country> in <Currency>_ and _Max amount for <Country> in <Currency>_: The minimum and maximum amount for the various campaigns. Use the minimum and maximum value over the set of all active campaigns. Ask your Svea integration manager if unsure.
 
@@ -169,7 +169,7 @@ Also, make sure you have defined all relevant currencies for countries you accep
 
 * _Enable Svea Direct Bank Payment Module_: if set to false, the module is disabled and won't show up in the customer list of available payment methods on checkout
 
-* _Svea Direct Bank Merchant ID_ and _Svea Direct Bank Secret Word_: enter your provided merchant ID and secret word. These are provided to you by your Svea integration manager. 
+* _Svea Direct Bank Merchant ID_ and _Svea Direct Bank Secret Word_: enter your provided merchant ID and secret word. These are provided to you by your Svea integration manager.
 
 * _Svea Direct Bank Test Merchant ID_ and _Svea Direct Bank Test Secret Word_: enter your provided test merchant ID and secret word. Test credentials will be provided to you by Svea upon request.
 
@@ -208,11 +208,11 @@ To administrate an order and change its order status, go to admin/customers/orde
 ![Invoice payment settings] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/admin_order_list.PNG "Zen Cart admin orders")
 
 ### Deliver invoice or payment plan order
-When an order is marked as delivered by Svea, the invoice or payment plan will be created and delivered to the customer. The timing of this should usually correspond with the ordered goods being shipped out from your store to the customer. 
+When an order is marked as delivered by Svea, the invoice or payment plan will be created and delivered to the customer. The timing of this should usually correspond with the ordered goods being shipped out from your store to the customer.
 
 Only orders being delivered in their entirety can be administrated through the Zen Cart interface, if you wish to partially deliver an order you have to administer the order through the Svea administration interface instead.
 
-To deliver an order, go to the order and select the status corresponding to the payment method Auto Deliver setting from the Status dropdown menu (here: "Delivered [3]"). You may also use the "Svea: Delivered [1703]" setting directly. Then press the "update" button: 
+To deliver an order, go to the order and select the status corresponding to the payment method Auto Deliver setting from the Status dropdown menu (here: "Delivered [3]"). You may also use the "Svea: Delivered [1703]" setting directly. Then press the "update" button:
 
 ![Deliver order] (https://github.com/sveawebpay/zencart-module/raw/develop/docs/image/deliver_order.PNG "Deliver order")
 
@@ -255,7 +255,7 @@ Always check that you have set up your settings correctly before posting issues 
 
 **Q:** *What is this Svea administration interface that you talk about?*
 
-**A:** This is where you administrate invoices and payment plans created from your customer orders. You should have been provided with login information and instructions from your Svea integration manager, please contact them if not so. 
+**A:** This is where you administrate invoices and payment plans created from your customer orders. You should have been provided with login information and instructions from your Svea integration manager, please contact them if not so.
 
 An example screenshot of the interface is found in the next section under "Invoice orders".
 

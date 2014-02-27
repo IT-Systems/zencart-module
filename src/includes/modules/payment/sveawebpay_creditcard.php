@@ -7,19 +7,21 @@ Kristian Grossman-Madsen, Shaho Ghobadi
 
 // Include Svea php integration package files
 require_once(DIR_FS_CATALOG . 'svea/Includes.php');  // use new php integration package for v4
-require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');                  // sveaConfig inplementation
+require_once(DIR_FS_CATALOG . 'sveawebpay_config.php');                  // sveaConfig implementation
 
-class sveawebpay_creditcard {
+require_once(DIR_FS_CATALOG . 'sveawebpay_common.php');     // zencart module common functions
+
+class sveawebpay_creditcard extends SveaZencart{
 
   function sveawebpay_creditcard() {
     global $order;
 
     $this->code = 'sveawebpay_creditcard';
-    $this->version = "4.3.0";
+    $this->version = "4.3.1";
 
     // used by card, directbank when posting form in checkout_confirmation.php
     $this->form_action_url = (MODULE_PAYMENT_SWPCREDITCARD_MODE == 'Test') ? Svea\SveaConfig::SWP_TEST_URL : Svea\SveaConfig::SWP_PROD_URL;
-     
+
     $this->title = MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE;
     $this->description = MODULE_PAYMENT_SWPCREDITCARD_TEXT_DESCRIPTION;
     $this->enabled = ((MODULE_PAYMENT_SWPCREDITCARD_STATUS == 'True') ? true : false);
@@ -67,11 +69,11 @@ class sveawebpay_creditcard {
 
         // show card logos
         if($order->customer['country']['iso_code_2'] == "SE"){
-            $fields[] = array('title' => '<img src=images/Svea/SVEACARD_SE.png />', 
+            $fields[] = array('title' => '<img src=images/Svea/SVEACARD_SE.png />',
                 'field' => '<img src=images/Svea/KORTCERT.png /><img src=images/Svea/AMEX.png /><img src=images/Svea/DINERS.png />');
-        }  
+        }
         else {
-            $fields[] = array('title' => '<img src=images/Svea/SVEACARD.png />', 
+            $fields[] = array('title' => '<img src=images/Svea/SVEACARD.png />',
                 'field' => '<img src=images/Svea/KORTCERT.png /><img src=images/Svea/AMEX.png /><img src=images/Svea/DINERS.png />');
         }
 
@@ -83,7 +85,7 @@ class sveawebpay_creditcard {
         // store order info needed to reconstruct amount pre coupon later
         $_SESSION["swp_order_info_pre_coupon"]  = serialize($order->info);
 
-        return array( 
+        return array(
             'id'      => $this->code,
             'module'  => $this->title,
             'fields'  => $fields
@@ -109,7 +111,7 @@ class sveawebpay_creditcard {
 
     // localization parameters
     if( isset( $order->billing['country']['iso_code_2'] ) ) {
-        $user_country = $order->billing['country']['iso_code_2']; 
+        $user_country = $order->billing['country']['iso_code_2'];
     }
     // no billing address set, fallback to session country_id
     else {
@@ -123,7 +125,7 @@ class sveawebpay_creditcard {
 
     // Create and initialize order object, using either test or production configuration
     $currency = $order->info['currency'];
-    
+
     $sveaConfig = (MODULE_PAYMENT_SWPCREDITCARD_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
     // Create and initialize order object, using either test or production configuration
@@ -134,189 +136,24 @@ class sveawebpay_creditcard {
         ->setOrderDate(date('c'))                      //Required for synchronous payments
     ;
 
-        // for each item in cart, create WebPayItem::orderRow objects and add to order
-        foreach ($order->products as $productId => $product) {
+    // create product order rows from each item in cart
+    $swp_order = $this->parseOrderProducts( $order->products, $swp_order );
 
-            // convert_to_currency
-            $amount_ex_vat = floatval(  $this->convert_to_currency( round($product['final_price'], 2), $currency ) );
-            $swp_order->addOrderRow(
-                    WebPayItem::orderRow()
-                            ->setQuantity($product['qty'])          //Required
-                            ->setAmountExVat($amount_ex_vat)          //Optional, see info above
-                            ->setVatPercent(intval($product['tax']))  //Optional, see info above
-                            ->setDescription($product['name'])        //Optional
-            );
-        }
+    // creates non-item order rows from Order Total entries
+    $swp_order = $this->parseOrderTotals( $order_totals, $swp_order );
 
+    // get form from order object
+    $swp_form =  $swp_order->usePaymentMethod(PaymentMethod::KORTCERT)
+        ->setCancelUrl( zen_href_link(FILENAME_CHECKOUT_PAYMENT, '', 'SSL', true) )
+        ->setReturnUrl( zen_href_link(FILENAME_CHECKOUT_PROCESS, '', 'SSL') )
+        ->getPaymentForm();
 
-        // creates non-item order rows from Order Total entrie
-        foreach ($order_totals as $ot_id => $order_total) {
+    // return $process_button_string;
+    return  $swp_form->htmlFormFieldsAsArray['input_merchantId'] .
+            $swp_form->htmlFormFieldsAsArray['input_message'] .
+            $swp_form->htmlFormFieldsAsArray['input_mac'];
 
-            switch ($order_total['code']) {
-                case in_array(  $order_total['code'],
-                                $this->ignore_list):
-                case 'ot_subtotal':
-                case 'ot_total':
-                case 'ot_tax':
-                    // do nothing
-                    break;
-
-                // if shipping fee, create WebPayItem::shippingFee object and add to order
-                case 'ot_shipping':
-
-                    // makes use of zencart $order-info[] shipping information to populate object
-                    // shop shows prices including tax, take this into accord when calculating tax
-                    if (DISPLAY_PRICE_WITH_TAX == 'false') {
-                        $amountExVat = $order->info['shipping_cost'];
-                        $amountIncVat = $order->info['shipping_cost'] + $order->info['shipping_tax'];
-                    }
-                    else {
-                        $amountExVat = $order->info['shipping_cost'] - $order->info['shipping_tax'];
-                        $amountIncVat = $order->info['shipping_cost'] ;
-                    }
-
-                    // add WebPayItem::shippingFee to swp_order object
-                    $swp_order->addFee(
-                            WebPayItem::shippingFee()
-                                    ->setDescription($order->info['shipping_method'])
-                                    ->setAmountExVat( $amountExVat )
-                                    ->setAmountIncVat( $amountIncVat )
-                    );
-                break;
-
-                case 'ot_coupon':
-                   // zencart coupons are made out as either amount x.xx or a percentage y%.
-                    // Both of these are calculated by zencart via the order total module ot_coupon.php and show up in the
-                    // corresponding $order_totals[...]['value'] field.
-                    //
-                    // Depending on the module settings the value may differ, Svea assumes that the (zc 1.5.1) default settings
-                    // are being used:
-                    //
-                    // admin/ot_coupon module setting -- include shipping: false, include tax: false, re-calculate tax: standard
-                    //
-                    // The value contains the total discount amount including tax iff configuration display prices with tax is set to true:
-                    //
-                    // admin/configuration setting -- display prices with tax: true => ot_coupon['value'] includes vat, if false, excludes vat
-                    //
-                    // Example:
-                    // zc adds an ot_coupon with value of 20 for i.e. a 10% discount on an order of 100 +(25%) + 100 (+6%).
-                    // This discount seems to be split in equal parts over the two order item vat rates:
-                    // 90*1,25 + 90*1,06 = 112,5 + 95,4 = 207,90, to which the shipping fee of 4 (+25%) is added. The total is 212,90
-                    // ot_coupon['value'] is 23,10 iff display prices incuding tax = true, else ot_coupon['value'] = 20
-                    //
-                    // We handle the coupons by adding a FixedDiscountRow for the amount, specified ex vat. The package
-                    // handles the vat calculations.
-
-                    // if display price with tax is not set, svea's package calculations match zencart's and we can use value right away
-                    if (DISPLAY_PRICE_WITH_TAX == 'false') {
-                        $swp_order->addDiscount(
-                            WebPayItem::fixedDiscount()
-                                ->setAmountExVat( $order_total['value'] ) // $amountExVat works iff display prices with tax = false in shop
-                                ->setDescription( $order_total['title'] )
-                        );
-                    }
-                    // we need to determine the order discount ex. vat if display prices with tax is set to true,
-                    // the ot_coupon module calculate_deductions() method returns a value including tax. We try to
-                    // reconstruct the amount using the stored order info and the order_totals entries
-                    else {
-                        $swp_order_info_pre_coupon = unserialize( $_SESSION["swp_order_info_pre_coupon"] );
-                        $pre_coupon_subtotal_ex_tax = $swp_order_info_pre_coupon['subtotal'] - $swp_order_info_pre_coupon['tax'];
-
-                        foreach( $order_totals as $key => $ot ) {
-                            if( $ot['code'] === 'ot_subtotal' ) {
-                                $order_totals_subtotal_ex_tax = $ot['value'];
-                            }
-                        }
-                        foreach( $order_totals as $key => $ot ) {
-                            if( $ot['code'] === 'ot_tax' ) {
-                                $order_totals_subtotal_ex_tax -= $ot['value'];
-                            }
-                        }
-                        foreach( $order_totals as $key => $ot ) {
-                            if( $ot['code'] === 'ot_coupon' ) {
-                                $order_totals_subtotal_ex_tax -= $ot['value'];
-                            }
-                        }
-
-                        $value_from_subtotals = isset( $order_totals_subtotal_ex_tax ) ?
-                                ($pre_coupon_subtotal_ex_tax - $order_totals_subtotal_ex_tax) : $order_total['value']; // 'value' fallback
-
-                        // if display_price_with tax is set to true && the coupon was specified as a fixed amount
-                        // zencart's math doesn't match svea's, so we force the discount to use the the shop's vat
-                        $coupon = $db->Execute("select * from " . TABLE_COUPONS . " where coupon_id = '" . (int)$_SESSION['cc_id'] . "'");
-
-                        // coupon_type is F for coupons specified with a fixed amount
-                        if( $coupon->fields['coupon_type'] == 'F' ) {
-
-                            // calculate the vatpercent from zencart's amount: discount vat/discount amount ex vat
-                            $zencartDiscountVatPercent =
-                                ($order_total['value'] - $coupon->fields['coupon_amount']) / $coupon->fields['coupon_amount'] *100;
-
-
-                            // split $zencartDiscountVatPercent into allowed values
-                            $taxRates = Svea\Helper::getTaxRatesInOrder($swp_order);
-                            $discountRows = Svea\Helper::splitMeanToTwoTaxRates( $coupon->fields['coupon_amount'], 
-                                    $zencartDiscountVatPercent, $order_total['title'], $order_total['title'], $taxRates );
-                            
-                            foreach($discountRows as $row) {
-                                $swp_order = $swp_order->addDiscount( $row );
-                            }
-
-                        }
-                        // if coupon specified as a percentage, or as a fixed amount and prices are ex vat.
-                        else {
-                            $swp_order->addDiscount(
-                                WebPayItem::fixedDiscount()
-                                    ->setAmountExVat( $value_from_subtotals )
-                                    ->setDescription( $order_total['title'] )
-                            );
-                        }
-                    }
-                    break;
-
-                // default case attempt to handle 'unknown' items from other plugins, treating negatives as discount rows, positives as fees
-                default:
-                    $order_total_obj = $GLOBALS[$order_total['code']];
-                    $tax_rate = zen_get_tax_rate($order_total_obj->tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']);
-
-                    // if displayed WITH tax, REDUCE the value since it includes tax
-                    if (DISPLAY_PRICE_WITH_TAX == 'true') {
-                        $order_total['value'] = (strip_tags($order_total['value']) / ((100 + $tax_rate) / 100));
-                    }
-
-                    // write negative amounts as FixedDiscount with the given tax rate, write positive amounts as HandlingFee
-                    if( $order_total['value'] < 0 ) {
-                        $swp_order->addDiscount(
-                            WebPayItem::fixedDiscount()
-                                ->setAmountExVat( -1* $this->convert_to_currency(strip_tags($order_total['value']), $currency)) // given as positive amount
-                                ->setVatPercent($tax_rate)  //Optional, see info above
-                                ->setDescription($order_total['title'])        //Optional
-                        );
-                    }
-                    else {
-                        $swp_order->addFee(
-                            WebPayItem::invoiceFee()
-                                ->setAmountExVat($this->convert_to_currency(strip_tags($order_total['value']), $currency))
-                                ->setVatPercent($tax_rate)  //Optional, see info above
-                                ->setDescription($order_total['title'])        //Optional
-                        );
-                    }
-                    break;
-            }
-        }
-
-        // get form from order object
-        $swp_form =  $swp_order->usePaymentMethod(PaymentMethod::KORTCERT)
-           ->setCancelUrl( zen_href_link(FILENAME_CHECKOUT_PAYMENT, '', 'SSL', true) )
-           ->setReturnUrl( zen_href_link(FILENAME_CHECKOUT_PROCESS, '', 'SSL') )
-           ->getPaymentForm();
-
-        // return $process_button_string;
-        return  $swp_form->htmlFormFieldsAsArray['input_merchantId'] .
-                $swp_form->htmlFormFieldsAsArray['input_message'] .
-                $swp_form->htmlFormFieldsAsArray['input_mac'];
-
-    }
+ }
 
  function before_process() {
     global $order;
@@ -325,23 +162,23 @@ class sveawebpay_creditcard {
 
         // localization parameters
         if( isset( $order->billing['country']['iso_code_2'] ) ) {
-            $user_country = $order->billing['country']['iso_code_2']; 
+            $user_country = $order->billing['country']['iso_code_2'];
         }
         // no billing address set, fallback to session country_id
         else {
             $country = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );
             $user_country =  $country['countries_iso_code_2'];
         }
-        
+
         // put response into responsehandler
         $sveaConfig = (MODULE_PAYMENT_SWPCREDITCARD_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
         $swp_respObj = new SveaResponse( $_REQUEST, $user_country, $sveaConfig ); // returns HostedPaymentResponse
 		$swp_response = $swp_respObj->response;
-                
+
         // check for bad response
         if( $swp_response->resultcode === 0 ) {
-            die('Response failed authorization. AC not valid or Response is not recognized');  
+            die('Response failed authorization. AC not valid or Response is not recognized');
         }
 
         // response ok, check if payment accepted
@@ -427,13 +264,13 @@ class sveawebpay_creditcard {
     $swp_response = unserialize($_SESSION["swp_response"]);
 
     // insert zencart order into database
-    $customer_notification = (SEND_EMAILS == 'true') ? '1' : '0';               
+    $customer_notification = (SEND_EMAILS == 'true') ? '1' : '0';
     $sql_data_array = array(
         'orders_id' => $insert_id,
         'orders_status_id' => $order->info['order_status'],
         'date_added' => 'now()',
         'customer_notified' => $customer_notification,
-        'comments' => 
+        'comments' =>
             'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $swp_response->transactionId .
             " ". $order->info['comments']
     );

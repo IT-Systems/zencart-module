@@ -11,38 +11,31 @@ class svea_product_price extends base {
         $zco_notifier->attach($this, array('NOTIFY_MAIN_TEMPLATE_VARS_START_PRODUCT_INFO')); //event to display product
     }
 
-    function update(&$class, $eventID, $paramsArray = array()) {
-        global $db, $currencies;
-        
-        // don't use unless configured and in applicable country
-        if( MODULE_PAYMENT_SWPPARTPAY_PRODUCT !== "True" &&
-            MODULE_PAYMENT_SWPINVOICE_PRODUCT !== "True" &&
-            $svea_country_code !== "DE" )
-        {
-            return;
-        }
-        
+    function update(&$class, $eventID, $paramsArray = array() ){
+        global $db,$currencies;
         //logged in customer, will see campaigns for his country
-        if (isset($_SESSION['customer_country_id'])) {
-            $svea_countryInfo = zen_get_countries_with_iso_codes($_SESSION['customer_country_id']);
-            $svea_country_code = $svea_countryInfo['countries_iso_code_2'];
-        
+        if(isset($_SESSION['customer_country_id'])){
+             $svea_countryInfo = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );
+             $svea_country_code = $svea_countryInfo['countries_iso_code_2'];
         //not logged in customer, will se campaigns for the store country
-        } else {
-            $q = "SELECT `countries_iso_code_2` FROM `countries` WHERE `countries_id` = " . STORE_COUNTRY . " LIMIT 1";
+        }else{
+            $q = "SELECT `countries_iso_code_2` FROM `countries` WHERE `countries_id` = ".STORE_COUNTRY." LIMIT 1";
             $svea_countryInfo = $db->Execute($q);
             $svea_country_code = $svea_countryInfo->fields['countries_iso_code_2'];
         }
+        if(MODULE_PAYMENT_SWPPARTPAY_PRODUCT !== "True" && MODULE_PAYMENT_SWPINVOICE_PRODUCT !== "True" || $svea_country_code == "DE"){
+              return;
+        }
 
         //get product price
-        $svea_currencyValue = $currencies->get_value($_SESSION['currency']);
-        $svea_base_price = zen_get_products_base_price((int) $_GET['products_id']);
-        $currency_decimals = $_SESSION['currency'] == 'EUR' ? 1 : 0;
-        $price_list = array();
-        $prices = array();
-        
+         $svea_currencyValue = $currencies->get_value($_SESSION['currency']);
+         $svea_base_price = zen_get_products_base_price((int)$_GET['products_id']);
+         $svea_price = $svea_currencyValue * $svea_base_price;
+         $currency_decimals = $_SESSION['currency'] == 'EUR' ? 1 : 0;
+         $price_list = array();
+         $prices = array();
         //payment plan
-        if (MODULE_PAYMENT_SWPPARTPAY_PRODUCT === "True") {
+        if(MODULE_PAYMENT_SWPPARTPAY_PRODUCT === "True" && $svea_countryInfo != "NL"){
 
             $query = "SELECT `campaignCode`,`description`,`paymentPlanType`,`contractLengthInMonths`,
                             `monthlyAnnuityFactor`,`initialFee`, `notificationFee`,`interestRatePercent`,
@@ -80,12 +73,12 @@ class svea_product_price extends base {
                 }
             }
         }
-        
+
         //invoice
         if( MODULE_PAYMENT_SWPINVOICE_PRODUCT === "True" &&
-            $svea_base_price >= constant(MODULE_PAYMENT_SWPINVOICE_PRODUCT_ . $svea_country_code) && 
+            $svea_base_price >= constant(MODULE_PAYMENT_SWPINVOICE_PRODUCT_ . $svea_country_code) &&
             $svea_country_code != "DK"
-           ) 
+           )
         {
             $lowest_to_pay = $this->svea_get_invoice_lowest($svea_country_code);
             $price_list[] = '<h4 style="display:block;  list-style-position:outside; margin: 5px 10px 10px 10px">' . ENTRY_TEXT_SWPINVOICE . '</h4>';
@@ -108,11 +101,11 @@ class svea_product_price extends base {
                         </div>
                     </div>";
             $prices[] = $price;
-        }              
+        }
         //lowest price
         if (sizeof($prices) > 0) {
             $lowest_price = ENTRY_TEXT_FROM . " " . round(min($prices), $currency_decimals) . " " . $_SESSION['currency'];
-            
+
             if( min($prices) != $prices[sizeof($prices)-1] ) {
                 $lowest_price = $lowest_price . "/" . ENTRY_TEXT_MONTH;
             }
@@ -145,7 +138,7 @@ class svea_product_price extends base {
                    });
 
                });
-               
+
         --></script>';
 
         $line = "<img width='163' height='1' src='images/Svea/grey_line.png' />";
@@ -237,7 +230,7 @@ class svea_product_price extends base {
                 break;
             case "DK":
                 return 100;
-                break;                
+                break;
             case "NL":
                 return 10;
                 break;

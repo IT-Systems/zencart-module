@@ -22,7 +22,7 @@ class sveawebpay_invoice extends SveaZencart {
         global $order;
 
         $this->code = 'sveawebpay_invoice';
-        $this->version = "4.3.0";
+        $this->version = "4.3.1";
 
         $this->title = MODULE_PAYMENT_SWPINVOICE_TEXT_TITLE;
         $this->description = MODULE_PAYMENT_SWPINVOICE_TEXT_DESCRIPTION;
@@ -39,7 +39,7 @@ class sveawebpay_invoice extends SveaZencart {
 
     function update_status() {
         global $db, $order, $currencies, $messageStack;
-    
+
         // do not use this module if any of the allowed currencies are not set in osCommerce
         foreach ($this->getInvoiceCurrencies() as $currency) {
             if (!is_array($currencies->currencies[strtoupper($currency)])) {
@@ -200,18 +200,11 @@ class sveawebpay_invoice extends SveaZencart {
         if (isset($this->handling_fee) && $this->handling_fee > 0) {
             $paymentfee_cost = $this->handling_fee;
 
-            // is the handling fee a percentage?
-            if (substr($paymentfee_cost, -1) == '%')
-                $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $paymentfee_cost));
-
-            // no, handling fee is a fixed amount
-            else {
-                $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
-                if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0) {
-                    // calculate tax based on deliver country?
-                    $paymentfee_tax =
-                        $paymentfee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
-                }
+            $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
+            if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0) {
+                // calculate tax based on deliver country?
+                $paymentfee_tax =
+                    $paymentfee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
             }
 
             $sveaHandlingFee =
@@ -254,32 +247,33 @@ class sveawebpay_invoice extends SveaZencart {
     /**
      * we've selected payment method, so we can set currency to payment method
      * currency
-     * 
+     *
      */
     function pre_confirmation_check() {
         global $order, $currency;
 
         // TODO make sure to update billing address here?
-        
+
+        // make sure we use the correct invoice currency corresponding to the customer country here!
         $customer_country = $order->customer['country']['iso_code_2'];
-        
+
         // did the customer have a different currency selected than the invoice country currency?
         if( $_SESSION['currency'] != $this->getInvoiceCurrency( $customer_country ) )
-        {         
+        {
             // set shop currency to the selected payment method currency
             $order->info['currency'] = $this->getInvoiceCurrency( $customer_country );
             $_SESSION['currency'] = $order->info['currency'];
 
             // redirect to update order_totals to new currency, making sure to preserve post data
-            $_SESSION['sveapostdata'] = $_POST; 
-            zen_redirect(zen_href_link(FILENAME_CHECKOUT_CONFIRMATION));    // redirect to update order_totals to new currency               
+            $_SESSION['sveapostdata'] = $_POST;
+            zen_redirect(zen_href_link(FILENAME_CHECKOUT_CONFIRMATION));    // redirect to update order_totals to new currency
         }
-        
+
         if( isset($_SESSION['sveapostdata']) )
         {
             $_POST = array_merge( $_POST, $_SESSION['sveapostdata'] );
             unset( $_SESSION['sveapostdata'] );
-        }               
+        }
         return false;
     }
 
@@ -341,8 +335,8 @@ class sveawebpay_invoice extends SveaZencart {
         ;
 
         // create product order rows from each item in cart
-        $swp_order = $this->parseOrderProducts( $order->products, $swp_order );       
-        
+        $swp_order = $this->parseOrderProducts( $order->products, $swp_order );
+
         // creates non-item order rows from Order Total entries
         $swp_order = $this->parseOrderTotals( $order_totals, $swp_order );
 
@@ -611,7 +605,7 @@ class sveawebpay_invoice extends SveaZencart {
         global $db;
         $common = "insert into " . TABLE_CONFIGURATION . " (configuration_title, configuration_key, configuration_value, configuration_description, configuration_group_id, sort_order, date_added";
         $db->Execute($common . ", set_function) values ('Enable Svea Invoice Module', 'MODULE_PAYMENT_SWPINVOICE_STATUS', 'True', 'Do you want to accept Svea payments?', '6', '0', now(), 'zen_cfg_select_option(array(\'True\', \'False\'), ')");
-        
+
         $db->Execute($common . ") values ('Svea Username SE', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_SE', '', 'Username for Svea Invoice Sweden', '6', '0', now())");
         $db->Execute($common . ") values ('Svea Password SE', 'MODULE_PAYMENT_SWPINVOICE_PASSWORD_SE', '', 'Password for Svea Invoice Sweden', '6', '0', now())");
         $db->Execute($common . ") values ('Svea Username NO', 'MODULE_PAYMENT_SWPINVOICE_USERNAME_NO', '', 'Username for Svea Invoice Norway', '6', '0', now())");
@@ -643,8 +637,8 @@ class sveawebpay_invoice extends SveaZencart {
         $db->Execute($common . ") values ('Product Price Widget threshold (SE)', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT_SE', '', 'The minimum product price to show this widget on a product page. Check with your campaign rules. Ask your Svea integration manager if unsure.', '6', '300', now())");
         $db->Execute($common . ") values ('Product Price Widget threshold (NO)', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT_NO', '', 'The minimum product price to show this widget on a product page. Check with your campaign rules. Ask your Svea integration manager if unsure.', '6', '300', now())");
         $db->Execute($common . ") values ('Product Price Widget threshold (FI)', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT_FI', '', 'The minimum product price to show this widget on a product page. Check with your campaign rules. Ask your Svea integration manager if unsure.', '6', '30', now())");
-        $db->Execute($common . ") values ('Product Price Widget threshold (NL)', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT_NL', '', 'The minimum product price to show this widget on a product page. Check with your campaign rules. Ask your Svea integration manager if unsure.', '6', '30', now())");  
-        
+        $db->Execute($common . ") values ('Product Price Widget threshold (NL)', 'MODULE_PAYMENT_SWPINVOICE_PRODUCT_NL', '', 'The minimum product price to show this widget on a product page. Check with your campaign rules. Ask your Svea integration manager if unsure.', '6', '30', now())");
+
         // insert svea order table if not exists already
         $res = $db->Execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '". DB_DATABASE ."' AND table_name = 'svea_order';");
         if( $res->fields["COUNT(*)"] != 1 ) {
@@ -675,13 +669,13 @@ class sveawebpay_invoice extends SveaZencart {
     function keys() {
         return array(
             'MODULE_PAYMENT_SWPINVOICE_STATUS',
-            
+
             'MODULE_PAYMENT_SWPINVOICE_USERNAME_SE',
             'MODULE_PAYMENT_SWPINVOICE_PASSWORD_SE',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_SE',
             'MODULE_PAYMENT_SWPINVOICE_USERNAME_NO',
             'MODULE_PAYMENT_SWPINVOICE_PASSWORD_NO',
-            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_NO',            
+            'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_NO',
             'MODULE_PAYMENT_SWPINVOICE_USERNAME_FI',
             'MODULE_PAYMENT_SWPINVOICE_PASSWORD_FI',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_FI',
@@ -694,7 +688,7 @@ class sveawebpay_invoice extends SveaZencart {
             'MODULE_PAYMENT_SWPINVOICE_USERNAME_DE',
             'MODULE_PAYMENT_SWPINVOICE_PASSWORD_DE',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_DE',
-            
+
             'MODULE_PAYMENT_SWPINVOICE_MODE',
             'MODULE_PAYMENT_SWPINVOICE_ORDER_STATUS_ID',
             'MODULE_PAYMENT_SWPINVOICE_AUTODELIVER',
@@ -702,7 +696,7 @@ class sveawebpay_invoice extends SveaZencart {
             'MODULE_PAYMENT_SWPINVOICE_IGNORE',
             'MODULE_PAYMENT_SWPINVOICE_ZONE',
             'MODULE_PAYMENT_SWPINVOICE_SORT_ORDER',
-            
+
             'MODULE_PAYMENT_SWPINVOICE_PRODUCT',
             'MODULE_PAYMENT_SWPINVOICE_PRODUCT_SE',
             'MODULE_PAYMENT_SWPINVOICE_PRODUCT_NO',
@@ -995,11 +989,11 @@ class sveawebpay_invoice extends SveaZencart {
             $this->insertOrdersStatus( $oID, $status, $comment );
         }
     }
-    
+
     /**
-     * Returns the currency used for an invoice country. 
+     * Returns the currency used for an invoice country.
      */
-    function getInvoiceCurrency( $country ) 
+    function getInvoiceCurrency( $country )
     {
         $country_currencies = array(
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_SE' => 'SEK',
@@ -1009,20 +1003,20 @@ class sveawebpay_invoice extends SveaZencart {
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_NL' => 'EUR',
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_DE' => 'EUR'
         );
- 
+
         $method = "MODULE_PAYMENT_SWPINVOICE_CLIENTNO_" . $country;
-        
+
         return $country_currencies[$method];
     }
-    
+
     /**
-     * Returns the currencies used in all countries where an invoice payment 
-     * method has been configured (i.e. clientno is set for country in config). 
+     * Returns the currencies used in all countries where an invoice payment
+     * method has been configured (i.e. clientno is set for country in config).
      * Used in invoice to determine currencies which must be set.
-     * 
-     * @return array - currencies for countries with ug clientno set in config 
+     *
+     * @return array - currencies for countries with ug clientno set in config
      */
-    function getInvoiceCurrencies() 
+    function getInvoiceCurrencies()
     {
         $country_currencies = array(
             'MODULE_PAYMENT_SWPINVOICE_CLIENTNO_SE' => 'SEK',
@@ -1038,8 +1032,8 @@ class sveawebpay_invoice extends SveaZencart {
         {
             if( constant($country)!=NULL ) $currencies[] = $currency;
         }
-        
+
         return array_unique( $currencies );
     }
-}    
+}
 ?>
