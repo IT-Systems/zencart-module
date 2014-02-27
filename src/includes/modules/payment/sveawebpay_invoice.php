@@ -200,18 +200,11 @@ class sveawebpay_invoice extends SveaZencart {
         if (isset($this->handling_fee) && $this->handling_fee > 0) {
             $paymentfee_cost = $this->handling_fee;
 
-            // is the handling fee a percentage?
-            if (substr($paymentfee_cost, -1) == '%')
-                $fields[] = array('title' => sprintf(MODULE_PAYMENT_SWPINVOICE_HANDLING_APPLIES, $paymentfee_cost));
-
-            // no, handling fee is a fixed amount
-            else {
-                $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
-                if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0) {
-                    // calculate tax based on deliver country?
-                    $paymentfee_tax =
-                        $paymentfee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
-                }
+            $tax_class = MODULE_ORDER_TOTAL_SWPHANDLING_TAX_CLASS;
+            if (DISPLAY_PRICE_WITH_TAX == "true" && $tax_class > 0) {
+                // calculate tax based on deliver country?
+                $paymentfee_tax =
+                    $paymentfee_cost * zen_get_tax_rate($tax_class, $order->delivery['country']['id'], $order->delivery['zone_id']) / 100;
             }
 
             $sveaHandlingFee =
@@ -261,6 +254,7 @@ class sveawebpay_invoice extends SveaZencart {
 
         // TODO make sure to update billing address here?
         
+        // make sure we use the correct invoice currency corresponding to the customer country here!
         $customer_country = $order->customer['country']['iso_code_2'];
         
         // did the customer have a different currency selected than the invoice country currency?
