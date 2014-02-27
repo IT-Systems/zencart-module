@@ -20,8 +20,8 @@ class sveawebpay_internetbank extends SveaZencart {
     $this->version = "4.3.1";
 
     // used by card, directbank when posting form in checkout_confirmation.php
-    $this->form_action_url = (MODULE_PAYMENT_SWPINTERNETBANK_MODE == 'Test') ? Svea\SveaConfig::SWP_TEST_URL : Svea\SveaConfig::SWP_PROD_URL;     
-    
+    $this->form_action_url = (MODULE_PAYMENT_SWPINTERNETBANK_MODE == 'Test') ? Svea\SveaConfig::SWP_TEST_URL : Svea\SveaConfig::SWP_PROD_URL;
+
     $this->title = MODULE_PAYMENT_SWPINTERNETBANK_TEXT_TITLE;
     $this->description = MODULE_PAYMENT_SWPINTERNETBANK_TEXT_DESCRIPTION;
     $this->enabled = ((MODULE_PAYMENT_SWPINTERNETBANK_STATUS == 'True') ? true : false);
@@ -75,7 +75,7 @@ class sveawebpay_internetbank extends SveaZencart {
     // show bank logo
     if($order->customer['country']['iso_code_2'] == "SE"){
          $fields[] = array('title' => '<img src=images/Svea/SVEADIRECTBANK_SE.png />', 'field' => '');
-    }  
+    }
     else {
         $fields[] = array('title' => '<img src=images/Svea/SVEADIRECTBANK.png />', 'field' => '');
     }
@@ -129,14 +129,14 @@ class sveawebpay_internetbank extends SveaZencart {
 
     // localization parameters
     if( isset( $order->billing['country']['iso_code_2'] ) ) {
-        $user_country = $order->billing['country']['iso_code_2']; 
+        $user_country = $order->billing['country']['iso_code_2'];
     }
     // no billing address set, fallback to session country_id
     else {
         $country = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );
         $user_country =  $country['countries_iso_code_2'];
     }
-    
+
     $user_language = $db->Execute("select code from " . TABLE_LANGUAGES . " where directory = '" . $language . "'");
     $user_language = $user_language->fields['code'];
 
@@ -147,9 +147,9 @@ class sveawebpay_internetbank extends SveaZencart {
 
     $swp_order = WebPay::createOrder( $sveaConfig )
         ->setCountryCode( $user_country )
-        ->setCurrency($currency)                     
-        ->setClientOrderNumber($client_order_number)   
-        ->setOrderDate(date('c'))                 
+        ->setCurrency($currency)
+        ->setClientOrderNumber($client_order_number)
+        ->setOrderDate(date('c'))
     ;
 
         // create product order rows from each item in cart
@@ -157,11 +157,11 @@ class sveawebpay_internetbank extends SveaZencart {
 
     // creates non-item order rows from Order Total entries
     $swp_order = $this->parseOrderTotals( $order_totals, $swp_order );
-      
+
 
     // localization parameters
     if( isset( $order->billing['country']['iso_code_2'] ) ) {
-        $user_country = $order->billing['country']['iso_code_2']; 
+        $user_country = $order->billing['country']['iso_code_2'];
     }
     // no billing address set, fallback to session country_id
     else {
@@ -221,13 +221,13 @@ class sveawebpay_internetbank extends SveaZencart {
             $country = tep_get_countries_with_iso_codes($_SESSION['customer_country_id']);
             $user_country = $country['countries_iso_code_2'];
         }
-        
+
         // Create and initialize order object, using either test or production configuration
         $sveaConfig = (MODULE_PAYMENT_SWPINTERNETBANK_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
         $swp_respObj = new SveaResponse( $_REQUEST, $user_country, $sveaConfig ); // returns HostedPaymentResponse
         $swp_response = $swp_respObj->response;
-                
+
         // check for bad response
         if( $swp_response->resultcode === 0 ) {
             die('Response failed authorization. AC not valid or Response is not recognized');
@@ -235,7 +235,7 @@ class sveawebpay_internetbank extends SveaZencart {
 
         // response ok, check if payment accepted
         else {
-            
+
              // handle failed payments
             if ( $swp_response->accepted === 0 ){
 
@@ -323,9 +323,9 @@ class sveawebpay_internetbank extends SveaZencart {
             'orders_status_id' => $order->info['order_status'],
             'date_added' => 'now()',
             'customer_notified' => $customer_notification,
-            'comments' => 
+            'comments' =>
                 'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $swp_response->transactionId .
-                " ". $order->info['comments']            
+                " ". $order->info['comments']
         );
        zen_db_perform(TABLE_ORDERS_STATUS_HISTORY, $sql_data_array);
 

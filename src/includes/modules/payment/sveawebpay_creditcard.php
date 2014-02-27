@@ -21,7 +21,7 @@ class sveawebpay_creditcard extends SveaZencart{
 
     // used by card, directbank when posting form in checkout_confirmation.php
     $this->form_action_url = (MODULE_PAYMENT_SWPCREDITCARD_MODE == 'Test') ? Svea\SveaConfig::SWP_TEST_URL : Svea\SveaConfig::SWP_PROD_URL;
-     
+
     $this->title = MODULE_PAYMENT_SWPCREDITCARD_TEXT_TITLE;
     $this->description = MODULE_PAYMENT_SWPCREDITCARD_TEXT_DESCRIPTION;
     $this->enabled = ((MODULE_PAYMENT_SWPCREDITCARD_STATUS == 'True') ? true : false);
@@ -69,11 +69,11 @@ class sveawebpay_creditcard extends SveaZencart{
 
         // show card logos
         if($order->customer['country']['iso_code_2'] == "SE"){
-            $fields[] = array('title' => '<img src=images/Svea/SVEACARD_SE.png />', 
+            $fields[] = array('title' => '<img src=images/Svea/SVEACARD_SE.png />',
                 'field' => '<img src=images/Svea/KORTCERT.png /><img src=images/Svea/AMEX.png /><img src=images/Svea/DINERS.png />');
-        }  
+        }
         else {
-            $fields[] = array('title' => '<img src=images/Svea/SVEACARD.png />', 
+            $fields[] = array('title' => '<img src=images/Svea/SVEACARD.png />',
                 'field' => '<img src=images/Svea/KORTCERT.png /><img src=images/Svea/AMEX.png /><img src=images/Svea/DINERS.png />');
         }
 
@@ -85,7 +85,7 @@ class sveawebpay_creditcard extends SveaZencart{
         // store order info needed to reconstruct amount pre coupon later
         $_SESSION["swp_order_info_pre_coupon"]  = serialize($order->info);
 
-        return array( 
+        return array(
             'id'      => $this->code,
             'module'  => $this->title,
             'fields'  => $fields
@@ -111,7 +111,7 @@ class sveawebpay_creditcard extends SveaZencart{
 
     // localization parameters
     if( isset( $order->billing['country']['iso_code_2'] ) ) {
-        $user_country = $order->billing['country']['iso_code_2']; 
+        $user_country = $order->billing['country']['iso_code_2'];
     }
     // no billing address set, fallback to session country_id
     else {
@@ -125,7 +125,7 @@ class sveawebpay_creditcard extends SveaZencart{
 
     // Create and initialize order object, using either test or production configuration
     $currency = $order->info['currency'];
-    
+
     $sveaConfig = (MODULE_PAYMENT_SWPCREDITCARD_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
     // Create and initialize order object, using either test or production configuration
@@ -141,7 +141,7 @@ class sveawebpay_creditcard extends SveaZencart{
 
     // creates non-item order rows from Order Total entries
     $swp_order = $this->parseOrderTotals( $order_totals, $swp_order );
-        
+
     // get form from order object
     $swp_form =  $swp_order->usePaymentMethod(PaymentMethod::KORTCERT)
         ->setCancelUrl( zen_href_link(FILENAME_CHECKOUT_PAYMENT, '', 'SSL', true) )
@@ -162,23 +162,23 @@ class sveawebpay_creditcard extends SveaZencart{
 
         // localization parameters
         if( isset( $order->billing['country']['iso_code_2'] ) ) {
-            $user_country = $order->billing['country']['iso_code_2']; 
+            $user_country = $order->billing['country']['iso_code_2'];
         }
         // no billing address set, fallback to session country_id
         else {
             $country = zen_get_countries_with_iso_codes( $_SESSION['customer_country_id'] );
             $user_country =  $country['countries_iso_code_2'];
         }
-        
+
         // put response into responsehandler
         $sveaConfig = (MODULE_PAYMENT_SWPCREDITCARD_MODE === 'Test') ? new ZenCartSveaConfigTest() : new ZenCartSveaConfigProd();
 
         $swp_respObj = new SveaResponse( $_REQUEST, $user_country, $sveaConfig ); // returns HostedPaymentResponse
 		$swp_response = $swp_respObj->response;
-                
+
         // check for bad response
         if( $swp_response->resultcode === 0 ) {
-            die('Response failed authorization. AC not valid or Response is not recognized');  
+            die('Response failed authorization. AC not valid or Response is not recognized');
         }
 
         // response ok, check if payment accepted
@@ -264,13 +264,13 @@ class sveawebpay_creditcard extends SveaZencart{
     $swp_response = unserialize($_SESSION["swp_response"]);
 
     // insert zencart order into database
-    $customer_notification = (SEND_EMAILS == 'true') ? '1' : '0';               
+    $customer_notification = (SEND_EMAILS == 'true') ? '1' : '0';
     $sql_data_array = array(
         'orders_id' => $insert_id,
         'orders_status_id' => $order->info['order_status'],
         'date_added' => 'now()',
         'customer_notified' => $customer_notification,
-        'comments' => 
+        'comments' =>
             'Accepted by Svea ' . date("Y-m-d G:i:s") . ' Security Number #: ' . $swp_response->transactionId .
             " ". $order->info['comments']
     );
