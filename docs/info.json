@@ -1,6 +1,75 @@
 {
-	"testInfoOpencart":{
-		"features": {"product price widget","get address"}
-		"admin features": {"test credit","test deliver"}
+    "module_name": "ZenCart",
+    "module_version": "4.3.1",
+    "module_shop_version_support": [
+        "1.5.1",
+        "1.3.9"
+    ],
+    "invoice_paymentplan": {
+        "invoice": [
+            "SE",
+            "NO",
+            "FI",
+            "DK",
+            "NL",
+            "DE"
+        ],
+        "paymentplan": [
+            "SE",
+            "NO",
+            "FI",
+            "DK"
+        ],
+        "product_price_widget": [
+            "SE",
+            "NO",
+            "FI",
+            "DK",
+            "NL",
+            "DE"
+        ]
+    },
+	"card": [
+	"Visa","Mastercard","Amex","Diners"
+	],
+	"direct_bank": {
+		"SE": [
+			"Danskebank",
+			"Nordea",
+			"SEB",
+			"SEB ftg",
+			"SHB",
+			"Swedbank"
+		],
+		"NO": [
+			"Bankaxess"
+		],
+		"FI": [
+			"Nordea",
+			"Sampo",
+			"Handelsbanken",
+			"Handsbanken",
+			"S-Pankki",
+			"Pohjola",
+			"Aktia",
+			"Tapiola"
+		]
+	},
+	"features": {
+		"invoice_paymentplan": {
+			"auto_deliver_order": [
+				"module_admin"
+			],
+			"deliver_order": [
+				"svea_admin","module_admin"
+			],
+			"close_order": [
+				"svea_admin","module_admin"
+			],
+			"credit_order": [
+				"svea_admin","module_admin"
+			]
+		
+		}
 	}
 }
