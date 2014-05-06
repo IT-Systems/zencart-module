@@ -53,8 +53,15 @@ define('FORM_TEXT_VATNO','CVR-nummer');
 define('FORM_TEXT_PARTPAY_FEE','Indledende gebyr vil blive tilføjet.');
 define('FORM_TEXT_GET_PAYPLAN','Hente adresse:');
 define('FORM_TEXT_FROM','Fra');
-define('FORM_TEXT_MONTH','m�ned');
+define('FORM_TEXT_MONTH','måned');
 
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');
+
+// Tupas-Api -related definitions
+define('FORM_TEXT_TUPAS_AUTHENTICATE','Authenticate on online bank');
+define('ERROR_TAMPERED_PARAMETERS', 'Unexpected error occurred during authentication. Please, try again.');
+define('ERROR_TUPAS_NOT_SET', 'You have to authenticate yourself in online bank.');
+define('ERROR_TUPAS_MISMATCH', 'The SSN doesn\'t match with the one that Tupas authentication sent. Please, try again.');
+
 ?>

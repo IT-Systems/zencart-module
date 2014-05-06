@@ -50,4 +50,11 @@ define('FORM_TEXT_VATNO','Organisasjonsnummer');
 
 define('ERROR_CODE_DEFAULT','Svea Error: ');
 
+// Tupas-Api -related definitions
+define('FORM_TEXT_TUPAS_AUTHENTICATE','Authenticate on online bank');
+define('ERROR_TAMPERED_PARAMETERS', 'Unexpected error occurred during authentication. Please, try again.');
+define('ERROR_TUPAS_NOT_SET', 'You have to authenticate yourself in online bank.');
+define('ERROR_TUPAS_MISMATCH', 'The SSN doesn\'t match with the one that Tupas authentication sent. Please, try again.');
+
+
 ?>
