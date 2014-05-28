@@ -38,7 +38,7 @@ class sveawebpay_partpay extends SveaZencart{
         }
         
         // Tupas API related 
-        $this->tupasapiurl = 'http://www4.it-systems.fi/svea/tupasapi/shops';
+        $this->tupasapiurl = 'https://tupas.svea.fi/shops';
         $this->usetupas = ((MODULE_PAYMENT_SWPPARTPAY_USETUPAS_FI == 'True') ? true : false);
         $this->tupas_mode = MODULE_PAYMENT_SWPPARTPAY_TUPAS_MODE;
         $this->tupas_shop_token = MODULE_PAYMENT_SWPPARTPAY_TUPAS_SHOP_TOKEN;
